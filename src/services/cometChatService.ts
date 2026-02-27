@@ -1,0 +1,146 @@
+import { CometChat } from '@cometchat/chat-sdk-react-native';
+import { COMETCHAT_CONSTANTS } from '../config/cometChatConfig';
+
+/**
+ * Inicializar o CometChat SDK.
+ * Deve ser chamado uma vez no App.tsx antes de qualquer outra operação.
+ */
+export const initCometChat = async () => {
+  const appSetting = new CometChat.AppSettingsBuilder()
+    .subscribePresenceForAllUsers()
+    .setRegion(COMETCHAT_CONSTANTS.REGION)
+    .autoEstablishSocketConnection(true)
+    .build();
+
+  try {
+    await CometChat.init(COMETCHAT_CONSTANTS.APP_ID, appSetting);
+    console.log('[CometChat] Inicializado com sucesso');
+    return true;
+  } catch (error) {
+    console.error('[CometChat] Erro ao inicializar:', error);
+    return false;
+  }
+};
+
+/**
+ * Login no CometChat.
+ * Usar o UID do Firebase como UID do CometChat para manter sincronia.
+ */
+export const loginCometChat = async (uid: string) => {
+  try {
+    const user = await CometChat.login(uid, COMETCHAT_CONSTANTS.AUTH_KEY);
+    console.log('[CometChat] Login sucesso:', user.getName());
+    return user;
+  } catch (error) {
+    console.error('[CometChat] Erro no login:', error);
+    throw error;
+  }
+};
+
+/**
+ * Logout do CometChat.
+ */
+export const logoutCometChat = async () => {
+  try {
+    await CometChat.logout();
+    console.log('[CometChat] Logout sucesso');
+  } catch (error) {
+    console.error('[CometChat] Erro no logout:', error);
+    throw error;
+  }
+};
+
+/**
+ * Criar um novo usuário no CometChat.
+ * Chamar junto com o signUp do Firebase.
+ */
+export const createCometChatUser = async (uid: string, name: string) => {
+  const user = new CometChat.User(uid);
+  user.setName(name);
+
+  try {
+    const createdUser = await CometChat.createUser(user, COMETCHAT_CONSTANTS.AUTH_KEY);
+    console.log('[CometChat] Usuário criado:', createdUser.getName());
+    return createdUser;
+  } catch (error) {
+    console.error('[CometChat] Erro ao criar usuário:', error);
+    throw error;
+  }
+};
+
+/**
+ * Buscar lista de todos os usuários.
+ */
+export const fetchUsers = async (limit = 30) => {
+  const usersRequest = new CometChat.UsersRequestBuilder()
+    .setLimit(limit)
+    .build();
+
+  try {
+    const users = await usersRequest.fetchNext();
+    return users;
+  } catch (error) {
+    console.error('[CometChat] Erro ao buscar usuários:', error);
+    throw error;
+  }
+};
+
+/**
+ * Buscar lista de conversas recentes.
+ */
+export const fetchConversations = async (limit = 30) => {
+  const conversationsRequest = new CometChat.ConversationsRequestBuilder()
+    .setLimit(limit)
+    .build();
+
+  try {
+    const conversations = await conversationsRequest.fetchNext();
+    return conversations;
+  } catch (error) {
+    console.error('[CometChat] Erro ao buscar conversas:', error);
+    throw error;
+  }
+};
+
+/**
+ * Buscar informações de um usuário específico.
+ */
+export const getUser = async (uid: string) => {
+  try {
+    const user = await CometChat.getUser(uid);
+    return user;
+  } catch (error) {
+    console.error('[CometChat] Erro ao buscar usuário:', error);
+    throw error;
+  }
+};
+
+/**
+ * Listener de status de presença (online/offline).
+ */
+export const addUserPresenceListener = (
+  listenerID: string,
+  onUserOnline: (user: CometChat.User) => void,
+  onUserOffline: (user: CometChat.User) => void
+) => {
+  CometChat.addUserListener(
+    listenerID,
+    new CometChat.UserListener({
+      onUserOnline: (onlineUser: CometChat.User) => {
+        console.log('[CometChat] Usuário online:', onlineUser.getName());
+        onUserOnline(onlineUser);
+      },
+      onUserOffline: (offlineUser: CometChat.User) => {
+        console.log('[CometChat] Usuário offline:', offlineUser.getName());
+        onUserOffline(offlineUser);
+      },
+    })
+  );
+};
+
+/**
+ * Remover listener de presença.
+ */
+export const removeUserPresenceListener = (listenerID: string) => {
+  CometChat.removeUserListener(listenerID);
+};

@@ -1,0 +1,113 @@
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
+  User,
+  updateProfile,
+} from 'firebase/auth';
+import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '../config/firebaseConfig';
+
+/**
+ * Registrar novo usuário com email e senha.
+ * Cria o perfil no Firestore automaticamente.
+ */
+export const signUp = async (email: string, password: string, displayName: string) => {
+  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+  const user = userCredential.user;
+
+  // Atualizar displayName no Firebase Auth
+  await updateProfile(user, { displayName });
+
+  // Salvar perfil no Firestore
+  await setDoc(doc(db, 'users', user.uid), {
+    uid: user.uid,
+    email: user.email,
+    displayName,
+    photoURL: null,
+    status: 'Hey there! I am using Telegram Clone',
+    createdAt: new Date().toISOString(),
+    lastSeen: new Date().toISOString(),
+    online: true,
+  });
+
+  return user;
+};
+
+/**
+ * Login com email e senha.
+ * Atualiza status online no Firestore.
+ */
+export const signIn = async (email: string, password: string) => {
+  const userCredential = await signInWithEmailAndPassword(auth, email, password);
+  const user = userCredential.user;
+
+  // Marcar como online
+  await updateDoc(doc(db, 'users', user.uid), {
+    online: true,
+    lastSeen: new Date().toISOString(),
+  });
+
+  return user;
+};
+
+/**
+ * Logout do Firebase.
+ * Atualiza status offline no Firestore.
+ */
+export const signOut = async () => {
+  const user = auth.currentUser;
+
+  if (user) {
+    await updateDoc(doc(db, 'users', user.uid), {
+      online: false,
+      lastSeen: new Date().toISOString(),
+    });
+  }
+
+  await firebaseSignOut(auth);
+};
+
+/**
+ * Observar mudanças no estado de autenticação.
+ * Retorna um unsubscribe function.
+ */
+export const onAuthChange = (callback: (user: User | null) => void) => {
+  return onAuthStateChanged(auth, callback);
+};
+
+/**
+ * Buscar perfil de um usuário pelo UID.
+ */
+export const getUserProfile = async (uid: string) => {
+  const docRef = doc(db, 'users', uid);
+  const docSnap = await getDoc(docRef);
+  return docSnap.exists() ? docSnap.data() : null;
+};
+
+/**
+ * Atualizar perfil do usuário logado.
+ */
+export const updateUserProfile = async (
+  uid: string,
+  data: { displayName?: string; photoURL?: string; status?: string }
+) => {
+  await updateDoc(doc(db, 'users', uid), data);
+
+  // Atualizar também no Firebase Auth se for displayName ou photoURL
+  const user = auth.currentUser;
+  if (user && (data.displayName || data.photoURL)) {
+    await updateProfile(user, {
+      displayName: data.displayName || user.displayName,
+      photoURL: data.photoURL || user.photoURL,
+    });
+  }
+};
+
+/**
+ * Retorna o usuário atualmente logado ou null.
+ */
+export const getCurrentUser = () => {
+  return auth.currentUser;
+};

@@ -1,0 +1,20 @@
+Starting project at C:\Users\aluno\Desktop\CHAT-INSTATANEO\telegram-clone
+Starting Metro Bundler
+
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+› Opening exp://192.168.205.132:8094 on Pixel_9_Pro_XL
+Waiting on http://localhost:8094
+Logs for your project will appear below.
+Android .\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android .\index.ts ░░░░░░░░░░░░░░░░  1.0% (1/1)
+Android .\index.ts ▓░░░░░░░░░░░░░░░  8.7% ( 10/114)
+Android .\index.ts ▓░░░░░░░░░░░░░░░ 11.8% ( 74/215)
+Android .\index.ts ▓▓▓░░░░░░░░░░░░░ 24.7% (172/371)
+Android .\index.ts ▓▓▓▓▓▓░░░░░░░░░░ 43.0% (330/530)
+Android .\index.ts ▓▓▓▓▓▓▓▓▓▓▓░░░░░ 69.8% (524/627)
+Android .\index.ts ▓▓▓▓▓▓▓▓▓▓▓░░░░░ 73.5% (591/697)
+Android .\index.ts ▓▓▓▓▓▓▓▓▓▓▓▓░░░░ 80.0% (746/845)
+Android .\index.ts ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 94.5% (878/910)
+Android .\index.ts ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.6% (975/977)
+Android Bundled 43156ms index.ts (987 modules)
+Deseja finalizar o arquivo em lotes (S/N)? 
