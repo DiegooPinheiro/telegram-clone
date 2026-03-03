@@ -22,7 +22,7 @@ export default function App() {
         // Se já tiver um usuário autenticado no Firebase, tentar logar no CometChat
         if (isAuthenticated && auth.currentUser) {
           try {
-            await loginCometChat(auth.currentUser.uid);
+            await loginCometChat(auth.currentUser.uid, auth.currentUser.displayName || 'Usuário');
             setCometChatReady(true);
           } catch (loginError) {
             console.error('[CometChat] Erro no login automático:', loginError);

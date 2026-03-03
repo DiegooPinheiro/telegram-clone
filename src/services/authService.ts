@@ -60,7 +60,8 @@ export const signIn = async (email: string, password: string) => {
 
   // Logar no CometChat
   try {
-    await loginCometChat(user.uid);
+    const profile = await getUserProfile(user.uid);
+    await loginCometChat(user.uid, (profile as any)?.displayName || user.displayName || 'Usuário');
   } catch (ccError) {
     console.warn('[AuthService] Erro ao logar no CometChat:', ccError);
   }

@@ -8,12 +8,15 @@ import { COMETCHAT_CONSTANTS } from '../config/cometChatConfig';
 export const initCometChat = async () => {
   const appSetting = new CometChat.AppSettingsBuilder()
     .subscribePresenceForAllUsers()
-    .setRegion(COMETCHAT_CONSTANTS.REGION)
+    .setRegion(COMETCHAT_CONSTANTS.REGION.trim().toLowerCase())
     .autoEstablishSocketConnection(true)
     .build();
 
   try {
-    await CometChat.init(COMETCHAT_CONSTANTS.APP_ID, appSetting);
+    await CometChat.init(
+      COMETCHAT_CONSTANTS.APP_ID.trim(),
+      appSetting
+    );
     console.log('[CometChat] Inicializado com sucesso');
     return true;
   } catch (error) {
@@ -26,12 +29,18 @@ export const initCometChat = async () => {
  * Login no CometChat.
  * Usar o UID do Firebase como UID do CometChat para manter sincronia.
  */
-export const loginCometChat = async (uid: string) => {
+export const loginCometChat = async (uid: string, name?: string) => {
   try {
     const user = await CometChat.login(uid, COMETCHAT_CONSTANTS.AUTH_KEY);
     console.log('[CometChat] Login sucesso:', user.getName());
     return user;
-  } catch (error) {
+  } catch (error: any) {
+    // Se o usuário não existe no CometChat mas existe no Firebase (acontece se o app falhou antes)
+    if (error.code === 'ERR_UID_NOT_FOUND' && name) {
+      console.log('[CometChat] Usuário não encontrado, tentando criar...');
+      await createCometChatUser(uid, name);
+      return await CometChat.login(uid, COMETCHAT_CONSTANTS.AUTH_KEY);
+    }
     console.error('[CometChat] Erro no login:', error);
     throw error;
   }
