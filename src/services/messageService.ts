@@ -136,7 +136,7 @@ export const endTyping = (receiverID: string, isGroup = false) => {
  */
 export const deleteMessage = async (messageId: number | string) => {
   try {
-    await CometChat.deleteMessage(messageId.toString());
+    await CometChat.deleteMessage(String(messageId));
     console.log('[Message] Deletada com sucesso');
   } catch (error) {
     console.error('[Message] Erro ao deletar:', error);
