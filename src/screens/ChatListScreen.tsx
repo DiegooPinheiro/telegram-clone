@@ -28,6 +28,11 @@ export default function ChatListScreen({ navigation }: Props) {
 
   const loadConversations = async () => {
     try {
+      const loggedInUser = await CometChat.getLoggedinUser();
+      if (!loggedInUser) {
+        console.log('[ChatList] Aguardando login do CometChat...');
+        return;
+      }
       const fetched = await fetchConversations();
       setConversations(fetched);
     } catch (error) {

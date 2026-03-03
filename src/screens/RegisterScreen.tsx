@@ -53,14 +53,8 @@ export default function RegisterScreen({ navigation }: Props) {
 
     setLoading(true);
     try {
-      // 1. Criar no Firebase
-      const user = await signUp(email.trim(), password, name.trim());
-
-      // 2. Criar no CometChat
-      await createCometChatUser(user.uid, name.trim());
-
-      // 3. Login no CometChat
-      await loginCometChat(user.uid);
+      // O serviço signUp agora cuida da criação no Firebase e CometChat de forma sincronizada
+      await signUp(email.trim(), password, name.trim());
     } catch (error: any) {
       Alert.alert('Erro no cadastro', error.message || 'Tente novamente');
     } finally {

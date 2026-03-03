@@ -8,6 +8,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../config/firebaseConfig';
+import { createCometChatUser, loginCometChat, logoutCometChat } from './cometChatService';
 
 /**
  * Registrar novo usuário com email e senha.
@@ -32,6 +33,14 @@ export const signUp = async (email: string, password: string, displayName: strin
     online: true,
   });
 
+  // Criar e logar no CometChat (opcional: pode falhar se credenciais estiverem erradas)
+  try {
+    await createCometChatUser(user.uid, displayName);
+    await loginCometChat(user.uid);
+  } catch (ccError) {
+    console.warn('[AuthService] Erro ao sincronizar com CometChat:', ccError);
+  }
+
   return user;
 };
 
@@ -49,6 +58,13 @@ export const signIn = async (email: string, password: string) => {
     lastSeen: new Date().toISOString(),
   });
 
+  // Logar no CometChat
+  try {
+    await loginCometChat(user.uid);
+  } catch (ccError) {
+    console.warn('[AuthService] Erro ao logar no CometChat:', ccError);
+  }
+
   return user;
 };
 
@@ -64,6 +80,12 @@ export const signOut = async () => {
       online: false,
       lastSeen: new Date().toISOString(),
     });
+
+    try {
+      await logoutCometChat();
+    } catch (ccError) {
+      console.warn('[AuthService] Erro ao deslogar do CometChat:', ccError);
+    }
   }
 
   await firebaseSignOut(auth);

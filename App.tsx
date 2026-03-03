@@ -6,8 +6,9 @@ import AppNavigator from './src/navigation/AppNavigator';
 import AuthNavigator from './src/navigation/AuthNavigator';
 import LoadingSpinner from './src/components/LoadingSpinner';
 import useAuth from './src/hooks/useAuth';
-import { initCometChat } from './src/services/cometChatService';
+import { initCometChat, loginCometChat } from './src/services/cometChatService';
 import { colors } from './src/theme/colors';
+import { auth } from './src/config/firebaseConfig';
 
 export default function App() {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -15,11 +16,29 @@ export default function App() {
 
   useEffect(() => {
     const init = async () => {
-      await initCometChat();
-      setCometChatReady(true);
+      try {
+        await initCometChat();
+        
+        // Se já tiver um usuário autenticado no Firebase, tentar logar no CometChat
+        if (isAuthenticated && auth.currentUser) {
+          try {
+            await loginCometChat(auth.currentUser.uid);
+            setCometChatReady(true);
+          } catch (loginError) {
+            console.error('[CometChat] Erro no login automático:', loginError);
+            // Mesmo com erro de login, liberamos o app para que a tela de login/erro possa lidar
+            setCometChatReady(true);
+          }
+        } else {
+          setCometChatReady(true);
+        }
+      } catch (error) {
+        console.error('[CometChat] Erro crítico na inicialização:', error);
+        setCometChatReady(true);
+      }
     };
     init();
-  }, []);
+  }, [isAuthenticated]);
 
   if (authLoading || !cometChatReady) {
     return <LoadingSpinner message="Carregando..." />;
