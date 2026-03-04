@@ -16,11 +16,13 @@ import useAuth from '../hooks/useAuth';
 import { signOut } from '../services/authService';
 import { logoutCometChat } from '../services/cometChatService';
 import Avatar from '../components/Avatar';
+import { useSettings } from '../context/SettingsContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
 
 export default function SettingsScreen({ navigation }: Props) {
   const { displayName, email, photoURL } = useAuth();
+  const { theme, toggleTheme, language } = useSettings();
 
   const handleLogout = () => {
     Alert.alert('Sair', 'Deseja realmente sair da conta?', [
@@ -59,17 +61,46 @@ export default function SettingsScreen({ navigation }: Props) {
         {/* Opções */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Conta</Text>
-          <SettingRow icon="📝" label="Editar perfil" onPress={() => {}} />
-          <SettingRow icon="🔔" label="Notificações" onPress={() => {}} />
-          <SettingRow icon="🔒" label="Privacidade" onPress={() => {}} />
-          <SettingRow icon="💾" label="Dados e armazenamento" onPress={() => {}} />
+          <SettingRow 
+            icon="📝" 
+            label="Editar perfil" 
+            onPress={() => navigation.navigate('EditProfile')} 
+          />
+          <SettingRow 
+            icon="🔔" 
+            label="Notificações" 
+            onPress={() => navigation.navigate('Notifications')} 
+          />
+          <SettingRow 
+            icon="🔒" 
+            label="Privacidade" 
+            onPress={() => navigation.navigate('Privacy')} 
+          />
+          <SettingRow 
+            icon="💾" 
+            label="Dados e armazenamento" 
+            onPress={() => navigation.navigate('DataStorage')} 
+          />
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Configurações</Text>
-          <SettingRow icon="🌙" label="Tema escuro" onPress={() => {}} />
-          <SettingRow icon="🌐" label="Idioma" subtitle="Português" onPress={() => {}} />
-          <SettingRow icon="❓" label="Ajuda" onPress={() => {}} />
+          <SettingRow 
+            icon={theme === 'dark' ? '☀️' : '🌙'} 
+            label={theme === 'dark' ? 'Tema claro' : 'Tema escuro'} 
+            onPress={toggleTheme} 
+          />
+          <SettingRow 
+            icon="🌐" 
+            label="Idioma" 
+            subtitle={language === 'pt' ? 'Português' : 'English'} 
+            onPress={() => {}} 
+          />
+          <SettingRow 
+            icon="❓" 
+            label="Ajuda" 
+            onPress={() => navigation.navigate('Help')} 
+          />
         </View>
 
         {/* Logout */}

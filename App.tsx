@@ -10,6 +10,8 @@ import { initCometChat, loginCometChat } from './src/services/cometChatService';
 import { colors } from './src/theme/colors';
 import { auth } from './src/config/firebaseConfig';
 
+import { SettingsProvider } from './src/context/SettingsContext';
+
 export default function App() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [cometChatReady, setCometChatReady] = useState(false);
@@ -19,14 +21,12 @@ export default function App() {
       try {
         await initCometChat();
         
-        // Se já tiver um usuário autenticado no Firebase, tentar logar no CometChat
         if (isAuthenticated && auth.currentUser) {
           try {
             await loginCometChat(auth.currentUser.uid, auth.currentUser.displayName || 'Usuário');
             setCometChatReady(true);
           } catch (loginError) {
             console.error('[CometChat] Erro no login automático:', loginError);
-            // Mesmo com erro de login, liberamos o app para que a tela de login/erro possa lidar
             setCometChatReady(true);
           }
         } else {
@@ -45,10 +45,12 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider>
-      <NavigationContainer>
-        {isAuthenticated ? <AppNavigator /> : <AuthNavigator />}
-      </NavigationContainer>
-    </SafeAreaProvider>
+    <SettingsProvider>
+      <SafeAreaProvider>
+        <NavigationContainer>
+          {isAuthenticated ? <AppNavigator /> : <AuthNavigator />}
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </SettingsProvider>
   );
 }

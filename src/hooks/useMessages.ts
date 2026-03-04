@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { CometChat } from '@cometchat/chat-sdk-react-native';
+import useAuth from './useAuth';
 import {
   fetchMessages,
   sendTextMessage,
@@ -14,6 +15,7 @@ import {
  * Gerencia busca, envio, listener em tempo real e indicador de digitação.
  */
 export default function useMessages(receiverUID: string, isGroup = false) {
+  const { uid: myUID } = useAuth();
   const [messages, setMessages] = useState<CometChat.BaseMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -45,16 +47,27 @@ export default function useMessages(receiverUID: string, isGroup = false) {
   useEffect(() => {
     addMessageListener(listenerID, {
       onTextMessageReceived: (message) => {
-        // Só adicionar se for da conversa atual
         const senderUID = message.getSender().getUid();
-        if (senderUID === receiverUID || message.getReceiverId() === receiverUID) {
-          setMessages((prev) => [...prev, message]);
+        const receiverID = message.getReceiverId();
+        
+        // Só adicionar se for da conversa atual e não for minha (já adicionada no send)
+        if ((senderUID === receiverUID || receiverID === receiverUID) && senderUID !== myUID) {
+          setMessages((prev) => {
+            // Evitar duplicatas
+            if (prev.find(m => m.getId() === message.getId())) return prev;
+            return [...prev, message];
+          });
         }
       },
       onMediaMessageReceived: (message) => {
         const senderUID = message.getSender().getUid();
-        if (senderUID === receiverUID || message.getReceiverId() === receiverUID) {
-          setMessages((prev) => [...prev, message]);
+        const receiverID = message.getReceiverId();
+
+        if ((senderUID === receiverUID || receiverID === receiverUID) && senderUID !== myUID) {
+          setMessages((prev) => {
+            if (prev.find(m => m.getId() === message.getId())) return prev;
+            return [...prev, message];
+          });
         }
       },
       onTypingStarted: (indicator) => {
@@ -72,7 +85,7 @@ export default function useMessages(receiverUID: string, isGroup = false) {
     return () => {
       removeMessageListener(listenerID);
     };
-  }, [receiverUID, listenerID]);
+  }, [receiverUID, listenerID, myUID]);
 
   // Enviar mensagem
   const send = useCallback(

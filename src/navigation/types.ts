@@ -10,4 +10,9 @@ export type RootStackParamList = {
   Settings: undefined;
   Contacts: undefined;
   NewChat: undefined;
+  EditProfile: undefined;
+  Notifications: undefined;
+  Privacy: undefined;
+  DataStorage: undefined;
+  Help: undefined;
 };

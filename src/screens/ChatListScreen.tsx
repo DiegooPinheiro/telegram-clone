@@ -49,9 +49,11 @@ export default function ChatListScreen({ navigation }: Props) {
     CometChat.addMessageListener(
       listenerID,
       new CometChat.MessageListener({
-        onTextMessageReceived: () => {
-          loadConversations();
-        },
+        onTextMessageReceived: () => loadConversations(),
+        onMediaMessageReceived: () => loadConversations(),
+        onCustomMessageReceived: () => loadConversations(),
+        onMessageDeleted: () => loadConversations(),
+        onUnreadMessageCountUpdated: () => loadConversations(),
       })
     );
 

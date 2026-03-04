@@ -10,6 +10,11 @@ import ProfileScreen from '../screens/ProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import ContactsScreen from '../screens/ContactsScreen';
 import NewChatScreen from '../screens/NewChatScreen';
+import EditProfileScreen from '../screens/EditProfileScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
+import PrivacyScreen from '../screens/PrivacyScreen';
+import DataStorageScreen from '../screens/DataStorageScreen';
+import HelpScreen from '../screens/HelpScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -68,6 +73,31 @@ export default function AppNavigator() {
         name="NewChat"
         component={NewChatScreen}
         options={{ title: 'Nova Conversa' }}
+      />
+      <Stack.Screen
+        name="EditProfile"
+        component={EditProfileScreen}
+        options={{ title: 'Editar Perfil' }}
+      />
+      <Stack.Screen
+        name="Notifications"
+        component={NotificationsScreen}
+        options={{ title: 'Notificações' }}
+      />
+      <Stack.Screen
+        name="Privacy"
+        component={PrivacyScreen}
+        options={{ title: 'Privacidade' }}
+      />
+      <Stack.Screen
+        name="DataStorage"
+        component={DataStorageScreen}
+        options={{ title: 'Dados e Armazenamento' }}
+      />
+      <Stack.Screen
+        name="Help"
+        component={HelpScreen}
+        options={{ title: 'Ajuda' }}
       />
     </Stack.Navigator>
   );
