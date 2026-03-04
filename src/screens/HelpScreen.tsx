@@ -1,24 +1,26 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
+import useTheme from '../hooks/useTheme';
 
 export default function HelpScreen() {
+  const { colors } = useTheme();
+
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundSecondary }]} edges={['bottom']}>
       <ScrollView>
-        <View style={styles.section}>
+        <View style={[styles.section, { backgroundColor: colors.background }]}>
           <TouchableOpacity style={styles.row} onPress={() => Linking.openURL('https://telegram.org/faq')}>
-            <Text style={styles.label}>Perguntas Frequentes</Text>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>Perguntas Frequentes</Text>
           </TouchableOpacity>
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.separator }]} />
           <TouchableOpacity style={styles.row}>
-            <Text style={styles.label}>Fazer uma Pergunta</Text>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>Fazer uma Pergunta</Text>
           </TouchableOpacity>
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.separator }]} />
           <TouchableOpacity style={styles.row}>
-            <Text style={styles.label}>Política de Privacidade</Text>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>Política de Privacidade</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -29,10 +31,8 @@ export default function HelpScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.backgroundSecondary,
   },
   section: {
-    backgroundColor: colors.background,
     marginTop: spacing.sm,
   },
   row: {
@@ -41,11 +41,9 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
-    color: colors.textPrimary,
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.separator,
     marginLeft: spacing.lg,
   },
 });

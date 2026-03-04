@@ -16,6 +16,8 @@ interface ChatListItemProps {
   onPress: () => void;
 }
 
+import useTheme from '../hooks/useTheme';
+
 export default function ChatListItem({
   name,
   lastMessage,
@@ -25,26 +27,28 @@ export default function ChatListItem({
   online,
   onPress,
 }: ChatListItemProps) {
+  const { colors, isDark } = useTheme();
+
   return (
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.6}>
-      <Avatar uri={avatar} name={name} size={52} online={online} />
+      <Avatar uri={avatar} name={name} size={60} online={online} />
 
       <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.name} numberOfLines={1}>
+          <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>
             {name}
           </Text>
-          <Text style={[styles.time, unreadCount > 0 && styles.timeUnread]}>
+          <Text style={[styles.time, { color: colors.textSecondary }, unreadCount > 0 && { color: isDark ? colors.textPrimary : colors.primary }]}>
             {formatChatDate(timestamp)}
           </Text>
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.message} numberOfLines={1}>
+          <Text style={[styles.message, { color: colors.textSecondary }]} numberOfLines={2}>
             {lastMessage}
           </Text>
           {unreadCount > 0 && (
-            <View style={styles.badge}>
+            <View style={[styles.badge, { backgroundColor: isDark ? '#2c2c2e' : colors.primary }]}>
               <Text style={styles.badgeText}>
                 {unreadCount > 99 ? '99+' : unreadCount}
               </Text>
@@ -60,8 +64,8 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
   },
   content: {
     flex: 1,
@@ -71,46 +75,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   name: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
-    color: colors.textPrimary,
     flex: 1,
     marginRight: spacing.sm,
   },
   time: {
     fontSize: 13,
-    color: colors.textSecondary,
-  },
-  timeUnread: {
-    color: colors.primary,
-    fontWeight: '500',
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   message: {
     fontSize: 15,
-    color: colors.textSecondary,
     flex: 1,
     marginRight: spacing.sm,
+    lineHeight: 20,
   },
   badge: {
-    backgroundColor: colors.primary,
     borderRadius: 12,
     minWidth: 22,
     height: 22,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 6,
+    marginTop: 4,
   },
   badgeText: {
     color: '#fff',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
   },
 });

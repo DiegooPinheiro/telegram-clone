@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet, Text } from 'react-native';
-import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
+import useTheme from '../hooks/useTheme';
 
 interface MessageInputProps {
   onSend: (text: string) => void;
@@ -12,6 +12,7 @@ export default function MessageInput({
   onSend,
   placeholder = 'Mensagem',
 }: MessageInputProps) {
+  const { colors } = useTheme();
   const [text, setText] = useState('');
 
   const handleSend = () => {
@@ -22,9 +23,9 @@ export default function MessageInput({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background, borderTopColor: colors.separator }]}>
       <TextInput
-        style={styles.input}
+        style={[styles.input, { backgroundColor: colors.inputBackground, color: colors.textPrimary }]}
         value={text}
         onChangeText={setText}
         placeholder={placeholder}
@@ -33,7 +34,7 @@ export default function MessageInput({
         maxLength={4096}
       />
       <TouchableOpacity
-        style={[styles.sendButton, !text.trim() && styles.sendButtonDisabled]}
+        style={[styles.sendButton, { backgroundColor: colors.primary }, !text.trim() && styles.sendButtonDisabled]}
         onPress={handleSend}
         disabled={!text.trim()}
         activeOpacity={0.7}
@@ -49,26 +50,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     padding: spacing.sm,
-    backgroundColor: colors.background,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.separator,
   },
   input: {
     flex: 1,
     minHeight: 40,
     maxHeight: 120,
-    backgroundColor: colors.inputBackground,
     borderRadius: 20,
     paddingHorizontal: spacing.lg,
     paddingVertical: 10,
     fontSize: 16,
-    color: colors.textPrimary,
   },
   sendButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: spacing.sm,

@@ -1,25 +1,27 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
+import useTheme from '../hooks/useTheme';
 
 export default function DataStorageScreen() {
+  const { colors } = useTheme();
+
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundSecondary }]} edges={['bottom']}>
       <ScrollView>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Uso de Disco</Text>
+        <View style={[styles.section, { backgroundColor: colors.background }]}>
+          <Text style={[styles.sectionTitle, { color: colors.primary }]}>Uso de Disco</Text>
           <View style={styles.row}>
-            <Text style={styles.label}>Uso do Armazenamento</Text>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>Uso do Armazenamento</Text>
           </View>
         </View>
         
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Download Automático</Text>
+        <View style={[styles.section, { backgroundColor: colors.background }]}>
+          <Text style={[styles.sectionTitle, { color: colors.primary }]}>Download Automático</Text>
           <View style={styles.row}>
-            <Text style={styles.label}>Ao usar dados móveis</Text>
-            <Text style={styles.value}>Fotos</Text>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>Ao usar dados móveis</Text>
+            <Text style={[styles.value, { color: colors.textSecondary }]}>Fotos</Text>
           </View>
         </View>
       </ScrollView>
@@ -30,15 +32,12 @@ export default function DataStorageScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.backgroundSecondary,
   },
   section: {
-    backgroundColor: colors.background,
     marginTop: spacing.sm,
   },
   sectionTitle: {
     fontSize: 14,
-    color: colors.primary,
     fontWeight: '600',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
@@ -53,10 +52,8 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
-    color: colors.textPrimary,
   },
   value: {
     fontSize: 16,
-    color: colors.textSecondary,
   },
 });

@@ -16,9 +16,12 @@ import useAuth from '../hooks/useAuth';
 import { updateUserProfile } from '../services/authService';
 import Avatar from '../components/Avatar';
 
+import useTheme from '../hooks/useTheme';
+
 type Props = NativeStackScreenProps<RootStackParamList, 'EditProfile'>;
 
 export default function EditProfileScreen({ navigation }: Props) {
+  const { colors: themeColors } = useTheme();
   const { displayName: initialName, photoURL, uid } = useAuth();
   const [name, setName] = useState(initialName || '');
   const [bio, setBio] = useState(''); // Bio support can be added to authService later
@@ -44,38 +47,40 @@ export default function EditProfileScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]} edges={['bottom']}>
+      <View style={[styles.header, { borderBottomColor: themeColors.separator }]}>
         <Avatar uri={photoURL} name={name} size={80} />
         <TouchableOpacity style={styles.changePhoto}>
-          <Text style={styles.changePhotoText}>Alterar Foto</Text>
+          <Text style={[styles.changePhotoText, { color: themeColors.primary }]}>Alterar Foto</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.form}>
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Nome</Text>
+          <Text style={[styles.label, { color: themeColors.primary }]}>Nome</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { borderBottomColor: themeColors.separator, color: themeColors.textPrimary }]}
             value={name}
             onChangeText={setName}
             placeholder="Seu nome"
+            placeholderTextColor={themeColors.textSecondary}
           />
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Bio</Text>
+          <Text style={[styles.label, { color: themeColors.primary }]}>Bio</Text>
           <TextInput
-            style={[styles.input, styles.bioInput]}
+            style={[styles.input, styles.bioInput, { borderBottomColor: themeColors.separator, color: themeColors.textPrimary }]}
             value={bio}
             onChangeText={setBio}
             placeholder="Alguma coisa sobre você..."
+            placeholderTextColor={themeColors.textSecondary}
             multiline
           />
         </View>
 
         <TouchableOpacity 
-          style={[styles.saveButton, loading && styles.disabledButton]} 
+          style={[styles.saveButton, { backgroundColor: themeColors.primary }, loading && styles.disabledButton]} 
           onPress={handleSave}
           disabled={loading}
         >
@@ -91,19 +96,16 @@ export default function EditProfileScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     alignItems: 'center',
     paddingVertical: spacing.xl,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.separator,
   },
   changePhoto: {
     marginTop: spacing.sm,
   },
   changePhotoText: {
-    color: colors.primary,
     fontSize: 16,
     fontWeight: '500',
   },
@@ -115,23 +117,19 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    color: colors.primary,
     marginBottom: spacing.xs,
     fontWeight: '600',
   },
   input: {
     borderBottomWidth: 1,
-    borderBottomColor: colors.separator,
     fontSize: 16,
     paddingVertical: spacing.xs,
-    color: colors.textPrimary,
   },
   bioInput: {
     minHeight: 60,
     textAlignVertical: 'top',
   },
   saveButton: {
-    backgroundColor: colors.primary,
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: 'center',

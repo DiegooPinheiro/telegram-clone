@@ -16,9 +16,12 @@ import { fetchUsers } from '../services/cometChatService';
 import ContactItem from '../components/ContactItem';
 import LoadingSpinner from '../components/LoadingSpinner';
 
+import useTheme from '../hooks/useTheme';
+
 type Props = NativeStackScreenProps<RootStackParamList, 'Contacts'>;
 
 export default function ContactsScreen({ navigation }: Props) {
+  const { colors: themeColors } = useTheme();
   const [search, setSearch] = useState('');
   const [users, setUsers] = useState<CometChat.User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,12 +60,12 @@ export default function ContactsScreen({ navigation }: Props) {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <View style={styles.searchContainer}>
+    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]} edges={['bottom']}>
+      <View style={[styles.searchContainer, { backgroundColor: themeColors.background, borderBottomColor: themeColors.separator }]}>
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, { backgroundColor: themeColors.backgroundSecondary, color: themeColors.textPrimary }]}
           placeholder="Buscar contatos..."
-          placeholderTextColor={colors.textSecondary}
+          placeholderTextColor={themeColors.textSecondary}
           value={search}
           onChangeText={setSearch}
         />
@@ -73,10 +76,10 @@ export default function ContactsScreen({ navigation }: Props) {
         renderItem={renderContact}
         keyExtractor={(item) => item.getUid()}
         contentContainerStyle={styles.listContent}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: themeColors.separator }]} />}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>Nenhum contato encontrado</Text>
+            <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>Nenhum contato encontrado</Text>
           </View>
         }
       />
@@ -87,22 +90,17 @@ export default function ContactsScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   searchContainer: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.background,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.separator,
   },
   searchInput: {
     height: 40,
-    backgroundColor: colors.backgroundSecondary,
     borderRadius: 10,
     paddingHorizontal: spacing.md,
     fontSize: 15,
-    color: colors.textPrimary,
   },
   listContent: {
     paddingVertical: spacing.xs,
@@ -110,7 +108,6 @@ const styles = StyleSheet.create({
   },
   separator: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.separator,
     marginLeft: 78,
   },
   emptyContainer: {
@@ -121,6 +118,5 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: colors.textSecondary,
   },
 });

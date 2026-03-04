@@ -3,10 +3,14 @@ export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
 
-  // Main
+  // Flows
+  MainFlow: { screen?: string; params?: any };
+  MainTabs: undefined;
+
+  // Screens
   ChatList: undefined;
   Chat: { uid: string; name: string };
-  Profile: { uid: string };
+  Profile: { uid?: string };
   Settings: undefined;
   Contacts: undefined;
   NewChat: undefined;

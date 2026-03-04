@@ -5,6 +5,7 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -15,12 +16,15 @@ import { spacing } from '../theme/spacing';
 import { fetchConversations } from '../services/cometChatService';
 import ChatListItem from '../components/ChatListItem';
 import LoadingSpinner from '../components/LoadingSpinner';
+import useTheme from '../hooks/useTheme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ChatList'>;
 
 export default function ChatListScreen({ navigation }: Props) {
+  const { colors: themeColors } = useTheme();
   const [conversations, setConversations] = useState<CometChat.Conversation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     loadConversations();
@@ -106,57 +110,84 @@ export default function ChatListScreen({ navigation }: Props) {
     [navigation]
   );
 
+  const filteredConversations = conversations.filter(conv => {
+    const name = conv.getConversationWith().getName().toLowerCase();
+    return name.includes(search.toLowerCase());
+  });
+
   if (loading) {
     return <LoadingSpinner message="Carregando conversas..." />;
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+      <View style={[styles.searchContainer, { backgroundColor: themeColors.background }]}>
+        <View style={[styles.searchBar, { backgroundColor: '#1c1c1e' }]}>
+          <Text style={styles.searchIcon}>🔍</Text>
+          <TextInput
+            style={[styles.searchInput, { color: '#ffffff' }]}
+            placeholder="Buscar Chats"
+            placeholderTextColor="#8E8E93"
+            value={search}
+            onChangeText={setSearch}
+          />
+        </View>
+      </View>
+
       <FlatList
-        data={conversations}
+        data={filteredConversations}
         renderItem={renderConversation}
         keyExtractor={(item) => item.getConversationId()}
         contentContainerStyle={styles.listContent}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: '#1c1c1e' }]} />}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>💬</Text>
-            <Text style={styles.emptyTitle}>Nenhuma conversa ainda</Text>
-            <Text style={styles.emptySubtitle}>
-              Toque no botão abaixo para começar
-            </Text>
+            <Text style={[styles.emptyTitle, { color: themeColors.textPrimary }]}>Nenhuma conversa encontrada</Text>
           </View>
         }
       />
 
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => navigation.navigate('NewChat')}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.fabIcon}>✏️</Text>
-      </TouchableOpacity>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+  },
+  searchContainer: {
+    padding: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 44,
+    borderRadius: 12,
+    paddingHorizontal: spacing.md,
+  },
+  searchIcon: {
+    marginRight: spacing.sm,
+    fontSize: 16,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    height: '100%',
   },
   listContent: {
     paddingVertical: spacing.xs,
+    paddingBottom: 100, // Space for floating tab
     flexGrow: 1,
   },
   separator: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.separator,
     marginLeft: 80,
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
+    paddingTop: 100,
     alignItems: 'center',
     paddingHorizontal: spacing.xxl,
   },
@@ -165,33 +196,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   emptyTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-  },
-  emptySubtitle: {
-    fontSize: 15,
-    color: colors.textSecondary,
     textAlign: 'center',
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 24,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.27,
-    shadowRadius: 4.65,
-  },
-  fabIcon: {
-    fontSize: 24,
   },
 });

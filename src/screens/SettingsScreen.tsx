@@ -10,19 +10,20 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import useAuth from '../hooks/useAuth';
 import { signOut } from '../services/authService';
 import { logoutCometChat } from '../services/cometChatService';
 import Avatar from '../components/Avatar';
 import { useSettings } from '../context/SettingsContext';
+import useTheme from '../hooks/useTheme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
 
 export default function SettingsScreen({ navigation }: Props) {
   const { displayName, email, photoURL } = useAuth();
   const { theme, toggleTheme, language } = useSettings();
+  const { colors } = useTheme();
 
   const handleLogout = () => {
     Alert.alert('Sair', 'Deseja realmente sair da conta?', [
@@ -43,24 +44,27 @@ export default function SettingsScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundSecondary }]} edges={['bottom']}>
       <ScrollView>
         {/* Perfil */}
-        <TouchableOpacity style={styles.profileSection} activeOpacity={0.7}>
+        <TouchableOpacity 
+          style={[styles.profileSection, { backgroundColor: colors.background }]} 
+          activeOpacity={0.7}
+        >
           <Avatar
             uri={photoURL}
             name={displayName || 'User'}
             size={64}
           />
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{displayName || 'Usuário'}</Text>
-            <Text style={styles.profileEmail}>{email || ''}</Text>
+            <Text style={[styles.profileName, { color: colors.textPrimary }]}>{displayName || 'Usuário'}</Text>
+            <Text style={[styles.profileEmail, { color: colors.textSecondary }]}>{email || ''}</Text>
           </View>
         </TouchableOpacity>
 
         {/* Opções */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Conta</Text>
+        <View style={[styles.section, { backgroundColor: colors.background }]}>
+          <Text style={[styles.sectionTitle, { color: colors.primary }]}>Conta</Text>
           <SettingRow 
             icon="📝" 
             label="Editar perfil" 
@@ -83,8 +87,8 @@ export default function SettingsScreen({ navigation }: Props) {
           />
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Configurações</Text>
+        <View style={[styles.section, { backgroundColor: colors.background }]}>
+          <Text style={[styles.sectionTitle, { color: colors.primary }]}>Configurações</Text>
           <SettingRow 
             icon={theme === 'dark' ? '☀️' : '🌙'} 
             label={theme === 'dark' ? 'Tema claro' : 'Tema escuro'} 
@@ -104,11 +108,11 @@ export default function SettingsScreen({ navigation }: Props) {
         </View>
 
         {/* Logout */}
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutText}>Sair da conta</Text>
+        <TouchableOpacity style={[styles.logoutButton, { backgroundColor: colors.background }]} onPress={handleLogout}>
+          <Text style={[styles.logoutText, { color: colors.badge }]}>Sair da conta</Text>
         </TouchableOpacity>
 
-        <Text style={styles.version}>Telegram Clone v1.0.0</Text>
+        <Text style={[styles.version, { color: colors.textSecondary }]}>Telegram Clone v1.0.0</Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -125,14 +129,15 @@ function SettingRow({
   subtitle?: string;
   onPress: () => void;
 }) {
+  const { colors } = useTheme();
   return (
     <TouchableOpacity style={settingStyles.row} onPress={onPress} activeOpacity={0.6}>
       <Text style={settingStyles.icon}>{icon}</Text>
       <View style={settingStyles.content}>
-        <Text style={settingStyles.label}>{label}</Text>
-        {subtitle && <Text style={settingStyles.subtitle}>{subtitle}</Text>}
+        <Text style={[settingStyles.label, { color: colors.textPrimary }]}>{label}</Text>
+        {subtitle && <Text style={[settingStyles.subtitle, { color: colors.textSecondary }]}>{subtitle}</Text>}
       </View>
-      <Text style={settingStyles.arrow}>›</Text>
+      <Text style={[settingStyles.arrow, { color: colors.textSecondary }]}>›</Text>
     </TouchableOpacity>
   );
 }
@@ -155,28 +160,23 @@ const settingStyles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
-    color: colors.textPrimary,
   },
   subtitle: {
     fontSize: 14,
-    color: colors.textSecondary,
     marginTop: 2,
   },
   arrow: {
     fontSize: 22,
-    color: colors.textSecondary,
   },
 });
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.backgroundSecondary,
   },
   profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background,
     padding: spacing.lg,
     marginBottom: spacing.sm,
   },
@@ -187,41 +187,34 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: 20,
     fontWeight: '600',
-    color: colors.textPrimary,
     marginBottom: 2,
   },
   profileEmail: {
     fontSize: 15,
-    color: colors.textSecondary,
   },
   section: {
-    backgroundColor: colors.background,
     marginBottom: spacing.sm,
     paddingTop: spacing.sm,
   },
   sectionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.primary,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.sm,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   logoutButton: {
-    backgroundColor: colors.background,
     paddingVertical: 16,
     alignItems: 'center',
     marginBottom: spacing.sm,
   },
   logoutText: {
     fontSize: 16,
-    color: colors.badge,
     fontWeight: '500',
   },
   version: {
     textAlign: 'center',
-    color: colors.textSecondary,
     fontSize: 13,
     paddingVertical: spacing.lg,
   },

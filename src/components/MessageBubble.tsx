@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colors } from '../theme/colors';
+import useTheme from '../hooks/useTheme';
 
 interface MessageBubbleProps {
   message: string;
@@ -15,18 +15,25 @@ export default function MessageBubble({
   isMine,
   senderName,
 }: MessageBubbleProps) {
+  const { colors } = useTheme();
   const time = new Date(timestamp * 1000).toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit',
   });
 
   return (
-    <View style={[styles.container, isMine ? styles.mine : styles.theirs]}>
+    <View 
+      style={[
+        styles.container, 
+        isMine ? styles.mine : styles.theirs,
+        { backgroundColor: isMine ? colors.bubbleMine : colors.bubbleTheirs }
+      ]}
+    >
       {!isMine && senderName && (
-        <Text style={styles.senderName}>{senderName}</Text>
+        <Text style={[styles.senderName, { color: colors.primary }]}>{senderName}</Text>
       )}
-      <Text style={styles.messageText}>{message}</Text>
-      <Text style={[styles.timestamp, isMine && styles.myTimestamp]}>{time}</Text>
+      <Text style={[styles.messageText, { color: colors.textPrimary }]}>{message}</Text>
+      <Text style={[styles.timestamp, isMine && styles.myTimestamp, { color: colors.textTimestamp }]}>{time}</Text>
     </View>
   );
 }
@@ -41,12 +48,10 @@ const styles = StyleSheet.create({
   },
   mine: {
     alignSelf: 'flex-end',
-    backgroundColor: colors.bubbleMine,
     borderBottomRightRadius: 4,
   },
   theirs: {
     alignSelf: 'flex-start',
-    backgroundColor: colors.bubbleTheirs,
     borderBottomLeftRadius: 4,
     elevation: 1,
     shadowColor: '#000',
@@ -57,17 +62,14 @@ const styles = StyleSheet.create({
   senderName: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.primary,
     marginBottom: 2,
   },
   messageText: {
     fontSize: 15,
-    color: colors.textPrimary,
     lineHeight: 20,
   },
   timestamp: {
     fontSize: 11,
-    color: colors.textTimestamp,
     alignSelf: 'flex-end',
     marginTop: 4,
   },

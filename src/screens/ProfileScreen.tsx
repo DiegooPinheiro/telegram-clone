@@ -17,15 +17,27 @@ import Avatar from '../components/Avatar';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { UserProfile } from '../types/user';
 
+import useAuth from '../hooks/useAuth';
+import useTheme from '../hooks/useTheme';
+
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
 export default function ProfileScreen({ navigation, route }: Props) {
-  const { uid } = route.params;
-  const { online, statusText } = useOnlineStatus(uid);
+  const { uid: currentUserId } = useAuth();
+  const { colors: themeColors } = useTheme();
+  
+  // Use UID from params, or fallback to current logged in user
+  const uid = route.params?.uid || currentUserId;
+  
+  const { online, statusText } = useOnlineStatus(uid || '');
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!uid) {
+      setLoading(false);
+      return;
+    }
     const loadProfile = async () => {
       try {
         const data = await getUserProfile(uid);
@@ -48,42 +60,42 @@ export default function ProfileScreen({ navigation, route }: Props) {
   const displayName = profile?.displayName || 'Usuário';
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.backgroundSecondary }]} edges={['bottom']}>
       <ScrollView>
-        <View style={styles.profileHeader}>
+        <View style={[styles.profileHeader, { backgroundColor: themeColors.background }]}>
           <Avatar
             uri={profile?.photoURL}
             name={displayName}
             size={100}
             online={online}
           />
-          <Text style={styles.name}>{displayName}</Text>
-          <Text style={styles.status}>{statusText}</Text>
+          <Text style={[styles.name, { color: themeColors.textPrimary }]}>{displayName}</Text>
+          <Text style={[styles.status, { color: themeColors.textSecondary }]}>{statusText}</Text>
         </View>
 
-        <View style={styles.section}>
+        <View style={[styles.section, { backgroundColor: themeColors.background }]}>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Email</Text>
-            <Text style={styles.infoValue}>{profile?.email || '-'}</Text>
+            <Text style={[styles.infoLabel, { color: themeColors.primary }]}>Email</Text>
+            <Text style={[styles.infoValue, { color: themeColors.textPrimary }]}>{profile?.email || '-'}</Text>
           </View>
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: themeColors.separator }]} />
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Bio</Text>
-            <Text style={styles.infoValue}>
+            <Text style={[styles.infoLabel, { color: themeColors.primary }]}>Bio</Text>
+            <Text style={[styles.infoValue, { color: themeColors.textPrimary }]}>
               {profile?.status || 'Sem bio'}
             </Text>
           </View>
         </View>
 
-        <View style={styles.section}>
+        <View style={[styles.section, { backgroundColor: themeColors.background }]}>
           <TouchableOpacity
             style={styles.actionRow}
             onPress={() =>
-              navigation.navigate('Chat', { uid, name: displayName })
+              navigation.navigate('Chat', { uid: uid!, name: displayName })
             }
           >
             <Text style={styles.actionIcon}>💬</Text>
-            <Text style={styles.actionText}>Enviar mensagem</Text>
+            <Text style={[styles.actionText, { color: themeColors.primary }]}>Enviar mensagem</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -94,27 +106,22 @@ export default function ProfileScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.backgroundSecondary,
   },
   profileHeader: {
     alignItems: 'center',
-    backgroundColor: colors.background,
     paddingVertical: spacing.xxl,
     marginBottom: spacing.sm,
   },
   name: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: colors.textPrimary,
     marginTop: spacing.lg,
     marginBottom: spacing.xs,
   },
   status: {
     fontSize: 15,
-    color: colors.textSecondary,
   },
   section: {
-    backgroundColor: colors.background,
     marginBottom: spacing.sm,
   },
   infoRow: {
@@ -123,17 +130,14 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 14,
-    color: colors.primary,
     marginBottom: 4,
     fontWeight: '500',
   },
   infoValue: {
     fontSize: 16,
-    color: colors.textPrimary,
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.separator,
     marginLeft: spacing.lg,
   },
   actionRow: {
@@ -148,7 +152,6 @@ const styles = StyleSheet.create({
   },
   actionText: {
     fontSize: 16,
-    color: colors.primary,
     fontWeight: '500',
   },
 });

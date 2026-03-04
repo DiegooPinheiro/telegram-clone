@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CometChat } from '@cometchat/chat-sdk-react-native';
 import { RootStackParamList } from '../navigation/types';
-import { colors } from '../theme/colors';
+import useTheme from '../hooks/useTheme';
 import { spacing } from '../theme/spacing';
 import useMessages from '../hooks/useMessages';
 import useOnlineStatus from '../hooks/useOnlineStatus';
@@ -28,6 +28,7 @@ export default function ChatScreen({ navigation, route }: Props) {
   const { messages, loading, send, isTyping } = useMessages(receiverUID);
   const { statusText } = useOnlineStatus(receiverUID);
   const flatListRef = useRef<FlatList>(null);
+  const { colors } = useTheme();
 
   // Configurar header com nome e status online
   React.useLayoutEffect(() => {
@@ -43,7 +44,7 @@ export default function ChatScreen({ navigation, route }: Props) {
       headerStyle: { backgroundColor: colors.primary },
       headerTintColor: '#fff',
     });
-  }, [navigation, name, statusText, isTyping]);
+  }, [navigation, name, statusText, isTyping, colors]);
 
   const handleSend = useCallback(
     async (text: string) => {
@@ -79,7 +80,7 @@ export default function ChatScreen({ navigation, route }: Props) {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundChat }]} edges={['bottom']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.flex}
@@ -97,7 +98,7 @@ export default function ChatScreen({ navigation, route }: Props) {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>👋</Text>
-              <Text style={styles.emptyText}>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
                 Diga oi para {name}!
               </Text>
             </View>
@@ -113,7 +114,6 @@ export default function ChatScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.backgroundChat,
   },
   flex: {
     flex: 1,
@@ -144,6 +144,5 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: colors.textSecondary,
   },
 });

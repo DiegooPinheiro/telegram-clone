@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Image, Text, StyleSheet } from 'react-native';
-import { colors } from '../theme/colors';
+import useTheme from '../hooks/useTheme';
 
 interface AvatarProps {
   uri?: string | null;
@@ -10,6 +10,7 @@ interface AvatarProps {
 }
 
 export default function Avatar({ uri, name, size = 48, online }: AvatarProps) {
+  const { colors } = useTheme();
   const initials = name
     .split(' ')
     .map((n) => n[0])
@@ -59,6 +60,8 @@ export default function Avatar({ uri, name, size = 48, online }: AvatarProps) {
               height: indicatorSize,
               borderRadius: indicatorSize / 2,
               borderWidth: size > 40 ? 2 : 1.5,
+              backgroundColor: colors.online,
+              borderColor: colors.background,
             },
           ]}
         />
@@ -72,7 +75,5 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: colors.online,
-    borderColor: colors.background,
   },
 });

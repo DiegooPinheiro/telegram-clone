@@ -2,7 +2,7 @@ import React from 'react';
 import { TouchableOpacity, Text } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './types';
-import { colors } from '../theme/colors';
+import useTheme from '../hooks/useTheme';
 
 import ChatListScreen from '../screens/ChatListScreen';
 import ChatScreen from '../screens/ChatScreen';
@@ -16,35 +16,46 @@ import PrivacyScreen from '../screens/PrivacyScreen';
 import DataStorageScreen from '../screens/DataStorageScreen';
 import HelpScreen from '../screens/HelpScreen';
 
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import FloatingBottomTab from '../components/FloatingBottomTab';
+
 const Stack = createNativeStackNavigator<RootStackParamList>();
+const Tab = createBottomTabNavigator();
+
+function TabNavigator() {
+  return (
+    <Tab.Navigator
+      tabBar={(props) => <FloatingBottomTab {...props} />}
+      screenOptions={{ headerShown: false }}
+    >
+      <Tab.Screen name="ChatList" component={ChatListScreen as any} />
+      <Tab.Screen name="Contacts" component={ContactsScreen as any} />
+      <Tab.Screen name="Settings" component={SettingsScreen as any} />
+      <Tab.Screen name="Profile" component={ProfileScreen as any} />
+    </Tab.Navigator>
+  );
+}
 
 export default function AppNavigator() {
+  const { colors } = useTheme();
+
   return (
     <Stack.Navigator
       screenOptions={{
         headerStyle: { backgroundColor: colors.primary },
-        headerTintColor: colors.textOnPrimary,
+        headerTintColor: '#ffffff',
         headerTitleStyle: { fontWeight: '600' },
       }}
     >
       <Stack.Screen
-        name="ChatList"
-        component={ChatListScreen}
-        options={({ navigation }) => ({
+        name="MainTabs"
+        component={TabNavigator}
+        options={() => ({
           title: 'Telegram Clone',
-          headerLeft: () => (
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Settings')}
-              style={{ marginRight: 8 }}
-            >
-              <Text style={{ color: '#fff', fontSize: 22 }}>☰</Text>
-            </TouchableOpacity>
-          ),
+          headerLeft: () => null, // Drawer removed
           headerRight: () => (
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Contacts')}
-            >
-              <Text style={{ color: '#fff', fontSize: 20 }}>👥</Text>
+            <TouchableOpacity style={{ marginRight: 16 }}>
+              <Text style={{ color: '#fff', fontSize: 22 }}>🔍</Text>
             </TouchableOpacity>
           ),
         })}
@@ -53,21 +64,6 @@ export default function AppNavigator() {
         name="Chat"
         component={ChatScreen}
         options={{ title: '' }}
-      />
-      <Stack.Screen
-        name="Profile"
-        component={ProfileScreen}
-        options={{ title: 'Perfil' }}
-      />
-      <Stack.Screen
-        name="Settings"
-        component={SettingsScreen}
-        options={{ title: 'Configurações' }}
-      />
-      <Stack.Screen
-        name="Contacts"
-        component={ContactsScreen}
-        options={{ title: 'Contatos' }}
       />
       <Stack.Screen
         name="NewChat"
