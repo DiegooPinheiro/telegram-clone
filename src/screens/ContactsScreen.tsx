@@ -51,7 +51,7 @@ export default function ContactsScreen({ navigation }: Props) {
       status={item.getStatusMessage() || ''}
       avatar={item.getAvatar() || null}
       online={item.getStatus() === 'online'}
-      onPress={() => navigation.navigate('Profile', { uid: item.getUid() })}
+      onPress={() => navigation.navigate('Chat', { uid: item.getUid(), name: item.getName() })}
     />
   );
 

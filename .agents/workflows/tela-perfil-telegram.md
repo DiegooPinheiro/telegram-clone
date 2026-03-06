@@ -1,31 +1,44 @@
-import React, { useState, useEffect } from 'react';
+---
+description: Como criar a tela de Perfil (Profile Screen) estilo Telegram
+---
+
+# Criar a Tela de Perfil do Telegram Clone
+
+Este workflow descreve como implementar a interface de Perfil (ProfileScreen) idêntica à do Telegram, contendo cabeçalho com botões de ação globais, avatar centralizado com status, botões de ação em bloco (Definir Foto, Editar, Configurações), card de informações do usuário e abas de conteúdo (Ex: Posts).
+
+## 1. Implementar o `ProfileScreen.tsx`
+
+Crie ou substitua o arquivo `src/screens/ProfileScreen.tsx` pelo código abaixo. Ele já inclui a estilização em Dark Mode nativa do Telegram e as integrações de UI do print de referência.
+
+```tsx
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/types';
-import { getUserProfile } from '../services/authService';
-import useOnlineStatus from '../hooks/useOnlineStatus';
-import Avatar from '../components/Avatar';
-import LoadingSpinner from '../components/LoadingSpinner';
-import { UserProfile } from '../types/user';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import useAuth from '../hooks/useAuth';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { RootStackParamList } from "../navigation/types";
+import { getUserProfile } from "../services/authService";
+import useOnlineStatus from "../hooks/useOnlineStatus";
+import Avatar from "../components/Avatar";
+import LoadingSpinner from "../components/LoadingSpinner";
+import { UserProfile } from "../types/user";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import useAuth from "../hooks/useAuth";
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
+type Props = NativeStackScreenProps<RootStackParamList, "Profile">;
 
 export default function ProfileScreen({ navigation, route }: Props) {
   const { uid: currentUserId } = useAuth();
-  
+
   // Use UID from params, or fallback to current logged in user
   const uid = route.params?.uid || currentUserId;
-  
-  const { online, statusText } = useOnlineStatus(uid || '');
+
+  const { online, statusText } = useOnlineStatus(uid || "");
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -41,7 +54,7 @@ export default function ProfileScreen({ navigation, route }: Props) {
           setProfile(data as UserProfile);
         }
       } catch (error) {
-        console.error('Erro ao carregar perfil:', error);
+        console.error("Erro ao carregar perfil:", error);
       } finally {
         setLoading(false);
       }
@@ -53,11 +66,14 @@ export default function ProfileScreen({ navigation, route }: Props) {
     return <LoadingSpinner message="Carregando perfil..." />;
   }
 
-  const displayName = profile?.displayName || 'D H';
+  const displayName = profile?.displayName || "D H";
   const isCurrentUser = uid === currentUserId;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: '#000000' }]} edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: "#000000" }]}
+      edges={["top", "left", "right"]}
+    >
       {/* Top Bar Navigation */}
       <View style={styles.topBar}>
         <TouchableOpacity style={styles.topBarButton}>
@@ -78,7 +94,7 @@ export default function ProfileScreen({ navigation, route }: Props) {
             online={false} // Customizing UI for screenshot
           />
           <Text style={styles.name}>{displayName}</Text>
-          <Text style={styles.status}>{statusText || 'online'}</Text>
+          <Text style={styles.status}>{statusText || "online"}</Text>
         </View>
 
         {/* Action Buttons Row */}
@@ -88,13 +104,19 @@ export default function ProfileScreen({ navigation, route }: Props) {
               <MaterialIcons name="add-a-photo" size={22} color="#FFF" />
               <Text style={styles.actionButtonText}>Definir Foto</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('EditProfile')}>
+
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => navigation.navigate("EditProfile")}
+            >
               <MaterialIcons name="edit" size={22} color="#FFF" />
               <Text style={styles.actionButtonText}>Editar Informações</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('Settings')}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => navigation.navigate("Settings")}
+            >
               <MaterialIcons name="settings" size={22} color="#FFF" />
               <Text style={styles.actionButtonText}>Configurações</Text>
             </TouchableOpacity>
@@ -107,13 +129,18 @@ export default function ProfileScreen({ navigation, route }: Props) {
             <Text style={styles.infoValue}>+55 (98) 98441-0040</Text>
             <Text style={styles.infoLabel}>Celular</Text>
           </View>
-          
+
           <View style={styles.infoBlock}>
             <Text style={styles.infoValue}>@DiegoHatake_dh</Text>
             <Text style={styles.infoLabel}>Nome de Usuário</Text>
           </View>
-          
-          <View style={[styles.infoBlock, { borderBottomWidth: 0, paddingBottom: 0 }]}>
+
+          <View
+            style={[
+              styles.infoBlock,
+              { borderBottomWidth: 0, paddingBottom: 0 },
+            ]}
+          >
             <Text style={styles.infoValue}>12 de set. de 1996 (29 anos)</Text>
             <Text style={styles.infoLabel}>Aniversário</Text>
           </View>
@@ -138,13 +165,17 @@ export default function ProfileScreen({ navigation, route }: Props) {
             Publique fotos e vídeos para mostrar na sua página de perfil
           </Text>
         </View>
-
       </ScrollView>
 
       {/* FAB - Bottom Centered */}
       <View style={styles.fabContainer}>
         <TouchableOpacity style={styles.fab} activeOpacity={0.8}>
-          <Ionicons name="camera" size={20} color="#FFF" style={styles.fabIcon} />
+          <Ionicons
+            name="camera"
+            size={20}
+            color="#FFF"
+            style={styles.fabIcon}
+          />
           <Text style={styles.fabText}>Adicione um post</Text>
         </TouchableOpacity>
       </View>
@@ -160,56 +191,56 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   topBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingTop: 8,
   },
   topBarButton: {
     width: 40,
     height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   profileHeader: {
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: -10, // Adjust spacing from top bar
     marginBottom: 24,
   },
   name: {
     fontSize: 22,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontWeight: "bold",
+    color: "#FFFFFF",
     marginTop: 12,
   },
   status: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: "#8E8E93",
     marginTop: 4,
   },
   actionButtonsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     marginBottom: 24,
     gap: 12,
   },
   actionButton: {
     flex: 1,
-    backgroundColor: '#1C1C1D',
+    backgroundColor: "#1C1C1D",
     borderRadius: 12,
     paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   actionButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: "500",
     marginTop: 8,
   },
   infoCard: {
-    backgroundColor: '#1C1C1D',
+    backgroundColor: "#1C1C1D",
     borderRadius: 12,
     marginHorizontal: 16,
     padding: 16,
@@ -219,21 +250,21 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   infoValue: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
     marginBottom: 4,
   },
   infoLabel: {
-    color: '#8E8E93',
+    color: "#8E8E93",
     fontSize: 14,
   },
   tabsContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 32,
   },
   tabsBackground: {
-    flexDirection: 'row',
-    backgroundColor: '#1C1C1D',
+    flexDirection: "row",
+    backgroundColor: "#1C1C1D",
     borderRadius: 20,
     padding: 4,
   },
@@ -243,51 +274,51 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   tabActive: {
-    backgroundColor: '#2A2A35',
+    backgroundColor: "#2A2A35",
   },
   tabTextActive: {
-    color: '#8C92FF',
+    color: "#8C92FF",
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   tabTextInactive: {
-    color: '#8E8E93',
+    color: "#8E8E93",
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   emptyState: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingHorizontal: 32,
     marginTop: 40,
   },
   emptyTitle: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 8,
   },
   emptySubtitle: {
-    color: '#8E8E93',
+    color: "#8E8E93",
     fontSize: 14,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 20,
   },
   fabContainer: {
-    position: 'absolute',
-    bottom: 0, // Should be above bottom tab ideally, handled by edges
+    position: "absolute",
+    bottom: 0,
     left: 0,
     right: 0,
-    alignItems: 'center',
+    alignItems: "center",
     paddingBottom: 24,
   },
   fab: {
-    flexDirection: 'row',
-    backgroundColor: '#5E5CE6',
+    flexDirection: "row",
+    backgroundColor: "#5E5CE6",
     paddingVertical: 14,
     paddingHorizontal: 24,
     borderRadius: 24,
-    alignItems: 'center',
-    shadowColor: '#000',
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -300,8 +331,11 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   fabText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
 });
+```
+
+Esse layout adiciona a barra superior para ícones, os três botões principais do usuário e o visualizado com `tabsBackground` simulando botões de toggle do iOS, comuns no Telegram atual.

@@ -1,4 +1,21 @@
-import React from 'react';
+---
+description: Como criar a tela de Configurações (Settings Screen) estilo Telegram
+---
+
+# Criar a Tela de Configurações do Telegram Clone
+
+Este workflow descreve como implementar a interface de Configurações (SettingsScreen) exatamente igual à do Telegram, com o cabeçalho de perfil centralizado, grupos de configuração bem definidos, ícones coloridos com bordas arredondadas e divisores corretos.
+
+## 1. Instalar dependências de ícones
+
+Certifique-se de que o `@expo/vector-icons` está instalado (já incluso por padrão no Expo).
+
+## 2. Implementar o `SettingsScreen.tsx`
+
+Crie ou substitua o arquivo `src/screens/SettingsScreen.tsx` pelo código abaixo. Ele já inclui a lógica de logout (via Firebase e CometChat) e a estilização em Dark Mode nativa do Telegram.
+
+```tsx
+import React from "react";
 import {
   View,
   Text,
@@ -6,20 +23,20 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/types';
-import { spacing } from '../theme/spacing';
-import useAuth from '../hooks/useAuth';
-import { signOut } from '../services/authService';
-import { logoutCometChat } from '../services/cometChatService';
-import Avatar from '../components/Avatar';
-import { useSettings } from '../context/SettingsContext';
-import useTheme from '../hooks/useTheme';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { RootStackParamList } from "../navigation/types";
+import { spacing } from "../theme/spacing";
+import useAuth from "../hooks/useAuth";
+import { signOut } from "../services/authService";
+import { logoutCometChat } from "../services/cometChatService";
+import Avatar from "../components/Avatar";
+import { useSettings } from "../context/SettingsContext";
+import useTheme from "../hooks/useTheme";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
+type Props = NativeStackScreenProps<RootStackParamList, "Settings">;
 
 export default function SettingsScreen({ navigation }: Props) {
   const { displayName, email, photoURL } = useAuth();
@@ -27,17 +44,17 @@ export default function SettingsScreen({ navigation }: Props) {
   const { colors } = useTheme();
 
   const handleLogout = () => {
-    Alert.alert('Sair', 'Deseja realmente sair da conta?', [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert("Sair", "Deseja realmente sair da conta?", [
+      { text: "Cancelar", style: "cancel" },
       {
-        text: 'Sair',
-        style: 'destructive',
+        text: "Sair",
+        style: "destructive",
         onPress: async () => {
           try {
             await logoutCometChat();
             await signOut();
           } catch (error: any) {
-            Alert.alert('Erro', error.message || 'Erro ao sair');
+            Alert.alert("Erro", error.message || "Erro ao sair");
           }
         },
       },
@@ -45,18 +62,23 @@ export default function SettingsScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: '#000000' }]} edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: "#000000" }]}
+      edges={["top", "left", "right"]}
+    >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Perfil Header */}
         <View style={styles.header}>
           <TouchableOpacity activeOpacity={0.8} style={styles.avatarContainer}>
-            <Avatar uri={photoURL} name={displayName || 'User'} size={80} />
+            <Avatar uri={photoURL} name={displayName || "User"} size={80} />
             <View style={styles.cameraBadge}>
               <Ionicons name="camera" size={16} color="#FFF" />
             </View>
           </TouchableOpacity>
-          <Text style={styles.headerName}>{displayName || 'D H'}</Text>
-          <Text style={styles.headerPhone}>+55 (XX) XXXXX-XXXX • @username</Text>
+          <Text style={styles.headerName}>{displayName || "Usuário"}</Text>
+          <Text style={styles.headerPhone}>
+            +55 (XX) XXXXX-XXXX • @username
+          </Text>
         </View>
 
         {/* Grupo 1: Configurações Principais */}
@@ -66,7 +88,7 @@ export default function SettingsScreen({ navigation }: Props) {
             iconBgColor="#2A85FF"
             label="Conta"
             subtitle="Número, Nome de Usuário, Bio"
-            onPress={() => navigation.navigate('EditProfile')}
+            onPress={() => navigation.navigate("EditProfile")}
           />
           <SettingRow
             iconName="chatbubble"
@@ -80,21 +102,21 @@ export default function SettingsScreen({ navigation }: Props) {
             iconBgColor="#34C759"
             label="Privacidade e Segurança"
             subtitle="Visto por Último, Dispositivos, Chaves de Acesso"
-            onPress={() => navigation.navigate('Privacy')}
+            onPress={() => navigation.navigate("Privacy")}
           />
           <SettingRow
             iconName="notifications"
             iconBgColor="#FF3B30"
             label="Notificações"
             subtitle="Sons, Chamadas, Contadores"
-            onPress={() => navigation.navigate('Notifications')}
+            onPress={() => navigation.navigate("Notifications")}
           />
           <SettingRow
             iconName="pie-chart"
             iconBgColor="#5856D6"
             label="Dados e Armazenamento"
             subtitle="Opções de download de mídia"
-            onPress={() => navigation.navigate('DataStorage')}
+            onPress={() => navigation.navigate("DataStorage")}
           />
           <SettingRow
             iconName="folder"
@@ -121,7 +143,7 @@ export default function SettingsScreen({ navigation }: Props) {
             iconName="globe-outline"
             iconBgColor="#AF52DE"
             label="Idioma"
-            subtitle={language === 'pt' ? 'Português (Brasil)' : 'English'}
+            subtitle={language === "pt" ? "Português (Brasil)" : "English"}
             onPress={() => {}}
             isLast
           />
@@ -163,7 +185,6 @@ export default function SettingsScreen({ navigation }: Props) {
             isLast
           />
         </View>
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -171,7 +192,7 @@ export default function SettingsScreen({ navigation }: Props) {
 
 function SettingRow({
   iconName,
-  iconType = 'Ionicons',
+  iconType = "Ionicons",
   iconBgColor,
   label,
   subtitle,
@@ -180,7 +201,7 @@ function SettingRow({
   isLast = false,
 }: {
   iconName: string;
-  iconType?: 'Ionicons' | 'MaterialCommunityIcons';
+  iconType?: "Ionicons" | "MaterialCommunityIcons";
   iconBgColor: string;
   label: string;
   subtitle?: string;
@@ -189,18 +210,35 @@ function SettingRow({
   isLast?: boolean;
 }) {
   return (
-    <TouchableOpacity style={settingStyles.container} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity
+      style={settingStyles.container}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
       <View style={settingStyles.row}>
-        <View style={[settingStyles.iconContainer, { backgroundColor: iconBgColor }]}>
-          {iconType === 'Ionicons' ? (
+        <View
+          style={[
+            settingStyles.iconContainer,
+            { backgroundColor: iconBgColor },
+          ]}
+        >
+          {iconType === "Ionicons" ? (
             <Ionicons name={iconName as any} size={18} color="#FFF" />
           ) : (
-            <MaterialCommunityIcons name={iconName as any} size={18} color="#FFF" />
+            <MaterialCommunityIcons
+              name={iconName as any}
+              size={18}
+              color="#FFF"
+            />
           )}
         </View>
         <View style={settingStyles.content}>
           <Text style={settingStyles.label}>{label}</Text>
-          {subtitle && <Text style={settingStyles.subtitle} numberOfLines={1}>{subtitle}</Text>}
+          {subtitle && (
+            <Text style={settingStyles.subtitle} numberOfLines={1}>
+              {subtitle}
+            </Text>
+          )}
         </View>
         {rightBadge && (
           <Text style={settingStyles.badgeText}>{rightBadge}</Text>
@@ -213,11 +251,11 @@ function SettingRow({
 
 const settingStyles = StyleSheet.create({
   container: {
-    backgroundColor: '#1C1C1D',
+    backgroundColor: "#1C1C1D",
   },
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 10,
     paddingHorizontal: 16,
   },
@@ -225,31 +263,31 @@ const settingStyles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 16,
   },
   content: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   label: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: "#FFFFFF",
   },
   subtitle: {
     fontSize: 13,
-    color: '#8E8E93',
+    color: "#8E8E93",
     marginTop: 2,
   },
   badgeText: {
-    color: '#0A84FF',
+    color: "#0A84FF",
     fontSize: 16,
     paddingHorizontal: 8,
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: '#38383A',
+    backgroundColor: "#38383A",
     marginLeft: 62,
   },
 });
@@ -262,41 +300,44 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   header: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 24,
   },
   avatarContainer: {
-    position: 'relative',
+    position: "relative",
     marginBottom: 16,
   },
   cameraBadge: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     right: -4,
-    backgroundColor: '#5E5CE6',
+    backgroundColor: "#5E5CE6",
     width: 28,
     height: 28,
     borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 2,
-    borderColor: '#000000',
+    borderColor: "#000000",
   },
   headerName: {
     fontSize: 22,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontWeight: "600",
+    color: "#FFFFFF",
     marginBottom: 4,
   },
   headerPhone: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: "#8E8E93",
   },
   section: {
     marginHorizontal: 16,
     marginBottom: 24,
     borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#1C1C1D',
+    overflow: "hidden",
+    backgroundColor: "#1C1C1D",
   },
 });
+```
+
+A estrutura chave aqui é o `SettingRow` customizado que simula com exatidão as abas de item dentro do Telegram (ícone esquerdo com cor de fundo, título, subtítulo em cinza, sem divisória no último item, bordas arredondadas no container).
