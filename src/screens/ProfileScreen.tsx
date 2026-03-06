@@ -57,17 +57,7 @@ export default function ProfileScreen({ navigation, route }: Props) {
   const isCurrentUser = uid === currentUserId;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: '#000000' }]} edges={['top', 'left', 'right']}>
-      {/* Top Bar Navigation */}
-      <View style={styles.topBar}>
-        <TouchableOpacity style={styles.topBarButton}>
-          <MaterialIcons name="qr-code-scanner" size={24} color="#FFF" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.topBarButton} onPress={() => {}}>
-          <MaterialIcons name="more-vert" size={24} color="#FFF" />
-        </TouchableOpacity>
-      </View>
-
+    <SafeAreaView style={[styles.container, { backgroundColor: '#000000' }]} edges={['left', 'right']}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Profile Header */}
         <View style={styles.profileHeader}>
@@ -159,21 +149,9 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 100,
   },
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-  },
-  topBarButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   profileHeader: {
     alignItems: 'center',
-    marginTop: -10, // Adjust spacing from top bar
+    marginTop: 16,
     marginBottom: 24,
   },
   name: {

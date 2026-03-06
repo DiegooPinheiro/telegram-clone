@@ -1,48 +1,53 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { DrawerContentComponentProps, DrawerContentScrollView } from '@react-navigation/drawer';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import Avatar from './Avatar';
 import useAuth from '../hooks/useAuth';
 import useTheme from '../hooks/useTheme';
 import { spacing } from '../theme/spacing';
 import { useSettings } from '../context/SettingsContext';
 
+type MenuItem = {
+  label: string;
+  iconName: keyof typeof Ionicons.glyphMap;
+  route: string;
+};
+
 export default function CustomDrawerContent(props: DrawerContentComponentProps) {
   const { displayName, email, photoURL } = useAuth();
   const { colors, isDark } = useTheme();
   const { toggleTheme } = useSettings();
 
-  const menuItems = [
-    { label: 'Novo Grupo', icon: '👥', route: 'NewChat' },
-    { label: 'Contatos', icon: '👤', route: 'Contacts' },
-    { label: 'Chamadas', icon: '📞', route: 'Help' },
-    { label: 'Pessoas Próximas', icon: '📍', route: 'Help' },
-    { label: 'Mensagens Salvas', icon: '🔖', route: 'Help' },
-    { label: 'Configurações', icon: '⚙️', route: 'Settings' },
+  const menuItems: MenuItem[] = [
+    { label: 'Novo Grupo', iconName: 'people-outline', route: 'NewChat' },
+    { label: 'Contatos', iconName: 'person-outline', route: 'Contacts' },
+    { label: 'Chamadas', iconName: 'call-outline', route: 'Help' },
+    { label: 'Pessoas Proximas', iconName: 'location-outline', route: 'Help' },
+    { label: 'Mensagens Salvas', iconName: 'bookmark-outline', route: 'Help' },
+    { label: 'Configuracoes', iconName: 'settings-outline', route: 'Settings' },
   ];
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header do Perfil */}
       <View style={[styles.header, { backgroundColor: isDark ? colors.backgroundSecondary : colors.primary }]}>
         <SafeAreaView edges={['top']}>
           <View style={styles.headerContent}>
             <View style={styles.headerTop}>
               <Avatar uri={photoURL} name={displayName || 'U'} size={64} />
               <TouchableOpacity style={styles.themeToggle} onPress={toggleTheme}>
-                <Text style={styles.themeIcon}>{isDark ? '☀️' : '🌙'}</Text>
+                <Ionicons name={isDark ? 'sunny-outline' : 'moon-outline'} size={22} color="#ffffff" />
               </TouchableOpacity>
             </View>
             <View style={styles.userInfo}>
-              <Text style={styles.userName}>{displayName || 'Usuário'}</Text>
+              <Text style={styles.userName}>{displayName || 'Usuario'}</Text>
               <Text style={styles.userEmail}>{email || 'Sem email'}</Text>
             </View>
           </View>
         </SafeAreaView>
       </View>
 
-      {/* Itens do Menu */}
       <DrawerContentScrollView {...props} contentContainerStyle={styles.drawerItems}>
         {menuItems.map((item, index) => (
           <TouchableOpacity
@@ -50,13 +55,12 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
             style={styles.menuItem}
             onPress={() => props.navigation.navigate('MainFlow', { screen: item.route })}
           >
-            <Text style={styles.menuIcon}>{item.icon}</Text>
+            <Ionicons name={item.iconName} size={22} color={colors.textPrimary} style={styles.menuIcon} />
             <Text style={[styles.menuLabel, { color: colors.textPrimary }]}>{item.label}</Text>
           </TouchableOpacity>
         ))}
       </DrawerContentScrollView>
 
-      {/* Rodapé opcional */}
       <View style={[styles.footer, { borderTopColor: colors.separator }]}>
         <Text style={[styles.version, { color: colors.textSecondary }]}>Telegram Clone v1.0.0</Text>
       </View>
@@ -86,9 +90,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  themeIcon: {
-    fontSize: 22,
-  },
   userInfo: {
     marginTop: spacing.md,
   },
@@ -112,7 +113,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   menuIcon: {
-    fontSize: 22,
     marginRight: spacing.xl,
     width: 28,
     textAlign: 'center',

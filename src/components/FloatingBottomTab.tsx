@@ -2,18 +2,20 @@ import React from 'react';
 import { View, TouchableOpacity, StyleSheet, Text, Dimensions } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useTheme from '../hooks/useTheme';
 
 const { width } = Dimensions.get('window');
 
 export default function FloatingBottomTab({ state, descriptors, navigation }: BottomTabBarProps) {
   const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
 
   if (!isDark) return null; // Only for dark mode according to screenshot? 
   // User might want it for both, but the screenshot is dark. I'll make it for both but styled.
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { bottom: insets.bottom + 8 }]}>
       <View style={[styles.tabBar, { backgroundColor: '#1c1c1e', shadowColor: '#000' }]}>
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
@@ -55,19 +57,21 @@ export default function FloatingBottomTab({ state, descriptors, navigation }: Bo
               style={styles.tabItem}
               activeOpacity={0.7}
             >
-              <View style={[styles.iconContainer, isFocused && styles.activeIconContainer]}>
-                <Ionicons 
-                  name={iconName} 
-                  size={24} 
-                  color={isFocused ? '#ffffff' : '#8E8E93'} 
-                />
+              <View style={styles.iconWrapper}>
+                <View style={[styles.iconContainer, isFocused && styles.activeIconContainer]}>
+                  <Ionicons 
+                    name={iconName} 
+                    size={24} 
+                    color={isFocused ? '#4f8cff' : '#8E8E93'} 
+                  />
+                </View>
                 {isFocused && route.name === 'ChatList' && (
                   <View style={styles.badge}>
                     <Text style={styles.badgeText}>1</Text>
                   </View>
                 )}
               </View>
-              <Text style={[styles.label, { color: isFocused ? '#ffffff' : '#8E8E93' }]}>
+              <Text style={[styles.label, { color: isFocused ? '#4f8cff' : '#8E8E93' }]}>
                 {label}
               </Text>
             </TouchableOpacity>
@@ -84,37 +88,41 @@ const styles = StyleSheet.create({
     bottom: 20,
     width: width,
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 28,
   },
   tabBar: {
     flexDirection: 'row',
-    height: 70,
-    borderRadius: 35,
+    height: 62,
+    borderRadius: 31,
     elevation: 10,
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.3,
     shadowRadius: 5,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     alignItems: 'center',
     justifyContent: 'space-around',
-    width: '100%',
+    width: '94%',
+    maxWidth: 560,
   },
   tabItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  iconWrapper: {
+    position: 'relative',
+    marginBottom: 4,
+  },
   iconContainer: {
-    width: 64,
-    height: 32,
-    borderRadius: 16,
+    width: 58,
+    height: 30,
+    borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 4,
-    overflow: 'hidden', // Ensures background is clipped to round edges
+    overflow: 'hidden',
   },
   activeIconContainer: {
-    backgroundColor: '#0088cc',
+    backgroundColor: '#2b3f63',
   },
   label: {
     fontSize: 11,
@@ -122,8 +130,8 @@ const styles = StyleSheet.create({
   },
   badge: {
     position: 'absolute',
-    top: -5,
-    right: 5,
+    top: -7,
+    right: -6,
     backgroundColor: '#0088cc',
     borderRadius: 10,
     minWidth: 18,

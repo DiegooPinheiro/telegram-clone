@@ -1,17 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  StyleSheet,
-  TextInput,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, FlatList, StyleSheet, TextInput } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CometChat } from '@cometchat/chat-sdk-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/types';
-import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { fetchConversations } from '../services/cometChatService';
 import ChatListItem from '../components/ChatListItem';
@@ -37,6 +29,7 @@ export default function ChatListScreen({ navigation }: Props) {
         console.log('[ChatList] Aguardando login do CometChat...');
         return;
       }
+
       const fetched = await fetchConversations();
       setConversations(fetched);
     } catch (error) {
@@ -46,7 +39,6 @@ export default function ChatListScreen({ navigation }: Props) {
     }
   };
 
-  // Listener para novas mensagens atualizarem a lista
   useEffect(() => {
     const listenerID = 'chatlist_listener';
 
@@ -91,7 +83,7 @@ export default function ChatListScreen({ navigation }: Props) {
       if (lastMessage instanceof CometChat.TextMessage) {
         lastMessageText = lastMessage.getText();
       } else if (lastMessage) {
-        lastMessageText = '📎 Mídia';
+        lastMessageText = '[Midia]';
       }
 
       return (
@@ -110,7 +102,7 @@ export default function ChatListScreen({ navigation }: Props) {
     [navigation]
   );
 
-  const filteredConversations = conversations.filter(conv => {
+  const filteredConversations = conversations.filter((conv) => {
     const name = conv.getConversationWith().getName().toLowerCase();
     return name.includes(search.toLowerCase());
   });
@@ -123,7 +115,7 @@ export default function ChatListScreen({ navigation }: Props) {
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       <View style={[styles.searchContainer, { backgroundColor: themeColors.background }]}>
         <View style={[styles.searchBar, { backgroundColor: '#1c1c1e' }]}>
-          <Text style={styles.searchIcon}>🔍</Text>
+          <Ionicons name="search" size={18} color="#8E8E93" style={styles.searchIcon} />
           <TextInput
             style={[styles.searchInput, { color: '#ffffff' }]}
             placeholder="Buscar Chats"
@@ -142,12 +134,18 @@ export default function ChatListScreen({ navigation }: Props) {
         ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: '#1c1c1e' }]} />}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>💬</Text>
-            <Text style={[styles.emptyTitle, { color: themeColors.textPrimary }]}>Nenhuma conversa encontrada</Text>
+            <Ionicons
+              name="chatbubble-ellipses-outline"
+              size={54}
+              color="#ffffff"
+              style={styles.emptyIcon}
+            />
+            <Text style={[styles.emptyTitle, { color: themeColors.textPrimary }]}>
+              Nenhuma conversa encontrada
+            </Text>
           </View>
         }
       />
-
     </View>
   );
 }
@@ -169,7 +167,6 @@ const styles = StyleSheet.create({
   },
   searchIcon: {
     marginRight: spacing.sm,
-    fontSize: 16,
   },
   searchInput: {
     flex: 1,
@@ -178,7 +175,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingVertical: spacing.xs,
-    paddingBottom: 100, // Space for floating tab
+    paddingBottom: 100,
     flexGrow: 1,
   },
   separator: {
@@ -192,7 +189,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xxl,
   },
   emptyIcon: {
-    fontSize: 56,
     marginBottom: spacing.lg,
   },
   emptyTitle: {

@@ -1,9 +1,10 @@
 import React from 'react';
-import { TouchableOpacity, Text } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from './types';
 import useTheme from '../hooks/useTheme';
-
 import ChatListScreen from '../screens/ChatListScreen';
 import ChatScreen from '../screens/ChatScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -15,8 +16,6 @@ import NotificationsScreen from '../screens/NotificationsScreen';
 import PrivacyScreen from '../screens/PrivacyScreen';
 import DataStorageScreen from '../screens/DataStorageScreen';
 import HelpScreen from '../screens/HelpScreen';
-
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import FloatingBottomTab from '../components/FloatingBottomTab';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -24,10 +23,7 @@ const Tab = createBottomTabNavigator();
 
 function TabNavigator() {
   return (
-    <Tab.Navigator
-      tabBar={(props) => <FloatingBottomTab {...props} />}
-      screenOptions={{ headerShown: false }}
-    >
+    <Tab.Navigator tabBar={(props) => <FloatingBottomTab {...props} />} screenOptions={{ headerShown: false }}>
       <Tab.Screen name="ChatList" component={ChatListScreen as any} />
       <Tab.Screen name="Contacts" component={ContactsScreen as any} />
       <Tab.Screen name="Settings" component={SettingsScreen as any} />
@@ -42,7 +38,7 @@ export default function AppNavigator() {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: colors.primary },
+        headerStyle: { backgroundColor: '#000000' },
         headerTintColor: '#ffffff',
         headerTitleStyle: { fontWeight: '600' },
       }}
@@ -52,49 +48,21 @@ export default function AppNavigator() {
         component={TabNavigator}
         options={() => ({
           title: 'Telegram Clone',
-          headerLeft: () => null, // Drawer removed
+          headerLeft: () => null,
           headerRight: () => (
             <TouchableOpacity style={{ marginRight: 16 }}>
-              <Text style={{ color: '#fff', fontSize: 22 }}>🔍</Text>
+              <Ionicons name="ellipsis-vertical" size={20} color="#ffffff" />
             </TouchableOpacity>
           ),
         })}
       />
-      <Stack.Screen
-        name="Chat"
-        component={ChatScreen}
-        options={{ title: '' }}
-      />
-      <Stack.Screen
-        name="NewChat"
-        component={NewChatScreen}
-        options={{ title: 'Nova Conversa' }}
-      />
-      <Stack.Screen
-        name="EditProfile"
-        component={EditProfileScreen}
-        options={{ title: 'Editar Perfil' }}
-      />
-      <Stack.Screen
-        name="Notifications"
-        component={NotificationsScreen}
-        options={{ title: 'Notificações' }}
-      />
-      <Stack.Screen
-        name="Privacy"
-        component={PrivacyScreen}
-        options={{ title: 'Privacidade' }}
-      />
-      <Stack.Screen
-        name="DataStorage"
-        component={DataStorageScreen}
-        options={{ title: 'Dados e Armazenamento' }}
-      />
-      <Stack.Screen
-        name="Help"
-        component={HelpScreen}
-        options={{ title: 'Ajuda' }}
-      />
+      <Stack.Screen name="Chat" component={ChatScreen} options={{ title: '' }} />
+      <Stack.Screen name="NewChat" component={NewChatScreen} options={{ title: 'Nova Conversa' }} />
+      <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Editar Perfil' }} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Notificacoes' }} />
+      <Stack.Screen name="Privacy" component={PrivacyScreen} options={{ title: 'Privacidade' }} />
+      <Stack.Screen name="DataStorage" component={DataStorageScreen} options={{ title: 'Dados e Armazenamento' }} />
+      <Stack.Screen name="Help" component={HelpScreen} options={{ title: 'Ajuda' }} />
     </Stack.Navigator>
   );
 }

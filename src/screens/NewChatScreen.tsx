@@ -1,21 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  StyleSheet,
-  TextInput,
-} from 'react-native';
+import { View, Text, FlatList, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CometChat } from '@cometchat/chat-sdk-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/types';
-import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { fetchUsers } from '../services/cometChatService';
 import ContactItem from '../components/ContactItem';
 import LoadingSpinner from '../components/LoadingSpinner';
-
 import useTheme from '../hooks/useTheme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NewChat'>;
@@ -32,17 +25,16 @@ export default function NewChatScreen({ navigation }: Props) {
         const fetched = await fetchUsers();
         setUsers(fetched);
       } catch (error) {
-        console.error('Erro ao buscar usuários:', error);
+        console.error('Erro ao buscar usuarios:', error);
       } finally {
         setLoading(false);
       }
     };
+
     loadUsers();
   }, []);
 
-  const filteredUsers = users.filter((u) =>
-    u.getName().toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredUsers = users.filter((u) => u.getName().toLowerCase().includes(search.toLowerCase()));
 
   const renderUser = ({ item }: { item: CometChat.User }) => (
     <ContactItem
@@ -61,15 +53,23 @@ export default function NewChatScreen({ navigation }: Props) {
   );
 
   if (loading) {
-    return <LoadingSpinner message="Buscando usuários..." />;
+    return <LoadingSpinner message="Buscando usuarios..." />;
   }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]} edges={['bottom']}>
-      <View style={[styles.searchContainer, { backgroundColor: themeColors.background, borderBottomColor: themeColors.separator }]}>
+      <View
+        style={[
+          styles.searchContainer,
+          { backgroundColor: themeColors.background, borderBottomColor: themeColors.separator },
+        ]}
+      >
         <TextInput
-          style={[styles.searchInput, { backgroundColor: themeColors.backgroundSecondary, color: themeColors.textPrimary }]}
-          placeholder="Quem você quer contactar?"
+          style={[
+            styles.searchInput,
+            { backgroundColor: themeColors.backgroundSecondary, color: themeColors.textPrimary },
+          ]}
+          placeholder="Quem voce quer contatar?"
           placeholderTextColor={themeColors.textSecondary}
           value={search}
           onChangeText={setSearch}
@@ -85,8 +85,8 @@ export default function NewChatScreen({ navigation }: Props) {
         ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: themeColors.separator }]} />}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>🔍</Text>
-            <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>Nenhum usuário encontrado</Text>
+            <Ionicons name="search-outline" size={38} color={themeColors.textSecondary} style={styles.emptyIcon} />
+            <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>Nenhum usuario encontrado</Text>
           </View>
         }
       />
@@ -123,7 +123,6 @@ const styles = StyleSheet.create({
     paddingTop: 60,
   },
   emptyIcon: {
-    fontSize: 40,
     marginBottom: spacing.md,
   },
   emptyText: {

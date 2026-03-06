@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/types';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
@@ -44,14 +45,11 @@ export default function LoginScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
-      >
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
         <View style={styles.header}>
-          <Text style={styles.logo}>💬</Text>
+          <Ionicons name="chatbubble-ellipses" size={62} color={colors.primary} style={styles.logo} />
           <Text style={styles.title}>Telegram Clone</Text>
-          <Text style={styles.subtitle}>Faça login para continuar</Text>
+          <Text style={styles.subtitle}>Faca login para continuar</Text>
         </View>
 
         <View style={styles.form}>
@@ -81,16 +79,12 @@ export default function LoginScreen({ navigation }: Props) {
             disabled={loading}
             activeOpacity={0.8}
           >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Entrar</Text>
-            )}
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Entrar</Text>}
           </TouchableOpacity>
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Não tem uma conta? </Text>
+          <Text style={styles.footerText}>Nao tem uma conta? </Text>
           <TouchableOpacity onPress={() => navigation.navigate('Register')}>
             <Text style={styles.footerLink}>Cadastre-se</Text>
           </TouchableOpacity>
@@ -115,7 +109,6 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   logo: {
-    fontSize: 64,
     marginBottom: spacing.lg,
   },
   title: {

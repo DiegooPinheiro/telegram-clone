@@ -45,7 +45,7 @@ export default function SettingsScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: '#000000' }]} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: '#000000' }]} edges={['left', 'right']}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Perfil Header */}
         <View style={styles.header}>
