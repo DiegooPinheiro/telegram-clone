@@ -1,32 +1,51 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, TextInput } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { CometChat } from '@cometchat/chat-sdk-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/types';
 import { spacing } from '../theme/spacing';
-import { fetchConversations } from '../services/cometChatService';
+import { fetchConversations, loginCometChat } from '../services/cometChatService';
 import ChatListItem from '../components/ChatListItem';
 import LoadingSpinner from '../components/LoadingSpinner';
 import useTheme from '../hooks/useTheme';
+import useAuth from '../hooks/useAuth';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ChatList'>;
 
 export default function ChatListScreen({ navigation }: Props) {
   const { colors: themeColors } = useTheme();
+  const { uid, displayName } = useAuth();
   const [conversations, setConversations] = useState<CometChat.Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
-    loadConversations();
-  }, []);
+  const ensureCometChatSession = useCallback(async () => {
+    const loggedInUser = await CometChat.getLoggedinUser();
+    if (loggedInUser) {
+      return true;
+    }
 
-  const loadConversations = async () => {
+    if (!uid) {
+      return false;
+    }
+
     try {
-      const loggedInUser = await CometChat.getLoggedinUser();
-      if (!loggedInUser) {
-        console.log('[ChatList] Aguardando login do CometChat...');
+      await loginCometChat(uid, displayName || 'Usuario');
+      return true;
+    } catch (error) {
+      console.error('[ChatList] Falha ao recuperar sessao CometChat:', error);
+      return false;
+    }
+  }, [uid, displayName]);
+
+  const loadConversations = useCallback(async () => {
+    setLoading(true);
+    try {
+      const hasSession = await ensureCometChatSession();
+      if (!hasSession) {
+        setConversations([]);
         return;
       }
 
@@ -37,7 +56,17 @@ export default function ChatListScreen({ navigation }: Props) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [ensureCometChatSession]);
+
+  useEffect(() => {
+    loadConversations();
+  }, [loadConversations]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadConversations();
+    }, [loadConversations])
+  );
 
   useEffect(() => {
     const listenerID = 'chatlist_listener';
@@ -56,7 +85,7 @@ export default function ChatListScreen({ navigation }: Props) {
     return () => {
       CometChat.removeMessageListener(listenerID);
     };
-  }, []);
+  }, [loadConversations]);
 
   const renderConversation = useCallback(
     ({ item }: { item: CometChat.Conversation }) => {

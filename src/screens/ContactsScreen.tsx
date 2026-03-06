@@ -1,27 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
-  FlatList,
   StyleSheet,
   TextInput,
+  TouchableOpacity,
+  SectionList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CometChat } from '@cometchat/chat-sdk-react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/types';
-import { colors } from '../theme/colors';
-import { spacing } from '../theme/spacing';
 import { fetchUsers } from '../services/cometChatService';
-import ContactItem from '../components/ContactItem';
+import Avatar from '../components/Avatar';
 import LoadingSpinner from '../components/LoadingSpinner';
-
-import useTheme from '../hooks/useTheme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Contacts'>;
 
+type ContactSection = {
+  title: string;
+  data: CometChat.User[];
+};
+
 export default function ContactsScreen({ navigation }: Props) {
-  const { colors: themeColors } = useTheme();
   const [search, setSearch] = useState('');
   const [users, setUsers] = useState<CometChat.User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,52 +39,118 @@ export default function ContactsScreen({ navigation }: Props) {
         setLoading(false);
       }
     };
+
     loadUsers();
   }, []);
 
-  const filteredUsers = users.filter((u) =>
-    u.getName().toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredUsers = useMemo(() => {
+    const normalized = search.trim().toLowerCase();
+    if (!normalized) {
+      return users;
+    }
 
-  const renderContact = ({ item }: { item: CometChat.User }) => (
-    <ContactItem
-      uid={item.getUid()}
-      name={item.getName()}
-      status={item.getStatusMessage() || ''}
-      avatar={item.getAvatar() || null}
-      online={item.getStatus() === 'online'}
-      onPress={() => navigation.navigate('Chat', { uid: item.getUid(), name: item.getName() })}
-    />
-  );
+    return users.filter((u) => u.getName().toLowerCase().includes(normalized));
+  }, [search, users]);
+
+  const sections = useMemo<ContactSection[]>(() => {
+    const sorted = [...filteredUsers].sort((a, b) => a.getName().localeCompare(b.getName()));
+    const grouped = new Map<string, CometChat.User[]>();
+
+    sorted.forEach((user) => {
+      const first = user.getName().trim().charAt(0).toUpperCase() || '#';
+      const key = /[A-Z]/.test(first) ? first : '#';
+
+      if (!grouped.has(key)) {
+        grouped.set(key, []);
+      }
+      grouped.get(key)!.push(user);
+    });
+
+    return Array.from(grouped.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([title, data]) => ({ title, data }));
+  }, [filteredUsers]);
 
   if (loading) {
     return <LoadingSpinner message="Carregando contatos..." />;
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]} edges={['bottom']}>
-      <View style={[styles.searchContainer, { backgroundColor: themeColors.background, borderBottomColor: themeColors.separator }]}>
+    <SafeAreaView style={styles.container} edges={['left', 'right']}>
+      <View style={styles.headerRow}>
+        <Text style={styles.headerTitle}>Contatos</Text>
+        <TouchableOpacity style={styles.headerAction}>
+          <MaterialCommunityIcons name="sort-variant" size={24} color="#ffffff" />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.searchWrap}>
+        <Ionicons name="search-outline" size={20} color="#8E8E93" style={styles.searchIcon} />
         <TextInput
-          style={[styles.searchInput, { backgroundColor: themeColors.backgroundSecondary, color: themeColors.textPrimary }]}
-          placeholder="Buscar contatos..."
-          placeholderTextColor={themeColors.textSecondary}
+          style={styles.searchInput}
+          placeholder="Buscar Contatos"
+          placeholderTextColor="#8E8E93"
           value={search}
           onChangeText={setSearch}
         />
       </View>
 
-      <FlatList
-        data={filteredUsers}
-        renderItem={renderContact}
-        keyExtractor={(item) => item.getUid()}
-        contentContainerStyle={styles.listContent}
-        ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: themeColors.separator }]} />}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>Nenhum contato encontrado</Text>
+      <View style={styles.quickCard}>
+        <TouchableOpacity style={styles.quickRow}>
+          <View style={[styles.quickIconWrap, { backgroundColor: '#2A85FF' }]}>
+            <Ionicons name="person-add-outline" size={18} color="#ffffff" />
           </View>
-        }
-      />
+          <Text style={styles.quickText}>Convidar Amigos</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.quickRow, styles.quickRowLast]}>
+          <View style={[styles.quickIconWrap, { backgroundColor: '#30D158' }]}>
+            <Ionicons name="call-outline" size={18} color="#ffffff" />
+          </View>
+          <Text style={styles.quickText}>Chamadas recentes</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.listCard}>
+        <Text style={styles.listTitle}>Listado por Nome</Text>
+
+        <SectionList
+          sections={sections}
+          keyExtractor={(item) => item.getUid()}
+          contentContainerStyle={styles.sectionContent}
+          renderSectionHeader={({ section }) => (
+            <Text style={styles.sectionHeader}>{section.title}</Text>
+          )}
+          renderItem={({ item }) => {
+            const name = item.getName();
+            const online = item.getStatus() === 'online';
+            const subtitle = online ? 'online' : item.getStatusMessage() || 'visto recentemente';
+
+            return (
+              <TouchableOpacity
+                style={styles.contactRow}
+                activeOpacity={0.75}
+                onPress={() => navigation.navigate('Chat', { uid: item.getUid(), name })}
+              >
+                <Avatar uri={item.getAvatar() || null} name={name} size={54} online={false} />
+                <View style={styles.contactInfo}>
+                  <Text style={styles.contactName}>{name}</Text>
+                  <Text style={styles.contactStatus} numberOfLines={1}>
+                    {subtitle}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          }}
+          ListEmptyComponent={<Text style={styles.emptyText}>Nenhum contato encontrado</Text>}
+          stickySectionHeadersEnabled={false}
+          showsVerticalScrollIndicator={false}
+        />
+      </View>
+
+      <TouchableOpacity style={styles.fab} activeOpacity={0.85} onPress={() => navigation.navigate('NewChat')}>
+        <Ionicons name="person-add" size={24} color="#ffffff" />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -90,33 +158,137 @@ export default function ContactsScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#000000',
+    paddingHorizontal: 16,
+    paddingTop: 10,
   },
-  searchContainer: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  headerTitle: {
+    color: '#ffffff',
+    fontSize: 40,
+    fontWeight: '700',
+  },
+  headerAction: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 18,
+  },
+  searchWrap: {
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#1A1A1D',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 14,
+  },
+  searchIcon: {
+    marginRight: 10,
   },
   searchInput: {
-    height: 40,
-    borderRadius: 10,
-    paddingHorizontal: spacing.md,
-    fontSize: 15,
-  },
-  listContent: {
-    paddingVertical: spacing.xs,
-    flexGrow: 1,
-  },
-  separator: {
-    height: StyleSheet.hairlineWidth,
-    marginLeft: 78,
-  },
-  emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
+    color: '#ffffff',
+    fontSize: 18,
+  },
+  quickCard: {
+    backgroundColor: '#141518',
+    borderRadius: 22,
+    overflow: 'hidden',
+    marginBottom: 14,
+  },
+  quickRow: {
+    minHeight: 72,
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 60,
+    paddingHorizontal: 16,
+  },
+  quickRowLast: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#2A2B2F',
+  },
+  quickIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  quickText: {
+    color: '#ffffff',
+    fontSize: 17,
+    fontWeight: '500',
+  },
+  listCard: {
+    flex: 1,
+    backgroundColor: '#141518',
+    borderRadius: 22,
+    paddingTop: 14,
+    paddingHorizontal: 14,
+    paddingBottom: 10,
+  },
+  listTitle: {
+    color: '#8C92FF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  sectionContent: {
+    paddingBottom: 120,
+  },
+  sectionHeader: {
+    color: '#6E6E73',
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 8,
+    marginBottom: 6,
+  },
+  contactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  contactInfo: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  contactName: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  contactStatus: {
+    color: '#8E8E93',
+    fontSize: 14,
   },
   emptyText: {
+    color: '#8E8E93',
     fontSize: 16,
+    textAlign: 'center',
+    marginTop: 24,
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 108,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#4F7CFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 7,
   },
 });

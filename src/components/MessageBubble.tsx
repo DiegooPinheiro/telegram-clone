@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import useTheme from '../hooks/useTheme';
 
 interface MessageBubbleProps {
   message: string;
@@ -15,7 +14,6 @@ export default function MessageBubble({
   isMine,
   senderName,
 }: MessageBubbleProps) {
-  const { colors } = useTheme();
   const time = new Date(timestamp * 1000).toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit',
@@ -26,14 +24,14 @@ export default function MessageBubble({
       style={[
         styles.container, 
         isMine ? styles.mine : styles.theirs,
-        { backgroundColor: isMine ? colors.bubbleMine : colors.bubbleTheirs }
+        { backgroundColor: isMine ? '#5fa8df' : '#1c1f26' }
       ]}
     >
       {!isMine && senderName && (
-        <Text style={[styles.senderName, { color: colors.primary }]}>{senderName}</Text>
+        <Text style={styles.senderName}>{senderName}</Text>
       )}
-      <Text style={[styles.messageText, { color: colors.textPrimary }]}>{message}</Text>
-      <Text style={[styles.timestamp, isMine && styles.myTimestamp, { color: colors.textTimestamp }]}>{time}</Text>
+      <Text style={styles.messageText}>{message}</Text>
+      <Text style={[styles.timestamp, isMine && styles.myTimestamp]}>{time}</Text>
     </View>
   );
 }
@@ -63,17 +61,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     marginBottom: 2,
+    color: '#86baff',
   },
   messageText: {
     fontSize: 15,
     lineHeight: 20,
+    color: '#ffffff',
   },
   timestamp: {
     fontSize: 11,
     alignSelf: 'flex-end',
     marginTop: 4,
+    color: 'rgba(255, 255, 255, 0.7)',
   },
   myTimestamp: {
-    color: '#6dab4f',
+    color: 'rgba(255, 255, 255, 0.8)',
   },
 });
