@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import useTheme from '../hooks/useTheme';
 
 interface MessageInputProps {
   onSend: (text: string) => void;
@@ -9,6 +10,7 @@ interface MessageInputProps {
 
 export default function MessageInput({ onSend, placeholder = 'Mensagem' }: MessageInputProps) {
   const [text, setText] = useState('');
+  const { colors } = useTheme();
 
   const handleSend = () => {
     const value = text.trim();
@@ -23,24 +25,24 @@ export default function MessageInput({ onSend, placeholder = 'Mensagem' }: Messa
 
   return (
     <View style={styles.container}>
-      <View style={styles.inputWrap}>
-        <Ionicons name="happy-outline" size={24} color="#8E8E93" style={styles.leadingIcon} />
+      <View style={[styles.inputWrap, { backgroundColor: colors.inputBackground }]}>
+        <Ionicons name="happy-outline" size={24} color={colors.textSecondary} style={styles.leadingIcon} />
         <TextInput
-          style={styles.input}
+          style={[styles.input, { color: colors.textPrimary }]}
           value={text}
           onChangeText={setText}
           placeholder={placeholder}
-          placeholderTextColor="#8E8E93"
+          placeholderTextColor={colors.textSecondary}
           multiline
           maxLength={4096}
         />
         <TouchableOpacity activeOpacity={0.7} style={styles.trailingButton}>
-          <Ionicons name="attach-outline" size={24} color="#c5c8cf" />
+          <Ionicons name="attach-outline" size={24} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
 
       <TouchableOpacity
-        style={styles.actionButton}
+        style={[styles.actionButton, { backgroundColor: colors.primary }]}
         onPress={handleSend}
         activeOpacity={0.8}
         disabled={!hasText}

@@ -13,14 +13,16 @@ import MessageBubble from '../components/MessageBubble';
 import MessageInput from '../components/MessageInput';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Avatar from '../components/Avatar';
+import useTheme from '../hooks/useTheme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;
 
 export default function ChatScreen({ navigation, route }: Props) {
-  const { uid: receiverUID, name } = route.params;
+  const { colors } = useTheme();
+  const { uid: receiverUID, name, isGroup = false } = route.params;
   const { uid: myUID } = useAuth();
-  const { messages, loading, send, isTyping } = useMessages(receiverUID);
-  const { statusText } = useOnlineStatus(receiverUID);
+  const { messages, loading, send, isTyping } = useMessages(receiverUID, isGroup);
+  const { statusText } = useOnlineStatus(receiverUID, !isGroup);
   const flatListRef = useRef<FlatList>(null);
 
   React.useLayoutEffect(() => {
@@ -29,26 +31,26 @@ export default function ChatScreen({ navigation, route }: Props) {
         <View style={styles.headerTitleWrap}>
           <Avatar name={name} size={38} />
           <View style={styles.headerTextWrap}>
-            <Text style={styles.headerName} numberOfLines={1}>
+            <Text style={[styles.headerName, { color: colors.textPrimary }]} numberOfLines={1}>
               {name}
             </Text>
-            <Text style={styles.headerStatus} numberOfLines={1}>
-              {isTyping ? 'digitando...' : statusText || 'visto recentemente'}
+            <Text style={[styles.headerStatus, { color: colors.textSecondary }]} numberOfLines={1}>
+              {isGroup ? 'grupo' : isTyping ? 'digitando...' : statusText || 'visto recentemente'}
             </Text>
           </View>
         </View>
       ),
       headerRight: () => (
         <View style={styles.headerActions}>
-          <Ionicons name="call-outline" size={24} color="#ffffff" />
-          <Ionicons name="ellipsis-vertical" size={20} color="#ffffff" />
+          <Ionicons name="call-outline" size={24} color={colors.textPrimary} />
+          <Ionicons name="ellipsis-vertical" size={20} color={colors.textPrimary} />
         </View>
       ),
-      headerStyle: { backgroundColor: '#1a1b21' },
-      headerTintColor: '#fff',
+      headerStyle: { backgroundColor: colors.background },
+      headerTintColor: colors.textPrimary,
       headerShadowVisible: false,
     });
-  }, [navigation, name, statusText, isTyping]);
+  }, [navigation, name, statusText, isTyping, colors.background, colors.textPrimary]);
 
   const handleSend = useCallback(
     async (text: string) => {
@@ -83,13 +85,13 @@ export default function ChatScreen({ navigation, route }: Props) {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundChat }]} edges={['bottom']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.flex}
         keyboardVerticalOffset={86}
       >
-        <View style={styles.chatWallpaper} />
+        <View style={[styles.chatWallpaper, { backgroundColor: colors.backgroundChat }]} />
 
         <FlatList
           ref={flatListRef}
@@ -102,7 +104,7 @@ export default function ChatScreen({ navigation, route }: Props) {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <View style={styles.datePill}>
-                <Text style={styles.datePillText}>Sem mensagens ainda</Text>
+                <Text style={[styles.datePillText, { color: colors.textOnPrimary }]}>Sem mensagens ainda</Text>
               </View>
             </View>
           }

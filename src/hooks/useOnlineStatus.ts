@@ -9,7 +9,7 @@ import {
  * Hook de status online/offline de um usuário específico.
  * Escuta mudanças de presença em tempo real via CometChat.
  */
-export default function useOnlineStatus(uid: string) {
+export default function useOnlineStatus(uid: string, enabled = true) {
   const [online, setOnline] = useState(false);
   const [lastSeen, setLastSeen] = useState<Date | null>(null);
 
@@ -17,6 +17,12 @@ export default function useOnlineStatus(uid: string) {
 
   // Buscar status inicial
   useEffect(() => {
+    if (!enabled || !uid) {
+      setOnline(false);
+      setLastSeen(null);
+      return;
+    }
+
     const fetchInitialStatus = async () => {
       try {
         const user = await CometChat.getUser(uid);
@@ -30,10 +36,14 @@ export default function useOnlineStatus(uid: string) {
     };
 
     fetchInitialStatus();
-  }, [uid]);
+  }, [uid, enabled]);
 
   // Listener de mudanças de presença
   useEffect(() => {
+    if (!enabled || !uid) {
+      return;
+    }
+
     addUserPresenceListener(
       listenerID,
       (onlineUser) => {
@@ -52,7 +62,7 @@ export default function useOnlineStatus(uid: string) {
     return () => {
       removeUserPresenceListener(listenerID);
     };
-  }, [uid, listenerID]);
+  }, [uid, listenerID, enabled]);
 
   // Formatar "visto por último"
   const formatLastSeen = (): string => {

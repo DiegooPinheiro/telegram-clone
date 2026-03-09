@@ -20,6 +20,9 @@ export const light = {
   textTimestamp: "#8E8E93",
   separator: "#e0e0e0",
   inputBackground: "#f0f0f0",
+  badgeUnread: "#d9d9dd",
+  tabBarBackground: "#ffffff",
+  tabBarActive: "#0088cc",
 };
 
 export const dark = {

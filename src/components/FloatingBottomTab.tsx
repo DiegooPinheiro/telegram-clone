@@ -11,12 +11,18 @@ export default function FloatingBottomTab({ state, descriptors, navigation }: Bo
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
 
-  if (!isDark) return null; // Only for dark mode according to screenshot? 
-  // User might want it for both, but the screenshot is dark. I'll make it for both but styled.
-
   return (
     <View style={[styles.container, { bottom: insets.bottom + 8 }]}>
-      <View style={[styles.tabBar, { backgroundColor: '#1c1c1e', shadowColor: '#000' }]}>
+      <View
+        style={[
+          styles.tabBar,
+          {
+            backgroundColor: colors.tabBarBackground,
+            shadowColor: isDark ? '#000' : '#8f98a8',
+            borderColor: isDark ? '#2a2a2e' : '#d9dce3',
+          },
+        ]}
+      >
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
           const isFocused = state.index === index;
@@ -58,20 +64,28 @@ export default function FloatingBottomTab({ state, descriptors, navigation }: Bo
               activeOpacity={0.7}
             >
               <View style={styles.iconWrapper}>
-                <View style={[styles.iconContainer, isFocused && styles.activeIconContainer]}>
+                <View
+                  style={[
+                    styles.iconContainer,
+                    isFocused && [
+                      styles.activeIconContainer,
+                      { backgroundColor: isDark ? '#2b3f63' : '#dce9ff' },
+                    ],
+                  ]}
+                >
                   <Ionicons 
                     name={iconName} 
                     size={24} 
-                    color={isFocused ? '#4f8cff' : '#8E8E93'} 
+                    color={isFocused ? colors.tabBarActive : colors.textSecondary} 
                   />
                 </View>
                 {isFocused && route.name === 'ChatList' && (
-                  <View style={styles.badge}>
+                  <View style={[styles.badge, { borderColor: colors.tabBarBackground }]}>
                     <Text style={styles.badgeText}>1</Text>
                   </View>
                 )}
               </View>
-              <Text style={[styles.label, { color: isFocused ? '#4f8cff' : '#8E8E93' }]}>
+              <Text style={[styles.label, { color: isFocused ? colors.tabBarActive : colors.textSecondary }]}>
                 {label}
               </Text>
             </TouchableOpacity>
@@ -94,6 +108,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     height: 62,
     borderRadius: 31,
+    borderWidth: 1,
     elevation: 10,
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.3,

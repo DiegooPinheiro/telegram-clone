@@ -28,6 +28,10 @@ export const signUp = async (email: string, password: string, displayName: strin
     displayName,
     photoURL: null,
     status: 'Hey there! I am using Telegram Clone',
+    username: '',
+    phone: '',
+    bio: '',
+    birthday: '',
     createdAt: new Date().toISOString(),
     lastSeen: new Date().toISOString(),
     online: true,
@@ -114,7 +118,15 @@ export const getUserProfile = async (uid: string) => {
  */
 export const updateUserProfile = async (
   uid: string,
-  data: { displayName?: string; photoURL?: string; status?: string }
+  data: {
+    displayName?: string;
+    photoURL?: string;
+    status?: string;
+    username?: string;
+    phone?: string;
+    bio?: string;
+    birthday?: string;
+  }
 ) => {
   await updateDoc(doc(db, 'users', uid), data);
 

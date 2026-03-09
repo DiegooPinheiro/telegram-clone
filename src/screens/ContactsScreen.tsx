@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   SectionList,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CometChat } from '@cometchat/chat-sdk-react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -15,6 +15,7 @@ import { RootStackParamList } from '../navigation/types';
 import { fetchUsers } from '../services/cometChatService';
 import Avatar from '../components/Avatar';
 import LoadingSpinner from '../components/LoadingSpinner';
+import useTheme from '../hooks/useTheme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Contacts'>;
 
@@ -24,6 +25,8 @@ type ContactSection = {
 };
 
 export default function ContactsScreen({ navigation }: Props) {
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [search, setSearch] = useState('');
   const [users, setUsers] = useState<CometChat.User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,50 +79,50 @@ export default function ContactsScreen({ navigation }: Props) {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['left', 'right']}>
       <View style={styles.headerRow}>
-        <Text style={styles.headerTitle}>Contatos</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Contatos</Text>
         <TouchableOpacity style={styles.headerAction}>
-          <MaterialCommunityIcons name="sort-variant" size={24} color="#ffffff" />
+          <MaterialCommunityIcons name="sort-variant" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
-      <View style={styles.searchWrap}>
-        <Ionicons name="search-outline" size={20} color="#8E8E93" style={styles.searchIcon} />
+      <View style={[styles.searchWrap, { backgroundColor: colors.inputBackground }]}>
+        <Ionicons name="search-outline" size={20} color={colors.textSecondary} style={styles.searchIcon} />
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, { color: colors.textPrimary }]}
           placeholder="Buscar Contatos"
-          placeholderTextColor="#8E8E93"
+          placeholderTextColor={colors.textSecondary}
           value={search}
           onChangeText={setSearch}
         />
       </View>
 
-      <View style={styles.quickCard}>
+      <View style={[styles.quickCard, { backgroundColor: colors.surface }]}>
         <TouchableOpacity style={styles.quickRow}>
           <View style={[styles.quickIconWrap, { backgroundColor: '#2A85FF' }]}>
             <Ionicons name="person-add-outline" size={18} color="#ffffff" />
           </View>
-          <Text style={styles.quickText}>Convidar Amigos</Text>
+          <Text style={[styles.quickText, { color: colors.textPrimary }]}>Convidar Amigos</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.quickRow, styles.quickRowLast]}>
+        <TouchableOpacity style={[styles.quickRow, styles.quickRowLast, { borderTopColor: colors.separator }]}>
           <View style={[styles.quickIconWrap, { backgroundColor: '#30D158' }]}>
             <Ionicons name="call-outline" size={18} color="#ffffff" />
           </View>
-          <Text style={styles.quickText}>Chamadas recentes</Text>
+          <Text style={[styles.quickText, { color: colors.textPrimary }]}>Chamadas recentes</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.listCard}>
-        <Text style={styles.listTitle}>Listado por Nome</Text>
+      <View style={[styles.listCard, { backgroundColor: colors.surface }]}>
+        <Text style={[styles.listTitle, { color: colors.primary }]}>Listado por Nome</Text>
 
         <SectionList
           sections={sections}
           keyExtractor={(item) => item.getUid()}
           contentContainerStyle={styles.sectionContent}
           renderSectionHeader={({ section }) => (
-            <Text style={styles.sectionHeader}>{section.title}</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{section.title}</Text>
           )}
           renderItem={({ item }) => {
             const name = item.getName();
@@ -134,21 +137,25 @@ export default function ContactsScreen({ navigation }: Props) {
               >
                 <Avatar uri={item.getAvatar() || null} name={name} size={54} online={false} />
                 <View style={styles.contactInfo}>
-                  <Text style={styles.contactName}>{name}</Text>
-                  <Text style={styles.contactStatus} numberOfLines={1}>
+                  <Text style={[styles.contactName, { color: colors.textPrimary }]}>{name}</Text>
+                  <Text style={[styles.contactStatus, { color: colors.textSecondary }]} numberOfLines={1}>
                     {subtitle}
                   </Text>
                 </View>
               </TouchableOpacity>
             );
           }}
-          ListEmptyComponent={<Text style={styles.emptyText}>Nenhum contato encontrado</Text>}
+          ListEmptyComponent={<Text style={[styles.emptyText, { color: colors.textSecondary }]}>Nenhum contato encontrado</Text>}
           stickySectionHeadersEnabled={false}
           showsVerticalScrollIndicator={false}
         />
       </View>
 
-      <TouchableOpacity style={styles.fab} activeOpacity={0.85} onPress={() => navigation.navigate('NewChat')}>
+      <TouchableOpacity
+        style={[styles.fab, { bottom: insets.bottom + 82, backgroundColor: colors.primary }]}
+        activeOpacity={0.85}
+        onPress={() => navigation.navigate('NewChat')}
+      >
         <Ionicons name="person-add" size={24} color="#ffffff" />
       </TouchableOpacity>
     </SafeAreaView>

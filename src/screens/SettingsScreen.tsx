@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,24 +7,49 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
-import { spacing } from '../theme/spacing';
 import useAuth from '../hooks/useAuth';
-import { signOut } from '../services/authService';
+import { getUserProfile, signOut } from '../services/authService';
 import { logoutCometChat } from '../services/cometChatService';
 import Avatar from '../components/Avatar';
 import { useSettings } from '../context/SettingsContext';
 import useTheme from '../hooks/useTheme';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { UserProfile } from '../types/user';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
 
 export default function SettingsScreen({ navigation }: Props) {
-  const { displayName, email, photoURL } = useAuth();
-  const { theme, toggleTheme, language } = useSettings();
+  const { displayName, photoURL, uid } = useAuth();
+  const { language } = useSettings();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+
+  const loadProfile = useCallback(async () => {
+    if (!uid) return;
+    try {
+      const data = await getUserProfile(uid);
+      if (data) {
+        setProfile(data as UserProfile);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar perfil em configuracoes:', error);
+    }
+  }, [uid]);
+
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadProfile();
+    }, [loadProfile])
+  );
 
   const handleLogout = () => {
     Alert.alert('Sair', 'Deseja realmente sair da conta?', [
@@ -44,48 +69,49 @@ export default function SettingsScreen({ navigation }: Props) {
     ]);
   };
 
+  const headerPhone = profile?.phone || '+55 (XX) XXXXX-XXXX';
+  const headerUsername = profile?.username ? `@${profile.username}` : '@username';
+
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: '#000000' }]} edges={['left', 'right']}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Perfil Header */}
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['left', 'right']}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 120 }]}> 
         <View style={styles.header}>
-          <TouchableOpacity activeOpacity={0.8} style={styles.avatarContainer}>
-            <Avatar uri={photoURL} name={displayName || 'User'} size={80} />
+          <TouchableOpacity activeOpacity={0.8} style={styles.avatarContainer} onPress={() => navigation.navigate('EditProfile')}>
+            <Avatar uri={profile?.photoURL || photoURL} name={profile?.displayName || displayName || 'User'} size={80} />
             <View style={styles.cameraBadge}>
               <Ionicons name="camera" size={16} color="#FFF" />
             </View>
           </TouchableOpacity>
-          <Text style={styles.headerName}>{displayName || 'D H'}</Text>
-          <Text style={styles.headerPhone}>+55 (XX) XXXXX-XXXX • @username</Text>
+          <Text style={[styles.headerName, { color: colors.textPrimary }]}>{profile?.displayName || displayName || 'Sem nome'}</Text>
+          <Text style={[styles.headerPhone, { color: colors.textSecondary }]}>{`${headerPhone} • ${headerUsername}`}</Text>
         </View>
 
-        {/* Grupo 1: Configurações Principais */}
-        <View style={styles.section}>
+        <View style={[styles.section, { backgroundColor: colors.surface }]}>
           <SettingRow
             iconName="person"
             iconBgColor="#2A85FF"
             label="Conta"
-            subtitle="Número, Nome de Usuário, Bio"
+            subtitle="Numero, Nome de Usuario, Bio"
             onPress={() => navigation.navigate('EditProfile')}
           />
           <SettingRow
             iconName="chatbubble"
             iconBgColor="#F7931A"
-            label="Configurações de Chat"
-            subtitle="Papel de Parede, Modo Noturno, Animações"
+            label="Configuracoes de Chat"
+            subtitle="Papel de Parede, Modo Noturno, Animacoes"
             onPress={() => {}}
           />
           <SettingRow
             iconName="lock-closed"
             iconBgColor="#34C759"
-            label="Privacidade e Segurança"
-            subtitle="Visto por Último, Dispositivos, Chaves de Acesso"
+            label="Privacidade e Seguranca"
+            subtitle="Visto por Ultimo, Dispositivos, Chaves de Acesso"
             onPress={() => navigation.navigate('Privacy')}
           />
           <SettingRow
             iconName="notifications"
             iconBgColor="#FF3B30"
-            label="Notificações"
+            label="Notificacoes"
             subtitle="Sons, Chamadas, Contadores"
             onPress={() => navigation.navigate('Notifications')}
           />
@@ -93,7 +119,7 @@ export default function SettingsScreen({ navigation }: Props) {
             iconName="pie-chart"
             iconBgColor="#5856D6"
             label="Dados e Armazenamento"
-            subtitle="Opções de download de mídia"
+            subtitle="Opcoes de download de midia"
             onPress={() => navigation.navigate('DataStorage')}
           />
           <SettingRow
@@ -114,56 +140,26 @@ export default function SettingsScreen({ navigation }: Props) {
             iconName="battery-half"
             iconBgColor="#FF9500"
             label="Economia de Energia"
-            subtitle="Reduz uso de energia quando a carga está baixa"
+            subtitle="Reduz uso de energia quando a carga esta baixa"
             onPress={() => {}}
           />
           <SettingRow
             iconName="globe-outline"
             iconBgColor="#AF52DE"
             label="Idioma"
-            subtitle={language === 'pt' ? 'Português (Brasil)' : 'English'}
+            subtitle={language === 'pt' ? 'Portugues (Brasil)' : 'English'}
             onPress={() => {}}
             isLast
           />
         </View>
 
-        {/* Grupo 2: Serviços Extras */}
-        <View style={styles.section}>
-          <SettingRow
-            iconName="star"
-            iconBgColor="#AF52DE"
-            label="Telegram Premium"
-            onPress={() => {}}
-          />
-          <SettingRow
-            iconName="star"
-            iconBgColor="#FF9500"
-            label="Estrelas do Telegram"
-            rightBadge="1"
-            onPress={() => {}}
-          />
-          <SettingRow
-            iconName="wallet"
-            iconBgColor="#007AFF"
-            label="Carteira"
-            onPress={() => {}}
-          />
-          <SettingRow
-            iconType="MaterialCommunityIcons"
-            iconName="storefront"
-            iconBgColor="#FF3B30"
-            label="Telegram Business"
-            onPress={() => {}}
-          />
-          <SettingRow
-            iconName="exit-outline"
-            iconBgColor="#FF3B30"
-            label="Sair da Conta"
-            onPress={handleLogout}
-            isLast
-          />
+        <View style={[styles.section, { backgroundColor: colors.surface }]}>
+          <SettingRow iconName="star" iconBgColor="#AF52DE" label="Telegram Premium" onPress={() => {}} />
+          <SettingRow iconName="star" iconBgColor="#FF9500" label="Estrelas do Telegram" rightBadge="1" onPress={() => {}} />
+          <SettingRow iconName="wallet" iconBgColor="#007AFF" label="Carteira" onPress={() => {}} />
+          <SettingRow iconType="MaterialCommunityIcons" iconName="storefront" iconBgColor="#FF3B30" label="Telegram Business" onPress={() => {}} />
+          <SettingRow iconName="exit-outline" iconBgColor="#FF3B30" label="Sair da Conta" onPress={handleLogout} isLast />
         </View>
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -188,10 +184,12 @@ function SettingRow({
   onPress: () => void;
   isLast?: boolean;
 }) {
+  const { colors } = useTheme();
+
   return (
-    <TouchableOpacity style={settingStyles.container} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity style={[settingStyles.container, { backgroundColor: colors.surface }]} onPress={onPress} activeOpacity={0.7}>
       <View style={settingStyles.row}>
-        <View style={[settingStyles.iconContainer, { backgroundColor: iconBgColor }]}>
+        <View style={[settingStyles.iconContainer, { backgroundColor: iconBgColor }]}> 
           {iconType === 'Ionicons' ? (
             <Ionicons name={iconName as any} size={18} color="#FFF" />
           ) : (
@@ -199,14 +197,12 @@ function SettingRow({
           )}
         </View>
         <View style={settingStyles.content}>
-          <Text style={settingStyles.label}>{label}</Text>
-          {subtitle && <Text style={settingStyles.subtitle} numberOfLines={1}>{subtitle}</Text>}
+          <Text style={[settingStyles.label, { color: colors.textPrimary }]}>{label}</Text>
+          {subtitle && <Text style={[settingStyles.subtitle, { color: colors.textSecondary }]} numberOfLines={1}>{subtitle}</Text>}
         </View>
-        {rightBadge && (
-          <Text style={settingStyles.badgeText}>{rightBadge}</Text>
-        )}
+        {rightBadge && <Text style={settingStyles.badgeText}>{rightBadge}</Text>}
       </View>
-      {!isLast && <View style={settingStyles.divider} />}
+      {!isLast && <View style={[settingStyles.divider, { backgroundColor: colors.separator }]} />}
     </TouchableOpacity>
   );
 }
@@ -285,12 +281,10 @@ const styles = StyleSheet.create({
   headerName: {
     fontSize: 22,
     fontWeight: '600',
-    color: '#FFFFFF',
     marginBottom: 4,
   },
   headerPhone: {
     fontSize: 14,
-    color: '#8E8E93',
   },
   section: {
     marginHorizontal: 16,

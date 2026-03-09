@@ -112,6 +112,38 @@ export const fetchConversations = async (limit = 30) => {
 };
 
 /**
+ * Criar grupo no CometChat.
+ */
+export const createGroup = async (
+  name: string,
+  type: 'public' | 'private' | 'password' = 'public',
+  password?: string
+) => {
+  const normalizedName = name.trim();
+  if (!normalizedName) {
+    throw new Error('Nome do grupo obrigatorio');
+  }
+
+  const guid = `grp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const groupType =
+    type === 'private'
+      ? CometChat.GROUP_TYPE.PRIVATE
+      : type === 'password'
+      ? CometChat.GROUP_TYPE.PASSWORD
+      : CometChat.GROUP_TYPE.PUBLIC;
+
+  const group = new CometChat.Group(guid, normalizedName, groupType, password);
+
+  try {
+    const created = await CometChat.createGroup(group);
+    return created;
+  } catch (error) {
+    console.error('[CometChat] Erro ao criar grupo:', error);
+    throw error;
+  }
+};
+
+/**
  * Buscar informações de um usuário específico.
  */
 export const getUser = async (uid: string) => {

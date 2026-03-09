@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, TextInput } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { CometChat } from '@cometchat/chat-sdk-react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../navigation/types';
 import { spacing } from '../theme/spacing';
 import { fetchConversations, loginCometChat } from '../services/cometChatService';
@@ -16,6 +17,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ChatList'>;
 
 export default function ChatListScreen({ navigation }: Props) {
   const { colors: themeColors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { uid, displayName } = useAuth();
   const [conversations, setConversations] = useState<CometChat.Conversation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,6 +98,7 @@ export default function ChatListScreen({ navigation }: Props) {
       let uid = '';
       let avatar: string | null = null;
       let online = false;
+      let isGroup = false;
 
       if (conversationWith instanceof CometChat.User) {
         name = conversationWith.getName();
@@ -106,6 +109,7 @@ export default function ChatListScreen({ navigation }: Props) {
         name = conversationWith.getName();
         uid = conversationWith.getGuid();
         avatar = conversationWith.getIcon() || null;
+        isGroup = true;
       }
 
       let lastMessageText = '';
@@ -124,7 +128,7 @@ export default function ChatListScreen({ navigation }: Props) {
           unreadCount={item.getUnreadMessageCount()}
           avatar={avatar}
           online={online}
-          onPress={() => navigation.navigate('Chat', { uid, name })}
+          onPress={() => navigation.navigate('Chat', { uid, name, isGroup })}
         />
       );
     },
@@ -143,12 +147,12 @@ export default function ChatListScreen({ navigation }: Props) {
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       <View style={[styles.searchContainer, { backgroundColor: themeColors.background }]}>
-        <View style={[styles.searchBar, { backgroundColor: '#1c1c1e' }]}>
-          <Ionicons name="search" size={18} color="#8E8E93" style={styles.searchIcon} />
+        <View style={[styles.searchBar, { backgroundColor: themeColors.inputBackground }]}>
+          <Ionicons name="search" size={18} color={themeColors.textSecondary} style={styles.searchIcon} />
           <TextInput
-            style={[styles.searchInput, { color: '#ffffff' }]}
+            style={[styles.searchInput, { color: themeColors.textPrimary }]}
             placeholder="Buscar Chats"
-            placeholderTextColor="#8E8E93"
+            placeholderTextColor={themeColors.textSecondary}
             value={search}
             onChangeText={setSearch}
           />
@@ -160,13 +164,13 @@ export default function ChatListScreen({ navigation }: Props) {
         renderItem={renderConversation}
         keyExtractor={(item) => item.getConversationId()}
         contentContainerStyle={styles.listContent}
-        ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: '#1c1c1e' }]} />}
+        ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: themeColors.separator }]} />}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons
               name="chatbubble-ellipses-outline"
               size={54}
-              color="#ffffff"
+              color={themeColors.textSecondary}
               style={styles.emptyIcon}
             />
             <Text style={[styles.emptyTitle, { color: themeColors.textPrimary }]}>
@@ -175,6 +179,30 @@ export default function ChatListScreen({ navigation }: Props) {
           </View>
         }
       />
+
+      <View style={[styles.fabStack, { bottom: insets.bottom + 82 }]}>
+        <TouchableOpacity
+          style={[
+            styles.fabSmall,
+            {
+              backgroundColor: themeColors.surface,
+              borderColor: themeColors.separator,
+            },
+          ]}
+          activeOpacity={0.85}
+          onPress={() => Alert.alert('Camera', 'Abrir camera em breve.')}
+        >
+          <Ionicons name="camera-outline" size={22} color={themeColors.textPrimary} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.fabPrimary, { backgroundColor: themeColors.primary }]}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('NewChat')}
+        >
+          <Ionicons name="add" size={28} color="#FFFFFF" />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -204,8 +232,38 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingVertical: spacing.xs,
-    paddingBottom: 100,
+    paddingBottom: 180,
     flexGrow: 1,
+  },
+  fabStack: {
+    position: 'absolute',
+    right: 18,
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  fabSmall: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#141518',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#2D2E33',
+  },
+  fabPrimary: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#4F7CFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.35,
+    shadowRadius: 7,
   },
   separator: {
     height: StyleSheet.hairlineWidth,

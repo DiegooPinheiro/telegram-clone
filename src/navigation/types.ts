@@ -9,11 +9,12 @@ export type RootStackParamList = {
 
   // Screens
   ChatList: undefined;
-  Chat: { uid: string; name: string };
+  Chat: { uid: string; name: string; isGroup?: boolean };
   Profile: { uid?: string };
   Settings: undefined;
   Contacts: undefined;
   NewChat: undefined;
+  NewGroup: undefined;
   EditProfile: undefined;
   Notifications: undefined;
   Privacy: undefined;

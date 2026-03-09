@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,8 +6,9 @@ import {
   StyleSheet,
   ScrollView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
 import { getUserProfile } from '../services/authService';
 import useOnlineStatus from '../hooks/useOnlineStatus';
@@ -16,126 +17,125 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import { UserProfile } from '../types/user';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import useAuth from '../hooks/useAuth';
+import useTheme from '../hooks/useTheme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
 export default function ProfileScreen({ navigation, route }: Props) {
   const { uid: currentUserId } = useAuth();
-  
-  // Use UID from params, or fallback to current logged in user
+  const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
+
   const uid = route.params?.uid || currentUserId;
-  
-  const { online, statusText } = useOnlineStatus(uid || '');
+
+  const { statusText } = useOnlineStatus(uid || '');
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const loadProfile = useCallback(async () => {
     if (!uid) {
       setLoading(false);
       return;
     }
-    const loadProfile = async () => {
-      try {
-        const data = await getUserProfile(uid);
-        if (data) {
-          setProfile(data as UserProfile);
-        }
-      } catch (error) {
-        console.error('Erro ao carregar perfil:', error);
-      } finally {
-        setLoading(false);
+
+    try {
+      setLoading(true);
+      const data = await getUserProfile(uid);
+      if (data) {
+        setProfile(data as UserProfile);
       }
-    };
-    loadProfile();
+    } catch (error) {
+      console.error('Erro ao carregar perfil:', error);
+    } finally {
+      setLoading(false);
+    }
   }, [uid]);
+
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadProfile();
+    }, [loadProfile])
+  );
 
   if (loading) {
     return <LoadingSpinner message="Carregando perfil..." />;
   }
 
-  const displayName = profile?.displayName || 'D H';
+  const displayName = profile?.displayName || 'Sem nome';
   const isCurrentUser = uid === currentUserId;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: '#000000' }]} edges={['left', 'right']}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Profile Header */}
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['left', 'right']}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 200 }]}> 
         <View style={styles.profileHeader}>
-          <Avatar
-            uri={profile?.photoURL}
-            name={displayName}
-            size={90}
-            online={false} // Customizing UI for screenshot
-          />
-          <Text style={styles.name}>{displayName}</Text>
-          <Text style={styles.status}>{statusText || 'online'}</Text>
+          <Avatar uri={profile?.photoURL || null} name={displayName} size={90} online={false} />
+          <Text style={[styles.name, { color: colors.textPrimary }]}>{displayName}</Text>
+          <Text style={[styles.status, { color: colors.textSecondary }]}>{statusText || 'online'}</Text>
         </View>
 
-        {/* Action Buttons Row */}
         {isCurrentUser && (
           <View style={styles.actionButtonsRow}>
-            <TouchableOpacity style={styles.actionButton}>
-              <MaterialIcons name="add-a-photo" size={22} color="#FFF" />
-              <Text style={styles.actionButtonText}>Definir Foto</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('EditProfile')}>
-              <MaterialIcons name="edit" size={22} color="#FFF" />
-              <Text style={styles.actionButtonText}>Editar Informações</Text>
+            <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.surface }]} onPress={() => navigation.navigate('EditProfile')}>
+              <MaterialIcons name="add-a-photo" size={22} color={colors.textPrimary} />
+              <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>Definir Foto</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('Settings')}>
-              <MaterialIcons name="settings" size={22} color="#FFF" />
-              <Text style={styles.actionButtonText}>Configurações</Text>
+            <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.surface }]} onPress={() => navigation.navigate('EditProfile')}>
+              <MaterialIcons name="edit" size={22} color={colors.textPrimary} />
+              <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>Editar Informacoes</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.surface }]} onPress={() => navigation.navigate('Settings')}>
+              <MaterialIcons name="settings" size={22} color={colors.textPrimary} />
+              <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>Configuracoes</Text>
             </TouchableOpacity>
           </View>
         )}
 
-        {/* User Info Card */}
-        <View style={styles.infoCard}>
+        <View style={[styles.infoCard, { backgroundColor: colors.surface }]}>
           <View style={styles.infoBlock}>
-            <Text style={styles.infoValue}>+55 (98) 98441-0040</Text>
-            <Text style={styles.infoLabel}>Celular</Text>
+            <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{profile?.phone || '+55 (XX) XXXXX-XXXX'}</Text>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Celular</Text>
           </View>
-          
+
           <View style={styles.infoBlock}>
-            <Text style={styles.infoValue}>@DiegoHatake_dh</Text>
-            <Text style={styles.infoLabel}>Nome de Usuário</Text>
+            <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{profile?.username ? `@${profile.username}` : '@username'}</Text>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Nome de Usuario</Text>
           </View>
-          
-          <View style={[styles.infoBlock, { borderBottomWidth: 0, paddingBottom: 0 }]}>
-            <Text style={styles.infoValue}>12 de set. de 1996 (29 anos)</Text>
-            <Text style={styles.infoLabel}>Aniversário</Text>
+
+          <View style={[styles.infoBlock, { marginBottom: 0 }]}> 
+            <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{profile?.birthday || '--/--/----'}</Text>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Aniversario</Text>
           </View>
         </View>
 
-        {/* Tabs */}
         <View style={styles.tabsContainer}>
-          <View style={styles.tabsBackground}>
-            <TouchableOpacity style={[styles.tab, styles.tabActive]}>
-              <Text style={styles.tabTextActive}>Posts</Text>
+          <View style={[styles.tabsBackground, { backgroundColor: colors.surface }]}>
+            <TouchableOpacity style={[styles.tab, styles.tabActive, { backgroundColor: isDark ? '#2A2A35' : '#dce9ff' }]}>
+              <Text style={[styles.tabTextActive, { color: colors.tabBarActive }]}>Posts</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.tab}>
-              <Text style={styles.tabTextInactive}>Posts Arquivados</Text>
+              <Text style={[styles.tabTextInactive, { color: colors.textSecondary }]}>Posts Arquivados</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Empty State */}
         <View style={styles.emptyState}>
-          <Text style={styles.emptyTitle}>Nenhum post ainda...</Text>
-          <Text style={styles.emptySubtitle}>
-            Publique fotos e vídeos para mostrar na sua página de perfil
+          <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>Nenhum post ainda...</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+            {profile?.bio || 'Preencha sua bio em Editar Informacoes para completar o perfil.'}
           </Text>
         </View>
-
       </ScrollView>
 
-      {/* FAB - Bottom Centered */}
-      <View style={styles.fabContainer}>
-        <TouchableOpacity style={styles.fab} activeOpacity={0.8}>
+      <View style={[styles.fabContainer, { bottom: insets.bottom + 82 }]}> 
+        <TouchableOpacity style={[styles.fab, { backgroundColor: colors.primary }]} activeOpacity={0.8} onPress={() => navigation.navigate('EditProfile')}>
           <Ionicons name="camera" size={20} color="#FFF" style={styles.fabIcon} />
-          <Text style={styles.fabText}>Adicione um post</Text>
+          <Text style={styles.fabText}>Adicionar ao perfil</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -157,12 +157,10 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#FFFFFF',
     marginTop: 12,
   },
   status: {
     fontSize: 14,
-    color: '#8E8E93',
     marginTop: 4,
   },
   actionButtonsRow: {
@@ -174,20 +172,17 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    backgroundColor: '#1C1C1D',
     borderRadius: 12,
     paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   actionButtonText: {
-    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '500',
     marginTop: 8,
   },
   infoCard: {
-    backgroundColor: '#1C1C1D',
     borderRadius: 12,
     marginHorizontal: 16,
     padding: 16,
@@ -197,12 +192,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   infoValue: {
-    color: '#FFFFFF',
     fontSize: 16,
     marginBottom: 4,
   },
   infoLabel: {
-    color: '#8E8E93',
     fontSize: 14,
   },
   tabsContainer: {
@@ -211,7 +204,6 @@ const styles = StyleSheet.create({
   },
   tabsBackground: {
     flexDirection: 'row',
-    backgroundColor: '#1C1C1D',
     borderRadius: 20,
     padding: 4,
   },
@@ -224,12 +216,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#2A2A35',
   },
   tabTextActive: {
-    color: '#8C92FF',
     fontSize: 14,
     fontWeight: '500',
   },
   tabTextInactive: {
-    color: '#8E8E93',
     fontSize: 14,
     fontWeight: '500',
   },
@@ -239,20 +229,17 @@ const styles = StyleSheet.create({
     marginTop: 40,
   },
   emptyTitle: {
-    color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 8,
   },
   emptySubtitle: {
-    color: '#8E8E93',
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
   },
   fabContainer: {
     position: 'absolute',
-    bottom: 0, // Should be above bottom tab ideally, handled by edges
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -260,7 +247,6 @@ const styles = StyleSheet.create({
   },
   fab: {
     flexDirection: 'row',
-    backgroundColor: '#5E5CE6',
     paddingVertical: 14,
     paddingHorizontal: 24,
     borderRadius: 24,
@@ -283,3 +269,4 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
+

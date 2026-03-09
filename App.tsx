@@ -1,14 +1,13 @@
 import 'react-native-gesture-handler';
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
 import AuthNavigator from './src/navigation/AuthNavigator';
+import { navigationRef } from './src/navigation/navigationRef';
 import LoadingSpinner from './src/components/LoadingSpinner';
 import useAuth from './src/hooks/useAuth';
 import { initCometChat, loginCometChat } from './src/services/cometChatService';
-import { colors } from './src/theme/colors';
 import { auth } from './src/config/firebaseConfig';
 
 import { SettingsProvider } from './src/context/SettingsContext';
@@ -48,7 +47,7 @@ export default function App() {
   return (
     <SettingsProvider>
       <SafeAreaProvider>
-        <NavigationContainer>
+        <NavigationContainer ref={navigationRef}>
           {isAuthenticated ? <AppNavigator /> : <AuthNavigator />}
         </NavigationContainer>
       </SafeAreaProvider>
