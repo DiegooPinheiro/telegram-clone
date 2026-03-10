@@ -26,7 +26,9 @@ export default function MessageInput({ onSend, placeholder = 'Mensagem' }: Messa
   return (
     <View style={styles.container}>
       <View style={[styles.inputWrap, { backgroundColor: colors.inputBackground }]}>
-        <Ionicons name="happy-outline" size={24} color={colors.textSecondary} style={styles.leadingIcon} />
+        <TouchableOpacity activeOpacity={0.7} style={styles.leadingButton}>
+          <Ionicons name="happy-outline" size={22} color={colors.textSecondary} />
+        </TouchableOpacity>
         <TextInput
           style={[styles.input, { color: colors.textPrimary }]}
           value={text}
@@ -37,7 +39,7 @@ export default function MessageInput({ onSend, placeholder = 'Mensagem' }: Messa
           maxLength={4096}
         />
         <TouchableOpacity activeOpacity={0.7} style={styles.trailingButton}>
-          <Ionicons name="attach-outline" size={24} color={colors.textSecondary} />
+          <Ionicons name="attach-outline" size={22} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
 
@@ -57,41 +59,41 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    paddingHorizontal: 8,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingTop: 2,
+    paddingBottom: 5,
     backgroundColor: 'transparent',
   },
   inputWrap: {
     flex: 1,
-    minHeight: 52,
-    maxHeight: 130,
+    height: 40,
     borderRadius: 26,
-    backgroundColor: '#15171d',
+    backgroundColor: '#1a201bff',
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    paddingLeft: 12,
-    paddingRight: 8,
+    alignItems: 'center',
+    paddingLeft: 6,
+    paddingRight: 6,
   },
-  leadingIcon: {
-    marginBottom: 13,
-    marginRight: 8,
+  leadingButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
   },
   input: {
     flex: 1,
     color: '#ffffff',
-    fontSize: 17,
-    maxHeight: 110,
-    paddingTop: 12,
-    paddingBottom: 12,
+    fontSize: 16,
+    height: 40,
+    paddingVertical: 4,
+    textAlignVertical: 'center',
   },
   trailingButton: {
-    paddingBottom: 10,
-    paddingHorizontal: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
   },
   actionButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#4f7cff',
     alignItems: 'center',
     justifyContent: 'center',

@@ -133,7 +133,13 @@ export default function ContactsScreen({ navigation }: Props) {
               <TouchableOpacity
                 style={styles.contactRow}
                 activeOpacity={0.75}
-                onPress={() => navigation.navigate('Chat', { uid: item.getUid(), name })}
+                onPress={() =>
+                  navigation.navigate('Chat', {
+                    uid: item.getUid(),
+                    name,
+                    avatar: item.getAvatar() || null,
+                  })
+                }
               >
                 <Avatar uri={item.getAvatar() || null} name={name} size={54} online={false} />
                 <View style={styles.contactInfo}>

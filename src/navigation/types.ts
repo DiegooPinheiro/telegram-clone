@@ -5,11 +5,16 @@ export type RootStackParamList = {
 
   // Flows
   MainFlow: { screen?: string; params?: any };
-  MainTabs: undefined;
+  MainTabs:
+    | {
+        showChatActions?: boolean;
+        onDeleteSelected?: () => void;
+      }
+    | undefined;
 
   // Screens
   ChatList: undefined;
-  Chat: { uid: string; name: string; isGroup?: boolean };
+  Chat: { uid: string; name: string; isGroup?: boolean; avatar?: string | null };
   Profile: { uid?: string };
   Settings: undefined;
   Contacts: undefined;

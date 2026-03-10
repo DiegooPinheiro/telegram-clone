@@ -47,6 +47,7 @@ export default function NewChatScreen({ navigation }: Props) {
         navigation.navigate('Chat', {
           uid: item.getUid(),
           name: item.getName(),
+          avatar: item.getAvatar() || null,
         })
       }
     />

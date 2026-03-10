@@ -1,9 +1,10 @@
-import React, { useRef, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useRef, useCallback, useEffect, useState } from 'react';
+import { View, Text, FlatList, StyleSheet, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CometChat } from '@cometchat/chat-sdk-react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { RootStackParamList } from '../navigation/types';
 import { spacing } from '../theme/spacing';
 import useMessages from '../hooks/useMessages';
@@ -19,17 +20,20 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;
 
 export default function ChatScreen({ navigation, route }: Props) {
   const { colors } = useTheme();
-  const { uid: receiverUID, name, isGroup = false } = route.params;
+  const { uid: receiverUID, name, isGroup = false, avatar } = route.params;
   const { uid: myUID } = useAuth();
   const { messages, loading, send, isTyping } = useMessages(receiverUID, isGroup);
   const { statusText } = useOnlineStatus(receiverUID, !isGroup);
   const flatListRef = useRef<FlatList>(null);
+  const headerHeight = useHeaderHeight();
+  const insets = useSafeAreaInsets();
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   React.useLayoutEffect(() => {
     navigation.setOptions({
       headerTitle: () => (
         <View style={styles.headerTitleWrap}>
-          <Avatar name={name} size={38} />
+          <Avatar name={name} size={38} uri={avatar} />
           <View style={styles.headerTextWrap}>
             <Text style={[styles.headerName, { color: colors.textPrimary }]} numberOfLines={1}>
               {name}
@@ -51,6 +55,24 @@ export default function ChatScreen({ navigation, route }: Props) {
       headerShadowVisible: false,
     });
   }, [navigation, name, statusText, isTyping, colors.background, colors.textPrimary]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') {
+      return;
+    }
+
+    const showSub = Keyboard.addListener('keyboardDidShow', (event) => {
+      setKeyboardHeight(event.endCoordinates?.height ?? 0);
+    });
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const handleSend = useCallback(
     async (text: string) => {
@@ -86,32 +108,59 @@ export default function ChatScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundChat }]} edges={['bottom']}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.flex}
-        keyboardVerticalOffset={86}
-      >
-        <View style={[styles.chatWallpaper, { backgroundColor: colors.backgroundChat }]} />
+      {Platform.OS === 'ios' ? (
+        <KeyboardAvoidingView
+          behavior="padding"
+          style={styles.flex}
+          keyboardVerticalOffset={headerHeight}
+        >
+          <View style={[styles.chatWallpaper, { backgroundColor: colors.backgroundChat }]} />
 
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          renderItem={renderMessage}
-          keyExtractor={(item) => item.getId().toString()}
-          contentContainerStyle={styles.messagesList}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <View style={styles.datePill}>
-                <Text style={[styles.datePillText, { color: colors.textOnPrimary }]}>Sem mensagens ainda</Text>
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            renderItem={renderMessage}
+            keyExtractor={(item) => item.getId().toString()}
+            style={styles.list}
+            contentContainerStyle={styles.messagesList}
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <View style={styles.datePill}>
+                  <Text style={[styles.datePillText, { color: colors.textOnPrimary }]}>Sem mensagens ainda</Text>
+                </View>
               </View>
-            </View>
-          }
-        />
+            }
+          />
 
-        <MessageInput onSend={handleSend} />
-      </KeyboardAvoidingView>
+          <MessageInput onSend={handleSend} />
+        </KeyboardAvoidingView>
+      ) : (
+        <View style={[styles.flex, { paddingBottom: Math.max(0, keyboardHeight) }]}>
+          <View style={[styles.chatWallpaper, { backgroundColor: colors.backgroundChat }]} />
+
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            renderItem={renderMessage}
+            keyExtractor={(item) => item.getId().toString()}
+            style={styles.list}
+            contentContainerStyle={styles.messagesList}
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <View style={styles.datePill}>
+                  <Text style={[styles.datePillText, { color: colors.textOnPrimary }]}>Sem mensagens ainda</Text>
+                </View>
+              </View>
+            }
+          />
+
+          <MessageInput onSend={handleSend} />
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -120,6 +169,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0a0b10',
+  },
+  list: {
+    flex: 1,
   },
   flex: {
     flex: 1,

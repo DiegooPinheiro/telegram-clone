@@ -1,28 +1,40 @@
-import { CometChat } from '@cometchat/chat-sdk-react-native';
+﻿import { CometChat } from '@cometchat/chat-sdk-react-native';
 import { COMETCHAT_CONSTANTS } from '../config/cometChatConfig';
+
+let initPromise: Promise<boolean> | null = null;
+let loginPromise: Promise<CometChat.User> | null = null;
+let loginUidInFlight: string | null = null;
 
 /**
  * Inicializar o CometChat SDK.
- * Deve ser chamado uma vez no App.tsx antes de qualquer outra operação.
+ * Deve ser chamado uma vez no App.tsx antes de qualquer outra operaÃ§Ã£o.
  */
 export const initCometChat = async () => {
+  if (initPromise) {
+    return initPromise;
+  }
+
   const appSetting = new CometChat.AppSettingsBuilder()
     .subscribePresenceForAllUsers()
     .setRegion(COMETCHAT_CONSTANTS.REGION.trim().toLowerCase())
     .autoEstablishSocketConnection(true)
     .build();
 
-  try {
-    await CometChat.init(
-      COMETCHAT_CONSTANTS.APP_ID.trim(),
-      appSetting
-    );
-    console.log('[CometChat] Inicializado com sucesso');
-    return true;
-  } catch (error) {
-    console.error('[CometChat] Erro ao inicializar:', error);
-    return false;
-  }
+  initPromise = (async () => {
+    try {
+      await CometChat.init(
+        COMETCHAT_CONSTANTS.APP_ID.trim(),
+        appSetting
+      );
+      console.log('[CometChat] Inicializado com sucesso');
+      return true;
+    } catch (error) {
+      console.error('[CometChat] Erro ao inicializar:', error);
+      return false;
+    }
+  })();
+
+  return initPromise;
 };
 
 /**
@@ -30,19 +42,44 @@ export const initCometChat = async () => {
  * Usar o UID do Firebase como UID do CometChat para manter sincronia.
  */
 export const loginCometChat = async (uid: string, name?: string) => {
+  if (!uid) {
+    throw new Error('UID obrigatorio para login no CometChat');
+  }
+
+  const loggedInUser = await CometChat.getLoggedinUser();
+  if (loggedInUser && loggedInUser.getUid() === uid) {
+    return loggedInUser;
+  }
+
+  if (loginPromise && loginUidInFlight === uid) {
+    return loginPromise;
+  }
+
   try {
-    const user = await CometChat.login(uid, COMETCHAT_CONSTANTS.AUTH_KEY);
-    console.log('[CometChat] Login sucesso:', user.getName());
-    return user;
+    loginUidInFlight = uid;
+    loginPromise = (async () => {
+      if (loggedInUser && loggedInUser.getUid() !== uid) {
+        await CometChat.logout();
+      }
+
+      const user = await CometChat.login(uid, COMETCHAT_CONSTANTS.AUTH_KEY);
+      console.log('[CometChat] Login sucesso:', user.getName());
+      return user;
+    })();
+
+    return await loginPromise;
   } catch (error: any) {
-    // Se o usuário não existe no CometChat mas existe no Firebase (acontece se o app falhou antes)
+    // Se o usuÃ¡rio nÃ£o existe no CometChat mas existe no Firebase (acontece se o app falhou antes)
     if (error.code === 'ERR_UID_NOT_FOUND' && name) {
-      console.log('[CometChat] Usuário não encontrado, tentando criar...');
+      console.log('[CometChat] UsuÃ¡rio nÃ£o encontrado, tentando criar...');
       await createCometChatUser(uid, name);
       return await CometChat.login(uid, COMETCHAT_CONSTANTS.AUTH_KEY);
     }
     console.error('[CometChat] Erro no login:', error);
     throw error;
+  } finally {
+    loginPromise = null;
+    loginUidInFlight = null;
   }
 };
 
@@ -60,7 +97,7 @@ export const logoutCometChat = async () => {
 };
 
 /**
- * Criar um novo usuário no CometChat.
+ * Criar um novo usuÃ¡rio no CometChat.
  * Chamar junto com o signUp do Firebase.
  */
 export const createCometChatUser = async (uid: string, name: string) => {
@@ -69,16 +106,16 @@ export const createCometChatUser = async (uid: string, name: string) => {
 
   try {
     const createdUser = await CometChat.createUser(user, COMETCHAT_CONSTANTS.AUTH_KEY);
-    console.log('[CometChat] Usuário criado:', createdUser.getName());
+    console.log('[CometChat] UsuÃ¡rio criado:', createdUser.getName());
     return createdUser;
   } catch (error) {
-    console.error('[CometChat] Erro ao criar usuário:', error);
+    console.error('[CometChat] Erro ao criar usuÃ¡rio:', error);
     throw error;
   }
 };
 
 /**
- * Buscar lista de todos os usuários.
+ * Buscar lista de todos os usuÃ¡rios.
  */
 export const fetchUsers = async (limit = 30) => {
   const usersRequest = new CometChat.UsersRequestBuilder()
@@ -89,7 +126,7 @@ export const fetchUsers = async (limit = 30) => {
     const users = await usersRequest.fetchNext();
     return users;
   } catch (error) {
-    console.error('[CometChat] Erro ao buscar usuários:', error);
+    console.error('[CometChat] Erro ao buscar usuÃ¡rios:', error);
     throw error;
   }
 };
@@ -144,20 +181,20 @@ export const createGroup = async (
 };
 
 /**
- * Buscar informações de um usuário específico.
+ * Buscar informaÃ§Ãµes de um usuÃ¡rio especÃ­fico.
  */
 export const getUser = async (uid: string) => {
   try {
     const user = await CometChat.getUser(uid);
     return user;
   } catch (error) {
-    console.error('[CometChat] Erro ao buscar usuário:', error);
+    console.error('[CometChat] Erro ao buscar usuÃ¡rio:', error);
     throw error;
   }
 };
 
 /**
- * Listener de status de presença (online/offline).
+ * Listener de status de presenÃ§a (online/offline).
  */
 export const addUserPresenceListener = (
   listenerID: string,
@@ -168,11 +205,11 @@ export const addUserPresenceListener = (
     listenerID,
     new CometChat.UserListener({
       onUserOnline: (onlineUser: CometChat.User) => {
-        console.log('[CometChat] Usuário online:', onlineUser.getName());
+        console.log('[CometChat] UsuÃ¡rio online:', onlineUser.getName());
         onUserOnline(onlineUser);
       },
       onUserOffline: (offlineUser: CometChat.User) => {
-        console.log('[CometChat] Usuário offline:', offlineUser.getName());
+        console.log('[CometChat] UsuÃ¡rio offline:', offlineUser.getName());
         onUserOffline(offlineUser);
       },
     })
@@ -180,7 +217,7 @@ export const addUserPresenceListener = (
 };
 
 /**
- * Remover listener de presença.
+ * Remover listener de presenÃ§a.
  */
 export const removeUserPresenceListener = (listenerID: string) => {
   CometChat.removeUserListener(listenerID);

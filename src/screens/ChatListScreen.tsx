@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useLayoutEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
@@ -22,6 +22,12 @@ export default function ChatListScreen({ navigation }: Props) {
   const [conversations, setConversations] = useState<CometChat.Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [selectedConversation, setSelectedConversation] = useState<{
+    id: string;
+    type: string;
+    name: string;
+    isGroup: boolean;
+  } | null>(null);
 
   const ensureCometChatSession = useCallback(async () => {
     const loggedInUser = await CometChat.getLoggedinUser();
@@ -67,6 +73,9 @@ export default function ChatListScreen({ navigation }: Props) {
   useFocusEffect(
     useCallback(() => {
       loadConversations();
+      return () => {
+        setSelectedConversation(null);
+      };
     }, [loadConversations])
   );
 
@@ -128,17 +137,106 @@ export default function ChatListScreen({ navigation }: Props) {
           unreadCount={item.getUnreadMessageCount()}
           avatar={avatar}
           online={online}
-          onPress={() => navigation.navigate('Chat', { uid, name, isGroup })}
+          selected={selectedConversation?.id === uid && selectedConversation?.type === (isGroup ? CometChat.RECEIVER_TYPE.GROUP : CometChat.RECEIVER_TYPE.USER)}
+          onPress={() => {
+            if (selectedConversation) {
+              if (selectedConversation.id === uid) {
+                setSelectedConversation(null);
+              } else {
+                setSelectedConversation({
+                  id: uid,
+                  type: isGroup ? CometChat.RECEIVER_TYPE.GROUP : CometChat.RECEIVER_TYPE.USER,
+                  name,
+                  isGroup,
+                });
+              }
+              return;
+            }
+            navigation.navigate('Chat', { uid, name, isGroup, avatar });
+          }}
+          onLongPress={() => {
+            setSelectedConversation({
+              id: uid,
+              type: isGroup ? CometChat.RECEIVER_TYPE.GROUP : CometChat.RECEIVER_TYPE.USER,
+              name,
+              isGroup,
+            });
+          }}
         />
       );
     },
-    [navigation]
+    [navigation, selectedConversation]
   );
 
   const filteredConversations = conversations.filter((conv) => {
     const name = conv.getConversationWith().getName().toLowerCase();
     return name.includes(search.toLowerCase());
   });
+
+  const handleDeleteSelected = useCallback(async () => {
+    if (!selectedConversation) {
+      return;
+    }
+
+    const title = selectedConversation.isGroup ? 'Sair do grupo' : 'Apagar conversa';
+    const message = selectedConversation.isGroup
+      ? `Deseja sair do grupo "${selectedConversation.name}"?`
+      : `Deseja apagar a conversa com "${selectedConversation.name}"?`;
+
+    Alert.alert(title, message, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: selectedConversation.isGroup ? 'Sair' : 'Apagar',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            if (selectedConversation.isGroup) {
+              await CometChat.leaveGroup(selectedConversation.id);
+            } else {
+              await CometChat.deleteConversation(selectedConversation.id, selectedConversation.type);
+            }
+            setSelectedConversation(null);
+            loadConversations();
+          } catch (error: any) {
+            console.error('Erro ao remover conversa:', error);
+            if (selectedConversation.isGroup && error?.code === 'ERR_OWNER_EXIT_FORBIDDEN') {
+              Alert.alert(
+                'Voce e dono do grupo',
+                'Para sair, transfira a propriedade ou exclua o grupo.',
+                [
+                  { text: 'Cancelar', style: 'cancel' },
+                  {
+                    text: 'Excluir Grupo',
+                    style: 'destructive',
+                    onPress: async () => {
+                      try {
+                        await CometChat.deleteGroup(selectedConversation.id);
+                        setSelectedConversation(null);
+                        loadConversations();
+                      } catch (deleteError) {
+                        console.error('Erro ao excluir grupo:', deleteError);
+                        Alert.alert('Erro', 'Nao foi possivel excluir o grupo.');
+                      }
+                    },
+                  },
+                ]
+              );
+              return;
+            }
+            Alert.alert('Erro', 'Nao foi possivel remover a conversa.');
+          }
+        },
+      },
+    ]);
+  }, [selectedConversation, loadConversations]);
+
+  useLayoutEffect(() => {
+    const parent = navigation.getParent();
+    parent?.setParams({
+      showChatActions: !!selectedConversation,
+      onDeleteSelected: handleDeleteSelected,
+    });
+  }, [navigation, selectedConversation, handleDeleteSelected]);
 
   if (loading) {
     return <LoadingSpinner message="Carregando conversas..." />;

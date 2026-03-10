@@ -14,6 +14,8 @@ interface ChatListItemProps {
   avatar?: string | null;
   online: boolean;
   onPress: () => void;
+  onLongPress?: () => void;
+  selected?: boolean;
 }
 
 import useTheme from '../hooks/useTheme';
@@ -26,11 +28,18 @@ export default function ChatListItem({
   avatar,
   online,
   onPress,
+  onLongPress,
+  selected = false,
 }: ChatListItemProps) {
   const { colors, isDark } = useTheme();
 
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.6}>
+    <TouchableOpacity
+      style={[styles.container, selected && { backgroundColor: isDark ? '#2b2d33' : '#e8f0ff' }]}
+      onPress={onPress}
+      onLongPress={onLongPress}
+      activeOpacity={0.6}
+    >
       <Avatar uri={avatar} name={name} size={60} online={online} />
 
       <View style={styles.content}>

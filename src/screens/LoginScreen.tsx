@@ -17,7 +17,6 @@ import { RootStackParamList } from '../navigation/types';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { signIn } from '../services/authService';
-import { loginCometChat } from '../services/cometChatService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
@@ -35,7 +34,6 @@ export default function LoginScreen({ navigation }: Props) {
     setLoading(true);
     try {
       const user = await signIn(email.trim(), password);
-      await loginCometChat(user.uid);
     } catch (error: any) {
       Alert.alert('Erro no login', error.message || 'Tente novamente');
     } finally {

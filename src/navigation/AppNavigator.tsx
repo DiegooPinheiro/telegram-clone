@@ -54,13 +54,24 @@ export default function AppNavigator() {
         <Stack.Screen
           name="MainTabs"
           component={TabNavigator}
-          options={() => ({
+          options={({ route }) => ({
             title: 'Telegram Clone',
             headerLeft: () => null,
             headerRight: () => (
-              <TouchableOpacity style={styles.headerAction} activeOpacity={0.75} onPress={() => setMenuVisible(true)}>
-                <Ionicons name="ellipsis-vertical" size={20} color={colors.textPrimary} />
-              </TouchableOpacity>
+              <View style={styles.headerActions}>
+                {route.params?.showChatActions && (
+                  <TouchableOpacity
+                    style={styles.headerAction}
+                    activeOpacity={0.75}
+                    onPress={() => route.params?.onDeleteSelected?.()}
+                  >
+                    <Ionicons name="trash-outline" size={20} color={colors.textPrimary} />
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity style={styles.headerAction} activeOpacity={0.75} onPress={() => setMenuVisible(true)}>
+                  <Ionicons name="ellipsis-vertical" size={20} color={colors.textPrimary} />
+                </TouchableOpacity>
+              </View>
             ),
           })}
         />
@@ -143,6 +154,10 @@ export default function AppNavigator() {
 }
 
 const styles = StyleSheet.create({
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   headerAction: {
     marginRight: 4,
     width: 28,
