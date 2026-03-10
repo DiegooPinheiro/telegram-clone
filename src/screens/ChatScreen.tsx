@@ -28,12 +28,13 @@ export default function ChatScreen({ navigation, route }: Props) {
   const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [avatarUri, setAvatarUri] = useState<string | null>(avatar ?? null);
 
   React.useLayoutEffect(() => {
     navigation.setOptions({
       headerTitle: () => (
         <View style={styles.headerTitleWrap}>
-          <Avatar name={name} size={38} uri={avatar} />
+          <Avatar name={name} size={38} uri={avatarUri} />
           <View style={styles.headerTextWrap}>
             <Text style={[styles.headerName, { color: colors.textPrimary }]} numberOfLines={1}>
               {name}
@@ -54,7 +55,7 @@ export default function ChatScreen({ navigation, route }: Props) {
       headerTintColor: colors.textPrimary,
       headerShadowVisible: false,
     });
-  }, [navigation, name, statusText, isTyping, colors.background, colors.textPrimary]);
+  }, [navigation, name, statusText, isTyping, colors.background, colors.textPrimary, avatarUri]);
 
   useEffect(() => {
     if (Platform.OS !== 'android') {
@@ -73,6 +74,41 @@ export default function ChatScreen({ navigation, route }: Props) {
       hideSub.remove();
     };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    if (avatar) {
+      setAvatarUri(avatar);
+      return;
+    }
+
+    const loadAvatar = async () => {
+      try {
+        if (isGroup) {
+          const group = await CometChat.getGroup(receiverUID);
+          const icon = group?.getIcon?.() || null;
+          if (active) {
+            setAvatarUri(icon);
+          }
+        } else {
+          const user = await CometChat.getUser(receiverUID);
+          const photo = user?.getAvatar?.() || null;
+          if (active) {
+            setAvatarUri(photo);
+          }
+        }
+      } catch (error) {
+        console.warn('Erro ao buscar avatar do chat:', error);
+      }
+    };
+
+    loadAvatar();
+
+    return () => {
+      active = false;
+    };
+  }, [receiverUID, isGroup, avatar]);
 
   const handleSend = useCallback(
     async (text: string) => {
