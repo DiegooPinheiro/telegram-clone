@@ -80,6 +80,14 @@ Preencha no `.env`:
 
 > O CometChat e inicializado no `App.tsx` antes de qualquer uso.
 
+## Passo a passo rapido
+
+1. `npm install`
+2. `cp .env.example .env`
+3. Preencha as variaveis do Firebase e do CometChat no `.env`
+4. `npm start`
+5. Abra no Expo Go (ou `npm run android` / `npm run ios`)
+
 ## Como rodar
 
 ```bash
