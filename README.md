@@ -49,26 +49,34 @@ telegram-clone/
 npm install
 ```
 
-### 2) Firebase
+### 2) Variaveis de ambiente
 
-Edite `src/config/firebaseConfig.ts` e coloque as credenciais do seu projeto Firebase:
+Copie o arquivo de exemplo e preencha com suas chaves:
 
-- apiKey
-- authDomain
-- projectId
-- storageBucket
-- messagingSenderId
-- appId
+```bash
+cp .env.example .env
+```
 
-> Em producao, use variaveis de ambiente. Nao commite credenciais reais.
+O projeto le as variaveis diretamente do `process.env` (Expo). Todas precisam do prefixo `EXPO_PUBLIC_`.
 
-### 3) CometChat
+#### Firebase
 
-Edite `src/config/cometChatConfig.ts`:
+Preencha no `.env`:
 
-- APP_ID
-- REGION
-- AUTH_KEY
+- EXPO_PUBLIC_FIREBASE_API_KEY
+- EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN
+- EXPO_PUBLIC_FIREBASE_PROJECT_ID
+- EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET
+- EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+- EXPO_PUBLIC_FIREBASE_APP_ID
+
+#### CometChat
+
+Preencha no `.env`:
+
+- EXPO_PUBLIC_COMETCHAT_APP_ID
+- EXPO_PUBLIC_COMETCHAT_REGION
+- EXPO_PUBLIC_COMETCHAT_AUTH_KEY
 
 > O CometChat e inicializado no `App.tsx` antes de qualquer uso.
 
@@ -105,6 +113,7 @@ npm run web
 - O UID do Firebase e usado como UID no CometChat para manter sincronia.
 - Se o usuario for dono de um grupo, ele nao consegue sair sem transferir a propriedade (regra do CometChat).
 - Para evitar logins simultaneos, o serviço do CometChat controla concorrencia de login.
+- **Seguranca**: chaves `EXPO_PUBLIC_` ficam embutidas no app. Para producao, mova a geracao de tokens do CometChat para um backend.
 
 ## Problemas comuns
 

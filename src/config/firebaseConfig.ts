@@ -7,13 +7,21 @@ import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 
+const getEnv = (key: string) => {
+  const value = process.env[key];
+  if (!value) {
+    throw new Error(`[Firebase] Variavel de ambiente ausente: ${key}`);
+  }
+  return value;
+};
+
 const firebaseConfig = {
-  apiKey: 'AIzaSyCja6pSE30bY-odFDnh1BcwJNVHvrJSDKI',
-  authDomain: 'telegram-clone-32b5c.firebaseapp.com',
-  projectId: 'telegram-clone-32b5c',
-  storageBucket: 'telegram-clone-32b5c.firebasestorage.app',
-  messagingSenderId: '578124025434',
-  appId: '1:578124025434:web:77c6cc0ead7dfd63071263',
+  apiKey: getEnv('EXPO_PUBLIC_FIREBASE_API_KEY'),
+  authDomain: getEnv('EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN'),
+  projectId: getEnv('EXPO_PUBLIC_FIREBASE_PROJECT_ID'),
+  storageBucket: getEnv('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET'),
+  messagingSenderId: getEnv('EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID'),
+  appId: getEnv('EXPO_PUBLIC_FIREBASE_APP_ID'),
 };
 
 const app = initializeApp(firebaseConfig);
