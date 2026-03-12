@@ -59,7 +59,6 @@ export default function SettingsScreen({ navigation }: Props) {
         style: 'destructive',
         onPress: async () => {
           try {
-            await logoutCometChat();
             await signOut();
           } catch (error: any) {
             Alert.alert('Erro', error.message || 'Erro ao sair');

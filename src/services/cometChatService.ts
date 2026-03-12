@@ -88,9 +88,17 @@ export const loginCometChat = async (uid: string, name?: string) => {
  */
 export const logoutCometChat = async () => {
   try {
+    const loggedInUser = await CometChat.getLoggedinUser();
+    if (!loggedInUser) {
+      return;
+    }
     await CometChat.logout();
     console.log('[CometChat] Logout sucesso');
   } catch (error) {
+    const code = (error as any)?.code;
+    if (code === 'USER_NOT_LOGED_IN') {
+      return;
+    }
     console.error('[CometChat] Erro no logout:', error);
     throw error;
   }
