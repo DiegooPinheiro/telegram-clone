@@ -27,21 +27,21 @@ export const light = {
 
 export const dark = {
   ...common,
-  background: "#000000",
-  backgroundSecondary: "#0f0f0f",
-  backgroundChat: "#000000",
-  surface: "#1c1c1e",
-  bubbleMine: "#0088cc",
-  bubbleTheirs: "#1c1c1e",
+  background: "#0e1621",
+  backgroundSecondary: "#17212b",
+  backgroundChat: "#0e1621",
+  surface: "#17212b",
+  bubbleMine: "#2b5278",
+  bubbleTheirs: "#18222d",
   textPrimary: "#ffffff",
-  textSecondary: "#8E8E93",
+  textSecondary: "#8e959b",
   textOnPrimary: "#ffffff",
-  textTimestamp: "#8E8E93",
-  separator: "#1c1c1e",
-  inputBackground: "#1c1c1e",
-  badgeUnread: "#2c2c2e", // Greyish color from screenshot
-  tabBarBackground: "#1c1c1e",
-  tabBarActive: "#0088cc",
+  textTimestamp: "#aeb7be",
+  separator: "#0e1621",
+  inputBackground: "#17212b",
+  badgeUnread: "#212d3b",
+  tabBarBackground: "#17212b",
+  tabBarActive: "#5288c1",
 };
 
 export const colors = light; // Fallback para compatibilidade retroativa durante a transição

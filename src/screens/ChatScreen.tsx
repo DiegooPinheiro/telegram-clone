@@ -29,6 +29,7 @@ export default function ChatScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [avatarUri, setAvatarUri] = useState<string | null>(avatar ?? null);
+  const [cometChatUid, setCometChatUid] = useState<string | null>(null);
 
   React.useLayoutEffect(() => {
     navigation.setOptions({
@@ -72,6 +73,26 @@ export default function ChatScreen({ navigation, route }: Props) {
     return () => {
       showSub.remove();
       hideSub.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    CometChat.getLoggedinUser()
+      .then((user) => {
+        if (active) {
+          setCometChatUid(user?.getUid?.() ?? null);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setCometChatUid(null);
+        }
+      });
+
+    return () => {
+      active = false;
     };
   }, []);
 
@@ -123,7 +144,16 @@ export default function ChatScreen({ navigation, route }: Props) {
 
   const renderMessage = useCallback(
     ({ item }: { item: CometChat.BaseMessage }) => {
-      const isMine = item.getSender().getUid() === myUID;
+      const senderUid = item.getSender?.()?.getUid?.();
+      const receiverId = item.getReceiverId?.();
+      const mineUid = cometChatUid || myUID;
+      let isMine = false;
+
+      if (mineUid && senderUid) {
+        isMine = senderUid === mineUid;
+      } else if (!isGroup && receiverId) {
+        isMine = receiverId === receiverUID;
+      }
       const text = item instanceof CometChat.TextMessage ? item.getText() : '[Midia]';
 
       return (
@@ -135,7 +165,7 @@ export default function ChatScreen({ navigation, route }: Props) {
         />
       );
     },
-    [myUID]
+    [myUID, cometChatUid, isGroup, receiverUID]
   );
 
   if (loading) {
