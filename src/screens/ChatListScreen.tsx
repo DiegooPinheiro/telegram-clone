@@ -232,7 +232,8 @@ export default function ChatListScreen({ navigation }: Props) {
 
   useLayoutEffect(() => {
     const parent = navigation.getParent();
-    parent?.setParams({
+    const root = parent?.getParent();
+    root?.setParams({
       showChatActions: !!selectedConversation,
       onDeleteSelected: handleDeleteSelected,
     });
