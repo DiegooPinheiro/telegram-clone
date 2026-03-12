@@ -5,12 +5,7 @@ export type RootStackParamList = {
 
   // Flows
   MainFlow: { screen?: string; params?: any };
-  MainTabs:
-    | {
-        showChatActions?: boolean;
-        onDeleteSelected?: () => void;
-      }
-    | undefined;
+  MainTabs: undefined;
 
   // Screens
   ChatList: undefined;

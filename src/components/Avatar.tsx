@@ -28,11 +28,11 @@ export default function Avatar({ uri, name, size = 48, online }: AvatarProps) {
       {uri ? (
         <Image
           source={{ uri }}
+          resizeMode="cover"
           style={{
             width: size,
             height: size,
             borderRadius: size / 2,
-            resizeMode: 'cover',
           }}
         />
       ) : (

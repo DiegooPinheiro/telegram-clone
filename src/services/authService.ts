@@ -37,10 +37,10 @@ export const signUp = async (email: string, password: string, displayName: strin
     online: true,
   });
 
-  // Criar e logar no CometChat (opcional: pode falhar se credenciais estiverem erradas)
+  // Criar e logar no CometChat
   try {
     await createCometChatUser(user.uid, displayName);
-    await loginCometChat(user.uid);
+    await loginCometChat(user.uid, displayName);
   } catch (ccError) {
     console.warn('[AuthService] Erro ao sincronizar com CometChat:', ccError);
   }
@@ -81,10 +81,14 @@ export const signOut = async () => {
   const user = auth.currentUser;
 
   if (user) {
-    await updateDoc(doc(db, 'users', user.uid), {
-      online: false,
-      lastSeen: new Date().toISOString(),
-    });
+    try {
+      await setDoc(doc(db, 'users', user.uid), {
+        online: false,
+        lastSeen: new Date().toISOString(),
+      }, { merge: true });
+    } catch (firestoreError) {
+      console.warn('[AuthService] Nao foi possivel atualizar status offline:', firestoreError);
+    }
 
     try {
       await logoutCometChat();

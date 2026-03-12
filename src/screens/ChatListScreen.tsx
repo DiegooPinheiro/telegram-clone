@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useLayoutEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TextInput, TouchableOpacity, Alert, Platform } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { CometChat } from '@cometchat/chat-sdk-react-native';
@@ -8,8 +8,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../navigation/types';
 import { spacing } from '../theme/spacing';
 import { fetchConversations, loginCometChat } from '../services/cometChatService';
+import { getUserProfile } from '../services/authService';
 import ChatListItem from '../components/ChatListItem';
 import LoadingSpinner from '../components/LoadingSpinner';
+import HeaderMenuButton from '../components/HeaderMenuButton';
 import useTheme from '../hooks/useTheme';
 import useAuth from '../hooks/useAuth';
 
@@ -22,6 +24,7 @@ export default function ChatListScreen({ navigation }: Props) {
   const [conversations, setConversations] = useState<CometChat.Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [firestoreNames, setFirestoreNames] = useState<Record<string, string>>({});
   const [selectedConversation, setSelectedConversation] = useState<{
     id: string;
     type: string;
@@ -40,7 +43,14 @@ export default function ChatListScreen({ navigation }: Props) {
     }
 
     try {
-      await loginCometChat(uid, displayName || 'Usuario');
+      // Firebase Auth pode não ter o displayName ainda (race condition pós-cadastro)
+      // Lemos o Firestore para garantir o nome correto
+      let nameToUse = displayName;
+      if (!nameToUse) {
+        const profile = await getUserProfile(uid);
+        nameToUse = (profile as any)?.displayName || null;
+      }
+      await loginCometChat(uid, nameToUse || undefined);
       return true;
     } catch (error) {
       console.error('[ChatList] Falha ao recuperar sessao CometChat:', error);
@@ -59,6 +69,25 @@ export default function ChatListScreen({ navigation }: Props) {
 
       const fetched = await fetchConversations();
       setConversations(fetched);
+
+      // Busca nomes reais do Firestore para corrigir nomes errados do CometChat (ex: "Usuario")
+      const userUids = fetched
+        .filter((conv) => conv.getConversationWith() instanceof CometChat.User)
+        .map((conv) => (conv.getConversationWith() as CometChat.User).getUid());
+
+      if (userUids.length > 0) {
+        const profiles = await Promise.all(
+          userUids.map((id) => getUserProfile(id).catch(() => null))
+        );
+        const namesMap: Record<string, string> = {};
+        userUids.forEach((id, i) => {
+          const profile = profiles[i] as any;
+          if (profile?.displayName) {
+            namesMap[id] = profile.displayName;
+          }
+        });
+        setFirestoreNames(namesMap);
+      }
     } catch (error) {
       console.error('Erro ao carregar conversas:', error);
     } finally {
@@ -110,8 +139,8 @@ export default function ChatListScreen({ navigation }: Props) {
       let isGroup = false;
 
       if (conversationWith instanceof CometChat.User) {
-        name = conversationWith.getName();
         uid = conversationWith.getUid();
+        name = firestoreNames[uid] || conversationWith.getName();
         avatar = conversationWith.getAvatar() || null;
         online = conversationWith.getStatus() === 'online';
       } else if (conversationWith instanceof CometChat.Group) {
@@ -165,7 +194,7 @@ export default function ChatListScreen({ navigation }: Props) {
         />
       );
     },
-    [navigation, selectedConversation]
+    [navigation, selectedConversation, firestoreNames]
   );
 
   const filteredConversations = conversations.filter((conv) => {
@@ -232,11 +261,23 @@ export default function ChatListScreen({ navigation }: Props) {
 
   useLayoutEffect(() => {
     const parent = navigation.getParent();
-    parent?.setParams({
-      showChatActions: !!selectedConversation,
-      onDeleteSelected: handleDeleteSelected,
+    parent?.setOptions({
+      headerRight: () => (
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {selectedConversation && (
+            <TouchableOpacity
+              style={{ marginRight: 4, width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' }}
+              activeOpacity={0.75}
+              onPress={handleDeleteSelected}
+            >
+              <Ionicons name="trash-outline" size={20} color={themeColors.textPrimary} />
+            </TouchableOpacity>
+          )}
+          <HeaderMenuButton />
+        </View>
+      ),
     });
-  }, [navigation, selectedConversation, handleDeleteSelected]);
+  }, [navigation, selectedConversation, handleDeleteSelected, themeColors.textPrimary]);
 
   if (loading) {
     return <LoadingSpinner message="Carregando conversas..." />;
@@ -357,11 +398,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#4F7CFF',
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.35,
-    shadowRadius: 7,
+    ...Platform.select({
+      web: { boxShadow: '0px 5px 7px rgba(0,0,0,0.35)' },
+      default: {
+        elevation: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 5 },
+        shadowOpacity: 0.35,
+        shadowRadius: 7,
+      },
+    }),
   },
   separator: {
     height: StyleSheet.hairlineWidth,

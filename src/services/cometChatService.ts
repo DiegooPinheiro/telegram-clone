@@ -38,6 +38,36 @@ export const initCometChat = async () => {
 };
 
 /**
+ * Atualizar nome do usuário no CometChat via REST API.
+ */
+export const updateCometChatUserName = async (uid: string, name: string) => {
+  const region = COMETCHAT_CONSTANTS.REGION.trim().toLowerCase();
+  const appId = COMETCHAT_CONSTANTS.APP_ID.trim();
+  const restApiKey = COMETCHAT_CONSTANTS.REST_API_KEY.trim();
+
+  try {
+    const response = await fetch(`https://api-${region}.cometchat.io/v3/users/${uid}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'apiKey': restApiKey,
+        'appId': appId,
+      },
+      body: JSON.stringify({ name }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.warn('[CometChat] Falha ao atualizar nome:', response.status, errorData);
+    } else {
+      console.log('[CometChat] Nome atualizado para:', name);
+    }
+  } catch (error) {
+    console.warn('[CometChat] Erro ao atualizar nome:', error);
+  }
+};
+
+/**
  * Login no CometChat.
  * Usar o UID do Firebase como UID do CometChat para manter sincronia.
  */
@@ -48,6 +78,10 @@ export const loginCometChat = async (uid: string, name?: string) => {
 
   const loggedInUser = await CometChat.getLoggedinUser();
   if (loggedInUser && loggedInUser.getUid() === uid) {
+    // Mesmo já logado, atualiza o nome se estiver errado
+    if (name && loggedInUser.getName() !== name) {
+      await updateCometChatUserName(uid, name);
+    }
     return loggedInUser;
   }
 
@@ -64,14 +98,20 @@ export const loginCometChat = async (uid: string, name?: string) => {
 
       const user = await CometChat.login(uid, COMETCHAT_CONSTANTS.AUTH_KEY);
       console.log('[CometChat] Login sucesso:', user.getName());
+
+      // Corrige o nome no CometChat se estiver errado (ex: criado como "Usuario")
+      if (name && user.getName() !== name) {
+        await updateCometChatUserName(uid, name);
+      }
+
       return user;
     })();
 
     return await loginPromise;
   } catch (error: any) {
-    // Se o usuÃ¡rio nÃ£o existe no CometChat mas existe no Firebase (acontece se o app falhou antes)
+    // Se o usuário não existe no CometChat mas existe no Firebase (acontece se o app falhou antes)
     if (error.code === 'ERR_UID_NOT_FOUND' && name) {
-      console.log('[CometChat] UsuÃ¡rio nÃ£o encontrado, tentando criar...');
+      console.log('[CometChat] Usuário não encontrado, tentando criar...');
       await createCometChatUser(uid, name);
       return await CometChat.login(uid, COMETCHAT_CONSTANTS.AUTH_KEY);
     }
@@ -97,19 +137,40 @@ export const logoutCometChat = async () => {
 };
 
 /**
- * Criar um novo usuÃ¡rio no CometChat.
- * Chamar junto com o signUp do Firebase.
+ * Criar um novo usuário no CometChat via REST API.
+ * Usar REST API Key garante funcionamento independente das config do dashboard.
  */
 export const createCometChatUser = async (uid: string, name: string) => {
-  const user = new CometChat.User(uid);
-  user.setName(name);
+  const region = COMETCHAT_CONSTANTS.REGION.trim().toLowerCase();
+  const appId = COMETCHAT_CONSTANTS.APP_ID.trim();
+  const restApiKey = COMETCHAT_CONSTANTS.REST_API_KEY.trim();
 
   try {
-    const createdUser = await CometChat.createUser(user, COMETCHAT_CONSTANTS.AUTH_KEY);
-    console.log('[CometChat] UsuÃ¡rio criado:', createdUser.getName());
-    return createdUser;
+    const response = await fetch(`https://api-${region}.cometchat.io/v3/users`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apiKey': restApiKey,
+        'appId': appId,
+      },
+      body: JSON.stringify({ uid, name }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      // Usuário já existe — pode ignorar
+      if (response.status === 409) {
+        console.log('[CometChat] Usuário já existe:', uid);
+        return;
+      }
+      throw new Error(`[CometChat] Erro ao criar usuário: ${response.status} ${JSON.stringify(errorData)}`);
+    }
+
+    const data = await response.json();
+    console.log('[CometChat] Usuário criado:', name);
+    return data;
   } catch (error) {
-    console.error('[CometChat] Erro ao criar usuÃ¡rio:', error);
+    console.error('[CometChat] Erro ao criar usuário:', error);
     throw error;
   }
 };

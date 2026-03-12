@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
+  Platform,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -13,7 +14,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
 import useAuth from '../hooks/useAuth';
 import { getUserProfile, signOut } from '../services/authService';
-import { logoutCometChat } from '../services/cometChatService';
 import Avatar from '../components/Avatar';
 import { useSettings } from '../context/SettingsContext';
 import useTheme from '../hooks/useTheme';
@@ -52,21 +52,24 @@ export default function SettingsScreen({ navigation }: Props) {
   );
 
   const handleLogout = () => {
-    Alert.alert('Sair', 'Deseja realmente sair da conta?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Sair',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await logoutCometChat();
-            await signOut();
-          } catch (error: any) {
-            Alert.alert('Erro', error.message || 'Erro ao sair');
-          }
-        },
-      },
-    ]);
+    const doLogout = async () => {
+      try {
+        await signOut();
+      } catch (error: any) {
+        Alert.alert('Erro', error.message || 'Erro ao sair');
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('Deseja realmente sair da conta?')) {
+        doLogout();
+      }
+    } else {
+      Alert.alert('Sair', 'Deseja realmente sair da conta?', [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Sair', style: 'destructive', onPress: doLogout },
+      ]);
+    }
   };
 
   const headerPhone = profile?.phone || '+55 (XX) XXXXX-XXXX';

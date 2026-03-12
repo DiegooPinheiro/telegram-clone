@@ -2,10 +2,8 @@
 // Preencha com as credenciais do seu projeto Firebase
 
 import { initializeApp } from 'firebase/app';
-// @ts-ignore
-import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
-import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 
 const getEnv = (key: string) => {
   const value = process.env[key];
@@ -25,8 +23,6 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-export const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(ReactNativeAsyncStorage),
-});
+export const auth = getAuth(app);
 export const db = getFirestore(app);
 export default app;
