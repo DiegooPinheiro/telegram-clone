@@ -25,6 +25,7 @@ export default function ChatListScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [firestoreNames, setFirestoreNames] = useState<Record<string, string>>({});
+  const [onlineUids, setOnlineUids] = useState<Set<string>>(new Set());
   const [selectedConversation, setSelectedConversation] = useState<{
     id: string;
     type: string;
@@ -70,6 +71,17 @@ export default function ChatListScreen({ navigation }: Props) {
       const fetched = await fetchConversations();
       setConversations(fetched);
 
+      // Inicializa status online a partir das conversas carregadas
+      const initialOnline = new Set(
+        fetched
+          .filter((conv) => {
+            const w = conv.getConversationWith();
+            return w instanceof CometChat.User && w.getStatus() === 'online';
+          })
+          .map((conv) => (conv.getConversationWith() as CometChat.User).getUid())
+      );
+      setOnlineUids(initialOnline);
+
       // Busca nomes reais do Firestore para corrigir nomes errados do CometChat (ex: "Usuario")
       const userUids = fetched
         .filter((conv) => conv.getConversationWith() instanceof CometChat.User)
@@ -109,6 +121,28 @@ export default function ChatListScreen({ navigation }: Props) {
   );
 
   useEffect(() => {
+    const listenerID = 'chatlist_user_listener';
+    CometChat.addUserListener(
+      listenerID,
+      new CometChat.UserListener({
+        onUserOnline: (onlineUser: CometChat.User) => {
+          setOnlineUids((prev) => new Set(prev).add(onlineUser.getUid()));
+        },
+        onUserOffline: (offlineUser: CometChat.User) => {
+          setOnlineUids((prev) => {
+            const next = new Set(prev);
+            next.delete(offlineUser.getUid());
+            return next;
+          });
+        },
+      })
+    );
+    return () => {
+      CometChat.removeUserListener(listenerID);
+    };
+  }, []);
+
+  useEffect(() => {
     const listenerID = 'chatlist_listener';
 
     CometChat.addMessageListener(
@@ -142,7 +176,7 @@ export default function ChatListScreen({ navigation }: Props) {
         uid = conversationWith.getUid();
         name = firestoreNames[uid] || conversationWith.getName();
         avatar = conversationWith.getAvatar() || null;
-        online = conversationWith.getStatus() === 'online';
+        online = onlineUids.has(conversationWith.getUid());
       } else if (conversationWith instanceof CometChat.Group) {
         name = conversationWith.getName();
         uid = conversationWith.getGuid();
@@ -194,7 +228,7 @@ export default function ChatListScreen({ navigation }: Props) {
         />
       );
     },
-    [navigation, selectedConversation, firestoreNames]
+    [navigation, selectedConversation, firestoreNames, onlineUids]
   );
 
   const filteredConversations = conversations.filter((conv) => {
