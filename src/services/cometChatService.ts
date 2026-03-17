@@ -1,4 +1,4 @@
-﻿import { CometChat } from '@cometchat/chat-sdk-react-native';
+import { CometChat } from '@cometchat/chat-sdk-react-native';
 import { COMETCHAT_CONSTANTS } from '../config/cometChatConfig';
 
 let initPromise: Promise<boolean> | null = null;
@@ -225,8 +225,38 @@ export const addUserPresenceListener = (
 };
 
 /**
- * Remover listener de presenÃ§a.
+ * Remover listener de presenção.
  */
 export const removeUserPresenceListener = (listenerID: string) => {
   CometChat.removeUserListener(listenerID);
+};
+
+/**
+ * Buscar total de mensagens não lidas (todas as conversas).
+ */
+export const getTotalUnreadCount = async (): Promise<number> => {
+  try {
+    const unread = await CometChat.getUnreadMessageCount();
+    let total = 0;
+    
+    // Agrega as contagens lidando com o formato retornado (pode variar entre flat ou agrupado por users/groups)
+    const aggregateCount = (obj: any): number => {
+      let sum = 0;
+      if (!obj) return sum;
+      for (const key in obj) {
+         if (typeof obj[key] === 'number') {
+            sum += obj[key];
+         } else if (typeof obj[key] === 'object') {
+            sum += aggregateCount(obj[key]);
+         }
+      }
+      return sum;
+    }
+    
+    total = aggregateCount(unread);
+    return total;
+  } catch (error) {
+    console.error('[CometChat] Erro ao buscar total de msgs não lidas:', error);
+    return 0;
+  }
 };

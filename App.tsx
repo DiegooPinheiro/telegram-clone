@@ -9,6 +9,9 @@ import LoadingSpinner from './src/components/LoadingSpinner';
 import useAuth from './src/hooks/useAuth';
 import { initCometChat, loginCometChat } from './src/services/cometChatService';
 import { auth } from './src/config/firebaseConfig';
+import { CometChat } from '@cometchat/chat-sdk-react-native';
+import { setupNotifications, showMessageNotification } from './src/services/notificationService';
+import Toast from 'react-native-toast-message';
 
 import { SettingsProvider } from './src/context/SettingsContext';
 
@@ -40,6 +43,76 @@ export default function App() {
     init();
   }, [isAuthenticated]);
 
+  useEffect(() => {
+    setupNotifications();
+  }, []);
+
+  useEffect(() => {
+    if (!cometChatReady || !isAuthenticated) return;
+
+    const listenerID = 'GLOBAL_NOTIFICATION_LISTENER';
+    
+    CometChat.addMessageListener(
+      listenerID,
+      new CometChat.MessageListener({
+        onTextMessageReceived: (textMessage: CometChat.TextMessage) => {
+          const currentRoute = navigationRef.isReady() ? navigationRef.getCurrentRoute() : null;
+          const senderId = textMessage.getReceiverType() === CometChat.RECEIVER_TYPE.GROUP 
+                         ? textMessage.getReceiverId() 
+                         : textMessage.getSender().getUid();
+          
+          let shouldNotify = true;
+          if (currentRoute?.name === 'Chat') {
+             const routeParams = currentRoute.params as any;
+             if (routeParams?.uid === senderId) {
+                shouldNotify = false;
+             }
+          }
+
+          if (shouldNotify) {
+            const senderName = textMessage.getSender().getName();
+            let title = senderName;
+            
+            if (textMessage.getReceiverType() === CometChat.RECEIVER_TYPE.GROUP) {
+                title = `${senderName} no ${(textMessage.getReceiver() as CometChat.Group).getName()}`;
+            }
+
+            showMessageNotification(title, textMessage.getText());
+          }
+        },
+        onMediaMessageReceived: (mediaMessage: CometChat.MediaMessage) => {
+            const currentRoute = navigationRef.isReady() ? navigationRef.getCurrentRoute() : null;
+            const senderId = mediaMessage.getReceiverType() === CometChat.RECEIVER_TYPE.GROUP 
+                         ? mediaMessage.getReceiverId() 
+                         : mediaMessage.getSender().getUid();
+          
+            let shouldNotify = true;
+            if (currentRoute?.name === 'Chat') {
+               const routeParams = currentRoute.params as any;
+               if (routeParams?.uid === senderId) {
+                  shouldNotify = false;
+               }
+            }
+
+            if (shouldNotify) {
+              const senderName = mediaMessage.getSender().getName();
+              let title = senderName;
+              
+              if (mediaMessage.getReceiverType() === CometChat.RECEIVER_TYPE.GROUP) {
+                  title = `${senderName} no ${(mediaMessage.getReceiver() as CometChat.Group).getName()}`;
+              }
+
+              showMessageNotification(title, '📷 Arquivo de mídia recebido');
+            }
+        }
+      })
+    );
+
+    return () => {
+      CometChat.removeMessageListener(listenerID);
+    };
+  }, [cometChatReady, isAuthenticated]);
+
   if (authLoading || !cometChatReady) {
     return <LoadingSpinner message="Carregando..." />;
   }
@@ -51,6 +124,7 @@ export default function App() {
           {isAuthenticated ? <AppNavigator /> : <AuthNavigator />}
         </NavigationContainer>
       </SafeAreaProvider>
+      <Toast />
     </SettingsProvider>
   );
 }
