@@ -22,7 +22,7 @@ export default function ChatScreen({ navigation, route }: Props) {
   const { colors } = useTheme();
   const { uid: receiverUID, name, isGroup = false, avatar } = route.params;
   const { uid: myUID } = useAuth();
-  const { messages, loading, send, isTyping } = useMessages(receiverUID, isGroup);
+  const { messages, loading, send, isTyping, onTyping, onStopTyping } = useMessages(receiverUID, isGroup);
   const { statusText, online } = useOnlineStatus(receiverUID, !isGroup);
   const flatListRef = useRef<FlatList>(null);
   const headerHeight = useHeaderHeight();
@@ -41,7 +41,7 @@ export default function ChatScreen({ navigation, route }: Props) {
               {name}
             </Text>
             <Text style={[styles.headerStatus, { color: colors.textSecondary }]} numberOfLines={1}>
-              {isGroup ? 'grupo' : isTyping ? 'digitando...' : statusText || 'visto recentemente'}
+              {isTyping ? 'digitando...' : isGroup ? 'grupo' : statusText || 'visto recentemente'}
             </Text>
           </View>
         </View>
@@ -200,7 +200,7 @@ export default function ChatScreen({ navigation, route }: Props) {
             }
           />
 
-          <MessageInput onSend={handleSend} />
+          <MessageInput onSend={handleSend} onTyping={onTyping} onStopTyping={onStopTyping} />
         </KeyboardAvoidingView>
       ) : (
         <View style={[styles.flex, { paddingBottom: Math.max(0, keyboardHeight) }]}>
@@ -224,7 +224,7 @@ export default function ChatScreen({ navigation, route }: Props) {
             }
           />
 
-          <MessageInput onSend={handleSend} />
+          <MessageInput onSend={handleSend} onTyping={onTyping} onStopTyping={onStopTyping} />
         </View>
       )}
     </SafeAreaView>

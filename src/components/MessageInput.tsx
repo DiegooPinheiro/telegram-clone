@@ -5,18 +5,42 @@ import useTheme from '../hooks/useTheme';
 
 interface MessageInputProps {
   onSend: (text: string) => void;
+  onTyping?: () => void;
+  onStopTyping?: () => void;
   placeholder?: string;
 }
 
-export default function MessageInput({ onSend, placeholder = 'Mensagem' }: MessageInputProps) {
+export default function MessageInput({ onSend, onTyping, onStopTyping, placeholder = 'Mensagem' }: MessageInputProps) {
   const [text, setText] = useState('');
   const { colors } = useTheme();
+  const typingTimeoutRef = React.useRef<any>(null);
+
+  const handleChangeText = (val: string) => {
+    setText(val);
+    
+    if (val.trim().length > 0) {
+      if (onTyping) onTyping();
+      
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      
+      typingTimeoutRef.current = setTimeout(() => {
+        if (onStopTyping) onStopTyping();
+      }, 3000); // Para de digitar depois de 3 segundos
+    } else {
+      if (onStopTyping) onStopTyping();
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    }
+  };
 
   const handleSend = () => {
     const value = text.trim();
     if (!value) {
       return;
     }
+    
+    if (onStopTyping) onStopTyping();
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    
     onSend(value);
     setText('');
   };
@@ -32,7 +56,7 @@ export default function MessageInput({ onSend, placeholder = 'Mensagem' }: Messa
         <TextInput
           style={[styles.input, { color: colors.textPrimary }]}
           value={text}
-          onChangeText={setText}
+          onChangeText={handleChangeText}
           placeholder={placeholder}
           placeholderTextColor={colors.textSecondary}
           multiline

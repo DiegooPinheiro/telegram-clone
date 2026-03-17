@@ -71,13 +71,31 @@ export default function useMessages(receiverUID: string, isGroup = false) {
         }
       },
       onTypingStarted: (indicator) => {
-        if (indicator.getSender().getUid() === receiverUID) {
-          setIsTyping(true);
+        const receiverId = indicator.getReceiverId();
+        const senderId = indicator.getSender().getUid();
+        
+        if (isGroup) {
+          if (receiverId === receiverUID && senderId !== myUID) {
+            setIsTyping(true);
+          }
+        } else {
+          if (senderId === receiverUID) {
+            setIsTyping(true);
+          }
         }
       },
       onTypingEnded: (indicator) => {
-        if (indicator.getSender().getUid() === receiverUID) {
-          setIsTyping(false);
+        const receiverId = indicator.getReceiverId();
+        const senderId = indicator.getSender().getUid();
+
+        if (isGroup) {
+          if (receiverId === receiverUID) {
+            setIsTyping(false);
+          }
+        } else {
+          if (senderId === receiverUID) {
+            setIsTyping(false);
+          }
         }
       },
     });
