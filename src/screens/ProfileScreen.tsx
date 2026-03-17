@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -28,7 +28,7 @@ export default function ProfileScreen({ navigation, route }: Props) {
 
   const uid = route.params?.uid || currentUserId;
 
-  const { statusText } = useOnlineStatus(uid || '');
+  const { statusText, online } = useOnlineStatus(uid || '');
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -72,9 +72,9 @@ export default function ProfileScreen({ navigation, route }: Props) {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['left', 'right']}>
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 200 }]}> 
         <View style={styles.profileHeader}>
-          <Avatar uri={profile?.photoURL || null} name={displayName} size={90} online={false} />
+          <Avatar uri={profile?.photoURL || null} name={displayName} size={90} online={isCurrentUser ? true : online} />
           <Text style={[styles.name, { color: colors.textPrimary }]}>{displayName}</Text>
-          <Text style={[styles.status, { color: colors.textSecondary }]}>{statusText || 'online'}</Text>
+          <Text style={[styles.status, { color: colors.textSecondary }]}>{isCurrentUser ? 'online' : statusText || 'visto recentemente'}</Text>
         </View>
 
         {isCurrentUser && (

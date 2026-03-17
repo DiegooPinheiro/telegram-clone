@@ -141,7 +141,7 @@ export default function ContactsScreen({ navigation }: Props) {
                   })
                 }
               >
-                <Avatar uri={item.getAvatar() || null} name={name} size={54} online={false} />
+                <Avatar uri={item.getAvatar() || null} name={name} size={54} online={online} />
                 <View style={styles.contactInfo}>
                   <Text style={[styles.contactName, { color: colors.textPrimary }]}>{name}</Text>
                   <Text style={[styles.contactStatus, { color: colors.textSecondary }]} numberOfLines={1}>

@@ -23,7 +23,7 @@ export default function ChatScreen({ navigation, route }: Props) {
   const { uid: receiverUID, name, isGroup = false, avatar } = route.params;
   const { uid: myUID } = useAuth();
   const { messages, loading, send, isTyping } = useMessages(receiverUID, isGroup);
-  const { statusText } = useOnlineStatus(receiverUID, !isGroup);
+  const { statusText, online } = useOnlineStatus(receiverUID, !isGroup);
   const flatListRef = useRef<FlatList>(null);
   const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
@@ -35,7 +35,7 @@ export default function ChatScreen({ navigation, route }: Props) {
     navigation.setOptions({
       headerTitle: () => (
         <View style={styles.headerTitleWrap}>
-          <Avatar name={name} size={38} uri={avatarUri} />
+          <Avatar name={name} size={38} uri={avatarUri} online={online} />
           <View style={styles.headerTextWrap}>
             <Text style={[styles.headerName, { color: colors.textPrimary }]} numberOfLines={1}>
               {name}
