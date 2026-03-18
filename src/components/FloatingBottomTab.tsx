@@ -1,47 +1,16 @@
-import React from 'react';
+﻿import React from 'react';
 import { View, TouchableOpacity, StyleSheet, Text, Dimensions } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CometChat } from '@cometchat/chat-sdk-react-native';
 import useTheme from '../hooks/useTheme';
-import { getTotalUnreadCount } from '../services/cometChatService';
 
 const { width } = Dimensions.get('window');
 
 export default function FloatingBottomTab({ state, descriptors, navigation }: BottomTabBarProps) {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const [unreadCount, setUnreadCount] = React.useState(0);
-
-  React.useEffect(() => {
-    const fetchUnread = async () => {
-      const loggedInUser = await CometChat.getLoggedinUser();
-      if (!loggedInUser) return;
-      
-      const count = await getTotalUnreadCount();
-      setUnreadCount(count);
-    };
-
-    fetchUnread();
-
-    const listenerID = 'BOTTOM_TAB_UNREAD_LISTENER_' + Math.random().toString(36).substring(7);
-    CometChat.addMessageListener(
-      listenerID,
-      new CometChat.MessageListener({
-        onTextMessageReceived: () => fetchUnread(),
-        onMediaMessageReceived: () => fetchUnread(),
-        onCustomMessageReceived: () => fetchUnread(),
-        onMessagesDelivered: () => fetchUnread(),
-        onMessagesRead: () => fetchUnread(),
-        onMessageDeleted: () => fetchUnread(),
-      })
-    );
-
-    return () => {
-      CometChat.removeMessageListener(listenerID);
-    };
-  }, []);
+  const unreadCount = 0; // sua API ainda não implementa contagem de não lidas
 
   return (
     <View style={[styles.container, { bottom: insets.bottom + 8 }]}>
@@ -105,10 +74,10 @@ export default function FloatingBottomTab({ state, descriptors, navigation }: Bo
                     ],
                   ]}
                 >
-                  <Ionicons 
-                    name={iconName} 
-                    size={24} 
-                    color={isFocused ? colors.tabBarActive : colors.textSecondary} 
+                  <Ionicons
+                    name={iconName}
+                    size={24}
+                    color={isFocused ? colors.tabBarActive : colors.textSecondary}
                   />
                 </View>
                 {route.name === 'ChatList' && unreadCount > 0 && (

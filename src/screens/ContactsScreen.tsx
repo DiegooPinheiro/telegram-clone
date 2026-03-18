@@ -6,66 +6,80 @@ import {
   TextInput,
   TouchableOpacity,
   SectionList,
+  Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { CometChat } from '@cometchat/chat-sdk-react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/types';
-import { fetchUsers } from '../services/cometChatService';
 import Avatar from '../components/Avatar';
 import LoadingSpinner from '../components/LoadingSpinner';
 import useTheme from '../hooks/useTheme';
+import { chatCreateConversation, chatListUsers } from '../services/chatApi';
+import { getChatSession } from '../services/chatSession';
+import type { ChatApiUser } from '../types/chatApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Contacts'>;
 
 type ContactSection = {
   title: string;
-  data: CometChat.User[];
+  data: ChatApiUser[];
 };
 
 export default function ContactsScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [search, setSearch] = useState('');
-  const [users, setUsers] = useState<CometChat.User[]>([]);
+  const [users, setUsers] = useState<ChatApiUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [noSession, setNoSession] = useState(false);
+
+  const loadUsers = async () => {
+    setLoading(true);
+    setNoSession(false);
+    try {
+      // Verificar se há sessão antes de buscar
+      const session = await getChatSession();
+      if (!session?.token) {
+        console.warn('[ContactsScreen] Sessão não encontrada, aguardando...');
+        setNoSession(true);
+        setLoading(false);
+        return;
+      }
+      const fetched = await chatListUsers();
+      setUsers(fetched);
+    } catch (error: any) {
+      console.error('Erro ao buscar contatos:', error);
+      Alert.alert('Erro', error?.message || 'Não foi possível buscar contatos.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadUsers = async () => {
-      try {
-        const fetched = await fetchUsers();
-        setUsers(fetched);
-      } catch (error) {
-        console.error('Erro ao buscar contatos:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadUsers();
   }, []);
 
   const filteredUsers = useMemo(() => {
     const normalized = search.trim().toLowerCase();
-    if (!normalized) {
-      return users;
-    }
-
-    return users.filter((u) => u.getName().toLowerCase().includes(normalized));
+    if (!normalized) return users;
+    return users.filter((u) => {
+      const nome = (u.nome || '').toLowerCase();
+      const username = (u.username || '').toLowerCase();
+      return nome.includes(normalized) || username.includes(normalized);
+    });
   }, [search, users]);
 
   const sections = useMemo<ContactSection[]>(() => {
-    const sorted = [...filteredUsers].sort((a, b) => a.getName().localeCompare(b.getName()));
-    const grouped = new Map<string, CometChat.User[]>();
+    const sorted = [...filteredUsers].sort((a, b) => (a.nome || a.username).localeCompare(b.nome || b.username));
+    const grouped = new Map<string, ChatApiUser[]>();
 
     sorted.forEach((user) => {
-      const first = user.getName().trim().charAt(0).toUpperCase() || '#';
+      const display = user.nome || user.username;
+      const first = display.trim().charAt(0).toUpperCase() || '#';
       const key = /[A-Z]/.test(first) ? first : '#';
 
-      if (!grouped.has(key)) {
-        grouped.set(key, []);
-      }
+      if (!grouped.has(key)) grouped.set(key, []);
       grouped.get(key)!.push(user);
     });
 
@@ -74,20 +88,48 @@ export default function ContactsScreen({ navigation }: Props) {
       .map(([title, data]) => ({ title, data }));
   }, [filteredUsers]);
 
+  const startChat = async (user: ChatApiUser) => {
+    try {
+      const conversation = await chatCreateConversation(user._id);
+      navigation.navigate('Chat', {
+        conversationId: conversation._id,
+        userId: user._id,
+        name: user.nome || user.username,
+        avatar: user.foto || null,
+      });
+    } catch (error: any) {
+      console.error('Erro ao iniciar conversa:', error);
+      Alert.alert('Erro', error?.message || 'Não foi possível iniciar a conversa.');
+    }
+  };
+
   if (loading) {
     return <LoadingSpinner message="Carregando contatos..." />;
+  }
+
+  if (noSession) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]} edges={['left', 'right']}>
+        <Text style={{ color: colors.textSecondary, fontSize: 16, textAlign: 'center', marginBottom: 16 }}>
+          Sessão não encontrada. Faça login novamente.
+        </Text>
+        <TouchableOpacity onPress={loadUsers} style={{ backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 24 }}>
+          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>Tentar novamente</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
   }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['left', 'right']}>
       <View style={styles.headerRow}>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Contatos</Text>
-        <TouchableOpacity style={styles.headerAction}>
-          <MaterialCommunityIcons name="sort-variant" size={24} color={colors.textPrimary} />
+        <TouchableOpacity style={styles.headerAction} onPress={loadUsers}>
+          <MaterialCommunityIcons name="refresh" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
-      <View style={[styles.searchWrap, { backgroundColor: colors.inputBackground }]}>
+      <View style={[styles.searchWrap, { backgroundColor: colors.inputBackground }]}> 
         <Ionicons name="search-outline" size={20} color={colors.textSecondary} style={styles.searchIcon} />
         <TextInput
           style={[styles.searchInput, { color: colors.textPrimary }]}
@@ -98,52 +140,29 @@ export default function ContactsScreen({ navigation }: Props) {
         />
       </View>
 
-      <View style={[styles.quickCard, { backgroundColor: colors.surface }]}>
-        <TouchableOpacity style={styles.quickRow}>
-          <View style={[styles.quickIconWrap, { backgroundColor: '#2A85FF' }]}>
-            <Ionicons name="person-add-outline" size={18} color="#ffffff" />
-          </View>
-          <Text style={[styles.quickText, { color: colors.textPrimary }]}>Convidar Amigos</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.quickRow, styles.quickRowLast, { borderTopColor: colors.separator }]}>
-          <View style={[styles.quickIconWrap, { backgroundColor: '#30D158' }]}>
-            <Ionicons name="call-outline" size={18} color="#ffffff" />
-          </View>
-          <Text style={[styles.quickText, { color: colors.textPrimary }]}>Chamadas recentes</Text>
-        </TouchableOpacity>
-      </View>
-
       <View style={[styles.listCard, { backgroundColor: colors.surface }]}>
         <Text style={[styles.listTitle, { color: colors.primary }]}>Listado por Nome</Text>
 
         <SectionList
           sections={sections}
-          keyExtractor={(item) => item.getUid()}
+          keyExtractor={(item) => item._id}
           contentContainerStyle={styles.sectionContent}
           renderSectionHeader={({ section }) => (
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{section.title}</Text>
           )}
           renderItem={({ item }) => {
-            const name = item.getName();
-            const online = item.getStatus() === 'online';
-            const subtitle = online ? 'online' : item.getStatusMessage() || 'visto recentemente';
+            const displayName = item.nome || item.username;
+            const subtitle = item.username;
 
             return (
               <TouchableOpacity
                 style={styles.contactRow}
                 activeOpacity={0.75}
-                onPress={() =>
-                  navigation.navigate('Chat', {
-                    uid: item.getUid(),
-                    name,
-                    avatar: item.getAvatar() || null,
-                  })
-                }
+                onPress={() => startChat(item)}
               >
-                <Avatar uri={item.getAvatar() || null} name={name} size={54} online={online} />
+                <Avatar uri={item.foto || null} name={displayName} size={54} online={false} />
                 <View style={styles.contactInfo}>
-                  <Text style={[styles.contactName, { color: colors.textPrimary }]}>{name}</Text>
+                  <Text style={[styles.contactName, { color: colors.textPrimary }]}>{displayName}</Text>
                   <Text style={[styles.contactStatus, { color: colors.textSecondary }]} numberOfLines={1}>
                     {subtitle}
                   </Text>
@@ -209,35 +228,6 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#ffffff',
     fontSize: 18,
-  },
-  quickCard: {
-    backgroundColor: '#141518',
-    borderRadius: 22,
-    overflow: 'hidden',
-    marginBottom: 14,
-  },
-  quickRow: {
-    minHeight: 72,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-  },
-  quickRowLast: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#2A2B2F',
-  },
-  quickIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  quickText: {
-    color: '#ffffff',
-    fontSize: 17,
-    fontWeight: '500',
   },
   listCard: {
     flex: 1,

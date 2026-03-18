@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import useTheme from '../hooks/useTheme';
-import { createGroup } from '../services/cometChatService';
 import { spacing } from '../theme/spacing';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NewGroup'>;
@@ -23,14 +22,8 @@ export default function NewGroupScreen({ navigation }: Props) {
 
     setCreating(true);
     try {
-      const group = await createGroup(groupName, 'public');
-      navigation.replace('Chat', {
-        uid: group.getGuid(),
-        name: group.getName(),
-        isGroup: true,
-      });
-    } catch (error: any) {
-      Alert.alert('Erro', error?.message || 'Nao foi possivel criar o grupo.');
+      Alert.alert('Em breve', 'Grupos ainda não foram implementados na sua Chat API.');
+      navigation.goBack();
     } finally {
       setCreating(false);
     }

@@ -1,70 +1,49 @@
-import React, { useState, useEffect, useCallback, useLayoutEffect } from 'react';
+﻿import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, FlatList, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
-import { CometChat } from '@cometchat/chat-sdk-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../navigation/types';
 import { spacing } from '../theme/spacing';
-import { fetchConversations, loginCometChat } from '../services/cometChatService';
 import ChatListItem from '../components/ChatListItem';
 import LoadingSpinner from '../components/LoadingSpinner';
 import useTheme from '../hooks/useTheme';
-import useAuth from '../hooks/useAuth';
+import { chatGetConversations } from '../services/chatApi';
+import { getChatSession } from '../services/chatSession';
+import { onReceiveMessage } from '../services/chatSocket';
+import type { ChatApiConversation, ChatApiUser } from '../types/chatApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ChatList'>;
 
 export default function ChatListScreen({ navigation }: Props) {
   const { colors: themeColors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { uid, displayName } = useAuth();
-  const [conversations, setConversations] = useState<CometChat.Conversation[]>([]);
+  const [conversations, setConversations] = useState<ChatApiConversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [selectedConversation, setSelectedConversation] = useState<{
-    id: string;
-    type: string;
-    name: string;
-    isGroup: boolean;
-  } | null>(null);
-
-  const ensureCometChatSession = useCallback(async () => {
-    const loggedInUser = await CometChat.getLoggedinUser();
-    if (loggedInUser) {
-      return true;
-    }
-
-    if (!uid) {
-      return false;
-    }
-
-    try {
-      await loginCometChat(uid, displayName || 'Usuario');
-      return true;
-    } catch (error) {
-      console.error('[ChatList] Falha ao recuperar sessao CometChat:', error);
-      return false;
-    }
-  }, [uid, displayName]);
+  const [myUserId, setMyUserId] = useState<string | null>(null);
 
   const loadConversations = useCallback(async () => {
     setLoading(true);
     try {
-      const hasSession = await ensureCometChatSession();
-      if (!hasSession) {
+      const session = await getChatSession();
+      if (!session?.userId) {
+        setMyUserId(null);
         setConversations([]);
         return;
       }
 
-      const fetched = await fetchConversations();
+      setMyUserId(session.userId);
+      const fetched = await chatGetConversations(session.userId);
       setConversations(fetched);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao carregar conversas:', error);
+      Alert.alert('Erro', error?.message || 'Não foi possível carregar suas conversas.');
     } finally {
       setLoading(false);
     }
-  }, [ensureCometChatSession]);
+  }, []);
 
   useEffect(() => {
     loadConversations();
@@ -73,171 +52,69 @@ export default function ChatListScreen({ navigation }: Props) {
   useFocusEffect(
     useCallback(() => {
       loadConversations();
-      return () => {
-        setSelectedConversation(null);
-      };
+      return () => {};
     }, [loadConversations])
   );
 
   useEffect(() => {
-    const listenerID = 'chatlist_listener';
-
-    CometChat.addMessageListener(
-      listenerID,
-      new CometChat.MessageListener({
-        onTextMessageReceived: () => loadConversations(),
-        onMediaMessageReceived: () => loadConversations(),
-        onCustomMessageReceived: () => loadConversations(),
-        onMessageDeleted: () => loadConversations(),
-        onUnreadMessageCountUpdated: () => loadConversations(),
-      })
-    );
+    const unsubscribe = onReceiveMessage(() => {
+      loadConversations();
+    });
 
     return () => {
-      CometChat.removeMessageListener(listenerID);
+      unsubscribe?.();
     };
   }, [loadConversations]);
 
+  const filteredConversations = useMemo(() => {
+    const normalized = search.trim().toLowerCase();
+    if (!normalized) return conversations;
+
+    return conversations.filter((c) => {
+      const other = getOtherParticipant(c, myUserId);
+      const name = other?.nome || other?.username || '';
+      return name.toLowerCase().includes(normalized);
+    });
+  }, [search, conversations, myUserId]);
+
   const renderConversation = useCallback(
-    ({ item }: { item: CometChat.Conversation }) => {
-      const conversationWith = item.getConversationWith();
-      const lastMessage = item.getLastMessage();
+    ({ item }: { item: ChatApiConversation }) => {
+      const other = getOtherParticipant(item, myUserId);
+      const name = other?.nome || other?.username || 'Conversa';
+      const avatar = other?.foto || null;
 
-      let name = '';
-      let uid = '';
-      let avatar: string | null = null;
-      let online = false;
-      let isGroup = false;
-
-      if (conversationWith instanceof CometChat.User) {
-        name = conversationWith.getName();
-        uid = conversationWith.getUid();
-        avatar = conversationWith.getAvatar() || null;
-        online = conversationWith.getStatus() === 'online';
-      } else if (conversationWith instanceof CometChat.Group) {
-        name = conversationWith.getName();
-        uid = conversationWith.getGuid();
-        avatar = conversationWith.getIcon() || null;
-        isGroup = true;
-      }
-
-      let lastMessageText = '';
-      if (lastMessage instanceof CometChat.TextMessage) {
-        lastMessageText = lastMessage.getText();
-      } else if (lastMessage) {
-        lastMessageText = '[Midia]';
-      }
+      const lastMessageText = item.lastMessage?.text ? String(item.lastMessage.text) : '';
+      const timestamp = item.lastMessage?.createdAt
+        ? Math.floor(new Date(item.lastMessage.createdAt).getTime() / 1000)
+        : Math.floor(new Date(item.updatedAt).getTime() / 1000);
 
       return (
         <ChatListItem
-          id={uid}
+          id={item._id}
           name={name}
-          lastMessage={lastMessageText}
-          timestamp={lastMessage ? lastMessage.getSentAt() : 0}
-          unreadCount={item.getUnreadMessageCount()}
+          lastMessage={lastMessageText || 'Toque para abrir'}
+          timestamp={timestamp}
+          unreadCount={0}
           avatar={avatar}
-          online={online}
-          selected={selectedConversation?.id === uid && selectedConversation?.type === (isGroup ? CometChat.RECEIVER_TYPE.GROUP : CometChat.RECEIVER_TYPE.USER)}
+          online={false}
           onPress={() => {
-            if (selectedConversation) {
-              if (selectedConversation.id === uid) {
-                setSelectedConversation(null);
-              } else {
-                setSelectedConversation({
-                  id: uid,
-                  type: isGroup ? CometChat.RECEIVER_TYPE.GROUP : CometChat.RECEIVER_TYPE.USER,
-                  name,
-                  isGroup,
-                });
-              }
+            if (!other?._id) {
+              Alert.alert('Erro', 'Participante inválido nesta conversa.');
               return;
             }
-            navigation.navigate('Chat', { uid, name, isGroup, avatar });
-          }}
-          onLongPress={() => {
-            setSelectedConversation({
-              id: uid,
-              type: isGroup ? CometChat.RECEIVER_TYPE.GROUP : CometChat.RECEIVER_TYPE.USER,
+
+            navigation.navigate('Chat', {
+              conversationId: item._id,
+              userId: other._id,
               name,
-              isGroup,
+              avatar,
             });
           }}
         />
       );
     },
-    [navigation, selectedConversation]
+    [navigation, myUserId]
   );
-
-  const filteredConversations = conversations.filter((conv) => {
-    const name = conv.getConversationWith().getName().toLowerCase();
-    return name.includes(search.toLowerCase());
-  });
-
-  const handleDeleteSelected = useCallback(async () => {
-    if (!selectedConversation) {
-      return;
-    }
-
-    const title = selectedConversation.isGroup ? 'Sair do grupo' : 'Apagar conversa';
-    const message = selectedConversation.isGroup
-      ? `Deseja sair do grupo "${selectedConversation.name}"?`
-      : `Deseja apagar a conversa com "${selectedConversation.name}"?`;
-
-    Alert.alert(title, message, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: selectedConversation.isGroup ? 'Sair' : 'Apagar',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            if (selectedConversation.isGroup) {
-              await CometChat.leaveGroup(selectedConversation.id);
-            } else {
-              await CometChat.deleteConversation(selectedConversation.id, selectedConversation.type);
-            }
-            setSelectedConversation(null);
-            loadConversations();
-          } catch (error: any) {
-            console.error('Erro ao remover conversa:', error);
-            if (selectedConversation.isGroup && error?.code === 'ERR_OWNER_EXIT_FORBIDDEN') {
-              Alert.alert(
-                'Voce e dono do grupo',
-                'Para sair, transfira a propriedade ou exclua o grupo.',
-                [
-                  { text: 'Cancelar', style: 'cancel' },
-                  {
-                    text: 'Excluir Grupo',
-                    style: 'destructive',
-                    onPress: async () => {
-                      try {
-                        await CometChat.deleteGroup(selectedConversation.id);
-                        setSelectedConversation(null);
-                        loadConversations();
-                      } catch (deleteError) {
-                        console.error('Erro ao excluir grupo:', deleteError);
-                        Alert.alert('Erro', 'Nao foi possivel excluir o grupo.');
-                      }
-                    },
-                  },
-                ]
-              );
-              return;
-            }
-            Alert.alert('Erro', 'Nao foi possivel remover a conversa.');
-          }
-        },
-      },
-    ]);
-  }, [selectedConversation, loadConversations]);
-
-  useLayoutEffect(() => {
-    const parent = navigation.getParent();
-    const root = parent?.getParent();
-    root?.setParams({
-      showChatActions: !!selectedConversation,
-      onDeleteSelected: handleDeleteSelected,
-    });
-  }, [navigation, selectedConversation, handleDeleteSelected]);
 
   if (loading) {
     return <LoadingSpinner message="Carregando conversas..." />;
@@ -261,7 +138,7 @@ export default function ChatListScreen({ navigation }: Props) {
       <FlatList
         data={filteredConversations}
         renderItem={renderConversation}
-        keyExtractor={(item) => item.getConversationId()}
+        keyExtractor={(item) => item._id}
         contentContainerStyle={styles.listContent}
         ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: themeColors.separator }]} />}
         ListEmptyComponent={
@@ -272,9 +149,7 @@ export default function ChatListScreen({ navigation }: Props) {
               color={themeColors.textSecondary}
               style={styles.emptyIcon}
             />
-            <Text style={[styles.emptyTitle, { color: themeColors.textPrimary }]}>
-              Nenhuma conversa encontrada
-            </Text>
+            <Text style={[styles.emptyTitle, { color: themeColors.textPrimary }]}>Nenhuma conversa encontrada</Text>
           </View>
         }
       />
@@ -289,7 +164,7 @@ export default function ChatListScreen({ navigation }: Props) {
             },
           ]}
           activeOpacity={0.85}
-          onPress={() => Alert.alert('Camera', 'Abrir camera em breve.')}
+          onPress={() => Alert.alert('Câmera', 'Abrir câmera em breve.')}
         >
           <Ionicons name="camera-outline" size={22} color={themeColors.textPrimary} />
         </TouchableOpacity>
@@ -305,6 +180,13 @@ export default function ChatListScreen({ navigation }: Props) {
     </View>
   );
 }
+
+const getOtherParticipant = (conversation: ChatApiConversation, myUserId: string | null): ChatApiUser | null => {
+  if (!conversation.participants || conversation.participants.length === 0) return null;
+  if (!myUserId) return conversation.participants[0];
+
+  return conversation.participants.find((p) => p._id !== myUserId) || conversation.participants[0];
+};
 
 const styles = StyleSheet.create({
   container: {

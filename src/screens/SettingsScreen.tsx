@@ -13,7 +13,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
 import useAuth from '../hooks/useAuth';
 import { getUserProfile, signOut } from '../services/authService';
-import { logoutCometChat } from '../services/cometChatService';
 import Avatar from '../components/Avatar';
 import { useSettings } from '../context/SettingsContext';
 import useTheme from '../hooks/useTheme';
@@ -293,3 +292,5 @@ const styles = StyleSheet.create({
     backgroundColor: '#1C1C1D',
   },
 });
+
+

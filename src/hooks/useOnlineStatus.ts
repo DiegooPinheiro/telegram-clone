@@ -1,21 +1,15 @@
-import { useState, useEffect } from 'react';
-import { CometChat } from '@cometchat/chat-sdk-react-native';
-import {
-  addUserPresenceListener,
-  removeUserPresenceListener,
-} from '../services/cometChatService';
+﻿import { useState, useEffect } from 'react';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '../config/firebaseConfig';
 
 /**
- * Hook de status online/offline de um usuário específico.
- * Escuta mudanças de presença em tempo real via CometChat.
+ * Hook de status online/offline baseado no Firestore.
+ * Lê os campos `online` e `lastSeen` do documento `users/{uid}`.
  */
 export default function useOnlineStatus(uid: string, enabled = true) {
   const [online, setOnline] = useState(false);
   const [lastSeen, setLastSeen] = useState<Date | null>(null);
 
-  const listenerID = `presence_${uid}`;
-
-  // Buscar status inicial
   useEffect(() => {
     if (!enabled || !uid) {
       setOnline(false);
@@ -23,48 +17,36 @@ export default function useOnlineStatus(uid: string, enabled = true) {
       return;
     }
 
-    const fetchInitialStatus = async () => {
-      try {
-        const user = await CometChat.getUser(uid);
-        setOnline(user.getStatus() === 'online');
-        if (user.getLastActiveAt()) {
-          setLastSeen(new Date(user.getLastActiveAt() * 1000));
+    const ref = doc(db, 'users', uid);
+    const unsubscribe = onSnapshot(
+      ref,
+      (snap) => {
+        if (!snap.exists()) {
+          setOnline(false);
+          setLastSeen(null);
+          return;
         }
-      } catch (error) {
-        console.error('[useOnlineStatus] Erro ao buscar status:', error);
-      }
-    };
 
-    fetchInitialStatus();
-  }, [uid, enabled]);
-
-  // Listener de mudanças de presença
-  useEffect(() => {
-    if (!enabled || !uid) {
-      return;
-    }
-
-    addUserPresenceListener(
-      listenerID,
-      (onlineUser) => {
-        if (onlineUser.getUid() === uid) {
-          setOnline(true);
+        const data = snap.data() as any;
+        setOnline(!!data.online);
+        if (data.lastSeen) {
+          const date = new Date(String(data.lastSeen));
+          setLastSeen(Number.isNaN(date.getTime()) ? null : date);
+        } else {
+          setLastSeen(null);
         }
       },
-      (offlineUser) => {
-        if (offlineUser.getUid() === uid) {
-          setOnline(false);
-          setLastSeen(new Date());
-        }
+      (error) => {
+        console.error('[useOnlineStatus] Erro ao observar status:', error);
+        setOnline(false);
       }
     );
 
     return () => {
-      removeUserPresenceListener(listenerID);
+      unsubscribe();
     };
-  }, [uid, listenerID, enabled]);
+  }, [uid, enabled]);
 
-  // Formatar "visto por último"
   const formatLastSeen = (): string => {
     if (online) return 'online';
     if (!lastSeen) return 'visto recentemente';

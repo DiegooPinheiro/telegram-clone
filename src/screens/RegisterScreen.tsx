@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,6 @@ import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { validateEmail, validatePassword, validateDisplayName } from '../utils/validators';
 import { signUp } from '../services/authService';
-import { createCometChatUser, loginCometChat } from '../services/cometChatService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
 
@@ -204,3 +203,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
+

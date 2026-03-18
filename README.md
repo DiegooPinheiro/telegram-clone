@@ -1,25 +1,27 @@
-# Telegram Clone (Expo + Firebase + CometChat)
+﻿# Telegram Clone (Expo + Firebase + Chat API)
 
-Projeto mobile inspirado no Telegram, construido com Expo/React Native. Ele usa Firebase para autenticacao e perfil do usuario e CometChat para mensagens em tempo real (1:1 e grupos).
+Projeto mobile inspirado no Telegram, construído com Expo/React Native.
 
-## Principais recursos
+- **Firebase**: autenticação (email/senha) e perfil do usuário (Firestore).
+- **Sua Chat API (Node/Express + MongoDB + Socket.IO)**: conversas e mensagens em tempo real.
 
-- Autenticacao com email/senha (Firebase Auth).
-- Perfil do usuario no Firestore (nome, bio, foto, status).
-- Lista de conversas recentes.
-- Chat 1:1 e grupos com envio de mensagens.
-- Indicador de digitando e status online.
-- Contatos e busca.
-- Criacao de grupos.
-- Perfil, configuracoes e telas auxiliares (notificacoes, privacidade, dados).
+> Este app foi migrado do CometChat para uma API própria.
+
+## Principais recursos (MVP)
+
+- Autenticação com email/senha (Firebase Auth).
+- Perfil do usuário no Firestore (nome, bio, foto, status).
+- Lista de conversas recentes (Chat API).
+- Chat 1:1 com envio/recebimento em tempo real (Socket.IO).
+- Contatos e busca (lista de usuários da Chat API).
 - Tema claro/escuro (via SettingsContext).
 
 ## Stack
 
 - Expo (React Native)
-- React Navigation (stack + tabs + drawer)
+- React Navigation (stack + tabs)
 - Firebase (Auth + Firestore)
-- CometChat React Native SDK
+- Socket.IO Client
 - TypeScript
 
 ## Estrutura de pastas (resumo)
@@ -41,52 +43,41 @@ telegram-clone/
     theme/
 ```
 
-## Configuracao
+## Configuração
 
-### 1) Instalar dependencias
+### 1) Instalar dependências
 
 ```bash
 npm install
 ```
 
-### 2) Variaveis de ambiente
+### 2) Variáveis de ambiente
 
-Copie o arquivo de exemplo e preencha com suas chaves:
+Copie o arquivo de exemplo e preencha:
 
 ```bash
 cp .env.example .env
 ```
 
-O projeto le as variaveis diretamente do `process.env` (Expo). Todas precisam do prefixo `EXPO_PUBLIC_`.
+O projeto lê variáveis diretamente do `process.env` (Expo). Todas precisam do prefixo `EXPO_PUBLIC_`.
 
 #### Firebase
 
 Preencha no `.env`:
 
-- EXPO_PUBLIC_FIREBASE_API_KEY
-- EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN
-- EXPO_PUBLIC_FIREBASE_PROJECT_ID
-- EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET
-- EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-- EXPO_PUBLIC_FIREBASE_APP_ID
+- `EXPO_PUBLIC_FIREBASE_API_KEY`
+- `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN`
+- `EXPO_PUBLIC_FIREBASE_PROJECT_ID`
+- `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET`
+- `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+- `EXPO_PUBLIC_FIREBASE_APP_ID`
 
-#### CometChat
+#### Chat API
 
-Preencha no `.env`:
+- `EXPO_PUBLIC_CHAT_API_URL`
+  - Exemplo: `https://chat-api-v2-tested.onrender.com`
 
-- EXPO_PUBLIC_COMETCHAT_APP_ID
-- EXPO_PUBLIC_COMETCHAT_REGION
-- EXPO_PUBLIC_COMETCHAT_AUTH_KEY
-
-> O CometChat e inicializado no `App.tsx` antes de qualquer uso.
-
-## Passo a passo rapido
-
-1. `npm install`
-2. `cp .env.example .env`
-3. Preencha as variaveis do Firebase e do CometChat no `.env`
-4. `npm start`
-5. Abra no Expo Go (ou `npm run android` / `npm run ios`)
+> Dica: no Render (Free) a primeira requisição pode demorar ~50s porque o serviço “dorme”.
 
 ## Como rodar
 
@@ -105,36 +96,17 @@ npm run web
 ## Fluxo principal
 
 1. App inicia em `App.tsx`.
-2. Firebase Auth define se o usuario esta logado.
-3. CometChat e inicializado e o usuario e logado (UID do Firebase).
-4. Se autenticado: `AppNavigator`. Senao: `AuthNavigator`.
+2. Firebase Auth define se o usuário está logado.
+3. No login/cadastro, o app registra/autentica o usuário na Chat API e salva `token` + `userId` em `AsyncStorage`.
+4. O app conecta no Socket.IO e escuta mensagens (`receive_message`).
 
-## Scripts (package.json)
+## Observações importantes
 
-- `start`: Expo dev server
-- `android`: Expo no Android
-- `ios`: Expo no iOS
-- `web`: Expo no navegador
+- A Chat API ainda não implementa alguns recursos que existiam no CometChat (ex.: grupos, typing, receipts, contagem de não lidas).
+- Para produção real, recomenda-se:
+  - autenticar o Socket.IO (não confiar em `senderId` vindo do cliente)
+  - usar storage/CDN para uploads (no Render o disco é efêmero)
 
-## Observacoes importantes
+## Licença
 
-- O UID do Firebase e usado como UID no CometChat para manter sincronia.
-- Se o usuario for dono de um grupo, ele nao consegue sair sem transferir a propriedade (regra do CometChat).
-- Para evitar logins simultaneos, o serviço do CometChat controla concorrencia de login.
-- **Seguranca**: chaves `EXPO_PUBLIC_` ficam embutidas no app. Para producao, mova a geracao de tokens do CometChat para um backend.
-
-## Problemas comuns
-
-### CometChat nao inicializa
-- Verifique `APP_ID` e `REGION` em `cometChatConfig.ts`.
-- Garanta que `initCometChat()` e chamado no `App.tsx`.
-
-### Firebase nao conecta
-- Verifique as credenciais em `firebaseConfig.ts`.
-
-### Metro bundler falha
-- Rode `npm start` novamente ou use `npx expo start -c` para limpar cache.
-
-## Licenca
-
-Projeto para fins de estudo/prototipo.
+Projeto para fins de estudo/protótipo.

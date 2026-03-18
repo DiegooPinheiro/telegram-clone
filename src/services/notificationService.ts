@@ -5,14 +5,26 @@ export const setupNotifications = async () => {
   // não necessitam pedido explícito de permissão ao SO nativo.
 };
 
-export const showMessageNotification = (title: string, body: string, data?: any) => {
-  // Dispara um toast visual no topo do aplicativo, visível simulando um push local
+export const showMessageNotification = (
+  title: string,
+  body: string,
+  options?: {
+    avatar?: string | null;
+    senderName?: string;
+    onPress?: () => void;
+  }
+) => {
   Toast.show({
-    type: 'info',
+    type: 'messageToast',
     text1: title,
     text2: body,
     position: 'top',
-    visibilityTime: 4000,
-    topOffset: 60,
+    visibilityTime: 5000,
+    topOffset: 50,
+    props: {
+      avatar: options?.avatar ?? null,
+      senderName: options?.senderName ?? title,
+      onPress: options?.onPress,
+    },
   });
 };

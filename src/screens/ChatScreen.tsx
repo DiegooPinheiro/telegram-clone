@@ -1,47 +1,47 @@
-import React, { useRef, useCallback, useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
+﻿import React, { useRef, useCallback, useEffect, useState } from 'react';
+import { View, Text, FlatList, StyleSheet, KeyboardAvoidingView, Platform, Keyboard, Alert } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { CometChat } from '@cometchat/chat-sdk-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { RootStackParamList } from '../navigation/types';
 import { spacing } from '../theme/spacing';
-import useMessages from '../hooks/useMessages';
-import useOnlineStatus from '../hooks/useOnlineStatus';
-import useAuth from '../hooks/useAuth';
 import MessageBubble from '../components/MessageBubble';
 import MessageInput from '../components/MessageInput';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Avatar from '../components/Avatar';
 import useTheme from '../hooks/useTheme';
+import { chatGetMessages } from '../services/chatApi';
+import { getChatSession } from '../services/chatSession';
+import { onReceiveMessage, sendMessageSocket } from '../services/chatSocket';
+import type { ChatApiMessage, ChatApiUser } from '../types/chatApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;
 
 export default function ChatScreen({ navigation, route }: Props) {
   const { colors } = useTheme();
-  const { uid: receiverUID, name, isGroup = false, avatar } = route.params;
-  const { uid: myUID } = useAuth();
-  const { messages, loading, send, isTyping, onTyping, onStopTyping } = useMessages(receiverUID, isGroup);
-  const { statusText, online } = useOnlineStatus(receiverUID, !isGroup);
+  const { conversationId, userId: receiverId, name, avatar } = route.params;
+
   const flatListRef = useRef<FlatList>(null);
   const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
   const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const [avatarUri, setAvatarUri] = useState<string | null>(avatar ?? null);
-  const [cometChatUid, setCometChatUid] = useState<string | null>(null);
+
+  const [myUserId, setMyUserId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatApiMessage[]>([]);
+  const [loading, setLoading] = useState(true);
 
   React.useLayoutEffect(() => {
     navigation.setOptions({
       headerTitle: () => (
         <View style={styles.headerTitleWrap}>
-          <Avatar name={name} size={38} uri={avatarUri} online={online} />
+          <Avatar name={name} size={38} uri={avatar ?? null} online={false} />
           <View style={styles.headerTextWrap}>
             <Text style={[styles.headerName, { color: colors.textPrimary }]} numberOfLines={1}>
               {name}
             </Text>
             <Text style={[styles.headerStatus, { color: colors.textSecondary }]} numberOfLines={1}>
-              {isTyping ? 'digitando...' : isGroup ? 'grupo' : statusText || 'visto recentemente'}
+              via Chat API
             </Text>
           </View>
         </View>
@@ -56,7 +56,7 @@ export default function ChatScreen({ navigation, route }: Props) {
       headerTintColor: colors.textPrimary,
       headerShadowVisible: false,
     });
-  }, [navigation, name, statusText, isTyping, colors.background, colors.textPrimary, avatarUri]);
+  }, [navigation, name, colors.background, colors.textPrimary, colors.textSecondary, avatar]);
 
   useEffect(() => {
     if (Platform.OS !== 'android') {
@@ -79,93 +79,109 @@ export default function ChatScreen({ navigation, route }: Props) {
   useEffect(() => {
     let active = true;
 
-    CometChat.getLoggedinUser()
-      .then((user) => {
-        if (active) {
-          setCometChatUid(user?.getUid?.() ?? null);
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setCometChatUid(null);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-
-    if (avatar) {
-      setAvatarUri(avatar);
-      return;
-    }
-
-    const loadAvatar = async () => {
+    const load = async () => {
+      setLoading(true);
       try {
-        if (isGroup) {
-          const group = await CometChat.getGroup(receiverUID);
-          const icon = group?.getIcon?.() || null;
+        const session = await getChatSession();
+        if (!session?.userId) {
           if (active) {
-            setAvatarUri(icon);
+            setMyUserId(null);
+            setMessages([]);
           }
-        } else {
-          const user = await CometChat.getUser(receiverUID);
-          const photo = user?.getAvatar?.() || null;
-          if (active) {
-            setAvatarUri(photo);
-          }
+          return;
         }
-      } catch (error) {
-        console.warn('Erro ao buscar avatar do chat:', error);
+
+        if (active) {
+          setMyUserId(session.userId);
+        }
+
+        const fetched = await chatGetMessages(conversationId);
+        if (active) {
+          setMessages(fetched);
+        }
+      } catch (error: any) {
+        console.error('Erro ao carregar mensagens:', error);
+        Alert.alert('Erro', error?.message || 'Não foi possível carregar mensagens.');
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
       }
     };
 
-    loadAvatar();
+    load();
 
     return () => {
       active = false;
     };
-  }, [receiverUID, isGroup, avatar]);
+  }, [conversationId]);
+
+  useEffect(() => {
+    const unsubscribe = onReceiveMessage((message: any) => {
+      if (!message || message.conversationId !== conversationId) {
+        return;
+      }
+
+      const normalized: ChatApiMessage = {
+        ...message,
+        // socket pode enviar senderId como string (sem populate)
+        senderId: message.senderId,
+        createdAt: message.createdAt || new Date().toISOString(),
+        updatedAt: message.updatedAt || message.createdAt || new Date().toISOString(),
+      };
+
+      setMessages((prev) => {
+        if (prev.some((m) => m._id === normalized._id)) return prev;
+        return [...prev, normalized];
+      });
+    });
+
+    return () => {
+      unsubscribe?.();
+    };
+  }, [conversationId]);
 
   const handleSend = useCallback(
     async (text: string) => {
+      if (!myUserId) {
+        Alert.alert('Erro', 'Sessão do chat ausente. Faça login novamente.');
+        return;
+      }
+
       try {
-        await send(text);
-      } catch (error) {
+        sendMessageSocket({
+          conversationId,
+          senderId: myUserId,
+          receiverId,
+          text,
+        });
+      } catch (error: any) {
         console.error('Erro ao enviar:', error);
+        Alert.alert('Erro', error?.message || 'Não foi possível enviar a mensagem.');
       }
     },
-    [send]
+    [conversationId, myUserId, receiverId]
   );
 
   const renderMessage = useCallback(
-    ({ item }: { item: CometChat.BaseMessage }) => {
-      const senderUid = item.getSender?.()?.getUid?.();
-      const receiverId = item.getReceiverId?.();
-      const mineUid = cometChatUid || myUID;
-      let isMine = false;
+    ({ item }: { item: ChatApiMessage }) => {
+      const senderId = extractUserId(item.senderId);
+      const isMine = !!myUserId && !!senderId && senderId === myUserId;
 
-      if (mineUid && senderUid) {
-        isMine = senderUid === mineUid;
-      } else if (!isGroup && receiverId) {
-        isMine = receiverId === receiverUID;
-      }
-      const text = item instanceof CometChat.TextMessage ? item.getText() : '[Midia]';
+      const senderName = !isMine ? extractUserName(item.senderId) || name : undefined;
+      const text = item.text ? String(item.text) : item.mediaUrl ? '[Mídia]' : '';
+      const timestamp = Math.floor(new Date(item.createdAt).getTime() / 1000);
 
       return (
         <MessageBubble
           message={text}
-          timestamp={item.getSentAt()}
+          timestamp={timestamp}
           isMine={isMine}
-          senderName={!isMine ? item.getSender().getName() : undefined}
+          senderName={senderName}
         />
       );
     },
-    [myUID, cometChatUid, isGroup, receiverUID]
+    [myUserId, name]
   );
 
   if (loading) {
@@ -175,20 +191,16 @@ export default function ChatScreen({ navigation, route }: Props) {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundChat }]} edges={['bottom']}>
       {Platform.OS === 'ios' ? (
-        <KeyboardAvoidingView
-          behavior="padding"
-          style={styles.flex}
-          keyboardVerticalOffset={headerHeight}
-        >
+        <KeyboardAvoidingView behavior="padding" style={styles.flex} keyboardVerticalOffset={headerHeight}>
           <View style={[styles.chatWallpaper, { backgroundColor: colors.backgroundChat }]} />
 
           <FlatList
             ref={flatListRef}
             data={messages}
             renderItem={renderMessage}
-            keyExtractor={(item) => item.getId().toString()}
+            keyExtractor={(item) => item._id}
             style={styles.list}
-            contentContainerStyle={styles.messagesList}
+            contentContainerStyle={[styles.messagesList, { paddingBottom: spacing.md + insets.bottom }]}
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
@@ -200,7 +212,7 @@ export default function ChatScreen({ navigation, route }: Props) {
             }
           />
 
-          <MessageInput onSend={handleSend} onTyping={onTyping} onStopTyping={onStopTyping} />
+          <MessageInput onSend={handleSend} />
         </KeyboardAvoidingView>
       ) : (
         <View style={[styles.flex, { paddingBottom: Math.max(0, keyboardHeight) }]}>
@@ -210,9 +222,9 @@ export default function ChatScreen({ navigation, route }: Props) {
             ref={flatListRef}
             data={messages}
             renderItem={renderMessage}
-            keyExtractor={(item) => item.getId().toString()}
+            keyExtractor={(item) => item._id}
             style={styles.list}
-            contentContainerStyle={styles.messagesList}
+            contentContainerStyle={[styles.messagesList, { paddingBottom: spacing.md + insets.bottom }]}
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
@@ -224,12 +236,27 @@ export default function ChatScreen({ navigation, route }: Props) {
             }
           />
 
-          <MessageInput onSend={handleSend} onTyping={onTyping} onStopTyping={onStopTyping} />
+          <MessageInput onSend={handleSend} />
         </View>
       )}
     </SafeAreaView>
   );
 }
+
+const extractUserId = (value: string | ChatApiUser | any): string | null => {
+  if (!value) return null;
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object' && value._id) return String(value._id);
+  return null;
+};
+
+const extractUserName = (value: string | ChatApiUser | any): string | null => {
+  if (!value) return null;
+  if (typeof value === 'object') {
+    return value.nome || value.username || null;
+  }
+  return null;
+};
 
 const styles = StyleSheet.create({
   container: {

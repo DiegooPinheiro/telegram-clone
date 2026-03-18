@@ -1,4 +1,4 @@
-export type RootStackParamList = {
+﻿export type RootStackParamList = {
   // Auth
   Login: undefined;
   Register: undefined;
@@ -14,7 +14,12 @@ export type RootStackParamList = {
 
   // Screens
   ChatList: undefined;
-  Chat: { uid: string; name: string; isGroup?: boolean; avatar?: string | null };
+  Chat: {
+    conversationId: string;
+    userId: string;
+    name: string;
+    avatar?: string | null;
+  };
   Profile: { uid?: string };
   Settings: undefined;
   Contacts: undefined;

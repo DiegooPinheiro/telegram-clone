@@ -1,31 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, TextInput } from 'react-native';
+﻿import React, { useState, useEffect, useMemo } from 'react';
+import { View, Text, FlatList, StyleSheet, TextInput, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { CometChat } from '@cometchat/chat-sdk-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/types';
 import { spacing } from '../theme/spacing';
-import { fetchUsers } from '../services/cometChatService';
 import ContactItem from '../components/ContactItem';
 import LoadingSpinner from '../components/LoadingSpinner';
 import useTheme from '../hooks/useTheme';
+import { chatCreateConversation, chatListUsers } from '../services/chatApi';
+import type { ChatApiUser } from '../types/chatApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NewChat'>;
 
 export default function NewChatScreen({ navigation }: Props) {
   const { colors: themeColors } = useTheme();
   const [search, setSearch] = useState('');
-  const [users, setUsers] = useState<CometChat.User[]>([]);
+  const [users, setUsers] = useState<ChatApiUser[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadUsers = async () => {
       try {
-        const fetched = await fetchUsers();
+        const fetched = await chatListUsers();
         setUsers(fetched);
-      } catch (error) {
-        console.error('Erro ao buscar usuarios:', error);
+      } catch (error: any) {
+        console.error('Erro ao buscar usuários:', error);
+        Alert.alert('Erro', error?.message || 'Não foi possível buscar usuários.');
       } finally {
         setLoading(false);
       }
@@ -34,27 +35,34 @@ export default function NewChatScreen({ navigation }: Props) {
     loadUsers();
   }, []);
 
-  const filteredUsers = users.filter((u) => u.getName().toLowerCase().includes(search.toLowerCase()));
+  const filteredUsers = useMemo(() => {
+    const normalized = search.trim().toLowerCase();
+    if (!normalized) return users;
 
-  const renderUser = ({ item }: { item: CometChat.User }) => (
-    <ContactItem
-      uid={item.getUid()}
-      name={item.getName()}
-      status={item.getStatusMessage() || ''}
-      avatar={item.getAvatar() || null}
-      online={item.getStatus() === 'online'}
-      onPress={() =>
-        navigation.navigate('Chat', {
-          uid: item.getUid(),
-          name: item.getName(),
-          avatar: item.getAvatar() || null,
-        })
-      }
-    />
-  );
+    return users.filter((u) => {
+      const name = (u.nome || u.username || '').toLowerCase();
+      const username = (u.username || '').toLowerCase();
+      return name.includes(normalized) || username.includes(normalized);
+    });
+  }, [users, search]);
+
+  const handleStartChat = async (user: ChatApiUser) => {
+    try {
+      const conversation = await chatCreateConversation(user._id);
+      navigation.navigate('Chat', {
+        conversationId: conversation._id,
+        userId: user._id,
+        name: user.nome || user.username,
+        avatar: user.foto || null,
+      });
+    } catch (error: any) {
+      console.error('Erro ao criar conversa:', error);
+      Alert.alert('Erro', error?.message || 'Não foi possível criar a conversa.');
+    }
+  };
 
   if (loading) {
-    return <LoadingSpinner message="Buscando usuarios..." />;
+    return <LoadingSpinner message="Buscando usuários..." />;
   }
 
   return (
@@ -70,7 +78,7 @@ export default function NewChatScreen({ navigation }: Props) {
             styles.searchInput,
             { backgroundColor: themeColors.backgroundSecondary, color: themeColors.textPrimary },
           ]}
-          placeholder="Quem voce quer contatar?"
+          placeholder="Quem você quer contatar?"
           placeholderTextColor={themeColors.textSecondary}
           value={search}
           onChangeText={setSearch}
@@ -80,14 +88,23 @@ export default function NewChatScreen({ navigation }: Props) {
 
       <FlatList
         data={filteredUsers}
-        renderItem={renderUser}
-        keyExtractor={(item) => item.getUid()}
+        renderItem={({ item }) => (
+          <ContactItem
+            uid={item._id}
+            name={item.nome || item.username}
+            status={item.username}
+            avatar={item.foto || null}
+            online={false}
+            onPress={() => handleStartChat(item)}
+          />
+        )}
+        keyExtractor={(item) => item._id}
         contentContainerStyle={styles.listContent}
         ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: themeColors.separator }]} />}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="search-outline" size={38} color={themeColors.textSecondary} style={styles.emptyIcon} />
-            <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>Nenhum usuario encontrado</Text>
+            <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>Nenhum usuário encontrado</Text>
           </View>
         }
       />

@@ -6,13 +6,25 @@ import {
   User,
   updateProfile,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import {
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+} from 'firebase/firestore';
 import { auth, db } from '../config/firebaseConfig';
-import { createCometChatUser, loginCometChat, logoutCometChat } from './cometChatService';
+import { UserProfile } from '../types/user';
+import { chatLogin, chatRegister } from './chatApi';
+import { clearChatSession, setChatSession } from './chatSession';
+import { connectChatSocket, disconnectChatSocket } from './chatSocket';
 
 /**
  * Registrar novo usuário com email e senha.
- * Cria o perfil no Firestore automaticamente.
+ * Cria o perfil no Firestore e registra na sua Chat API.
  */
 export const signUp = async (email: string, password: string, displayName: string) => {
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -37,12 +49,24 @@ export const signUp = async (email: string, password: string, displayName: strin
     online: true,
   });
 
-  // Criar e logar no CometChat (opcional: pode falhar se credenciais estiverem erradas)
   try {
-    await createCometChatUser(user.uid, displayName);
-    await loginCometChat(user.uid);
-  } catch (ccError) {
-    console.warn('[AuthService] Erro ao sincronizar com CometChat:', ccError);
+    const authRes = await chatRegister({
+      username: (user.email || email).trim().toLowerCase(),
+      nome: displayName.trim(),
+      password,
+      foto: user.photoURL || undefined,
+    });
+
+    await setChatSession({ token: authRes.token, userId: authRes._id });
+    connectChatSocket(authRes._id);
+  } catch (error: any) {
+    // Se falhar, desfaz login do Firebase para não deixar o app sem chat
+    await clearChatSession();
+    disconnectChatSocket();
+    await firebaseSignOut(auth);
+
+    const msg = error?.message ? String(error.message) : 'Falha ao registrar na Chat API.';
+    throw new Error(`Falha ao conectar no Chat API: ${msg}`);
   }
 
   return user;
@@ -50,7 +74,7 @@ export const signUp = async (email: string, password: string, displayName: strin
 
 /**
  * Login com email e senha.
- * Atualiza status online no Firestore.
+ * Atualiza status online no Firestore e faz login na sua Chat API.
  */
 export const signIn = async (email: string, password: string) => {
   const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -62,12 +86,56 @@ export const signIn = async (email: string, password: string) => {
     lastSeen: new Date().toISOString(),
   });
 
-  // Logar no CometChat
+  const username = (user.email || email).trim().toLowerCase();
+
   try {
-    const profile = await getUserProfile(user.uid);
-    await loginCometChat(user.uid, (profile as any)?.displayName || user.displayName || 'Usuário');
-  } catch (ccError) {
-    console.warn('[AuthService] Erro ao logar no CometChat:', ccError);
+    const authRes = await chatLogin({ username, password });
+    console.log('[AuthService] ChatLogin Sucesso:', authRes);
+    console.log('[AuthService] ChatRegister Sucesso:', authRes);
+    await setChatSession({ token: authRes.token, userId: authRes._id });
+    connectChatSocket(authRes._id);
+  } catch (loginError: any) {
+    console.warn('[AuthService] ChatLogin Falhou (tentando registrar):', loginError.message);
+    // Se o usuário ainda não existe na Chat API (migração), tenta criar automaticamente.
+    try {
+      let nome = (user.displayName || '').trim();
+
+      if (!nome) {
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        nome = (snap.exists() ? String((snap.data() as any)?.displayName || '') : '').trim();
+      }
+
+      if (!nome) nome = 'Usuário';
+
+      const authRes = await chatRegister({
+        username,
+        nome,
+        password,
+        foto: user.photoURL || undefined,
+      });
+
+      console.log('[AuthService] ChatRegister (auto) Sucesso:', authRes);
+      console.log('[AuthService] ChatRegister (auto) Sucesso:', authRes);
+      await setChatSession({ token: authRes.token, userId: authRes._id });
+      connectChatSocket(authRes._id);
+    } catch (registerError: any) {
+      console.error('[AuthService] ChatRegister (auto) Erro:', registerError);
+      await clearChatSession();
+      disconnectChatSocket();
+      await firebaseSignOut(auth);
+
+      const registerMsg = registerError?.message ? String(registerError.message) : '';
+      const loginMsg = loginError?.message ? String(loginError.message) : '';
+
+      if (registerMsg.toLowerCase().includes('usuário já existe')) {
+        throw new Error(
+          'Você já tem conta na Chat API, mas a senha não confere. Faça login com a senha correta do chat (ou recrie o usuário no backend).'
+        );
+      }
+
+      const msg = `[Registro]: ${registerMsg}` || `[Login]: ${loginMsg}` || 'Falha ao autenticar na Chat API.';
+      throw new Error(`Falha ao conectar no Chat API: ${msg}`);
+    }
   }
 
   return user;
@@ -75,7 +143,7 @@ export const signIn = async (email: string, password: string) => {
 
 /**
  * Logout do Firebase.
- * Atualiza status offline no Firestore.
+ * Atualiza status offline no Firestore e limpa sessão do chat.
  */
 export const signOut = async () => {
   const user = auth.currentUser;
@@ -85,14 +153,10 @@ export const signOut = async () => {
       online: false,
       lastSeen: new Date().toISOString(),
     });
-
-    try {
-      await logoutCometChat();
-    } catch (ccError) {
-      console.warn('[AuthService] Erro ao deslogar do CometChat:', ccError);
-    }
   }
 
+  await clearChatSession();
+  disconnectChatSocket();
   await firebaseSignOut(auth);
 };
 
@@ -102,6 +166,31 @@ export const signOut = async () => {
  */
 export const onAuthChange = (callback: (user: User | null) => void) => {
   return onAuthStateChanged(auth, callback);
+};
+
+/**
+ * Buscar perfis de usuários por uma lista de UIDs (Firestore).
+ */
+export const getUsersByIds = async (uids: string[]): Promise<UserProfile[]> => {
+  if (!uids || uids.length === 0) return [];
+
+  const results: UserProfile[] = [];
+  const chunkSize = 30; // Firestore limit for 'in' operator
+
+  try {
+    for (let i = 0; i < uids.length; i += chunkSize) {
+      const chunk = uids.slice(i, i + chunkSize);
+      const q = query(collection(db, 'users'), where('uid', 'in', chunk));
+      const querySnapshot = await getDocs(q);
+      querySnapshot.forEach((docSnap) => {
+        results.push(docSnap.data() as UserProfile);
+      });
+    }
+  } catch (error) {
+    console.error('[AuthService] Erro ao buscar usuários no Firestore:', error);
+  }
+
+  return results;
 };
 
 /**
@@ -146,3 +235,4 @@ export const updateUserProfile = async (
 export const getCurrentUser = () => {
   return auth.currentUser;
 };
+
