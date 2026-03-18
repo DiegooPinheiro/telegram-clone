@@ -1,70 +1,63 @@
-﻿# Telegram Clone (Expo + Firebase + Chat API)
+# 📱 Telegram Clone (Expo + Firebase + Custom Chat API)
 
-Projeto mobile inspirado no Telegram, construído com Expo/React Native.
+Um clone moderno e funcional do Telegram, construído com **React Native (Expo)**. Este projeto utiliza uma arquitetura híbrida de alto desempenho, combinando o poder do **Firebase** para autenticação e perfis com uma **API de Chat Customizada** em Node.js para mensagens em tempo real via WebSockets.
 
-- **Firebase**: autenticação (email/senha) e perfil do usuário (Firestore).
-- **Sua Chat API (Node/Express + MongoDB + Socket.IO)**: conversas e mensagens em tempo real.
+---
 
-> Este app foi migrado do CometChat para uma API própria.
+## 🚀 Novidades da Versão 2.0
 
-## Principais recursos (MVP)
+- **Remoção do CometChat**: Migração completa para uma infraestrutura própria e independente.
+- **Sincronização de Agenda**: O app lê os contatos do seu celular e identifica automaticamente quem já tem o app instalado via Firestore.
+- **Notificações Estilo Telegram**: Novo sistema de *Toasts* in-app com foto do remetente, nome e prévia da mensagem, permitindo navegação direta para o chat.
+- **Resiliência de Sessão**: Correção de condições de corrida (race conditions) no login para garantir que o chat conecte instantaneamente ao abrir o app.
 
-- Autenticação com email/senha (Firebase Auth).
-- Perfil do usuário no Firestore (nome, bio, foto, status).
-- Lista de conversas recentes (Chat API).
-- Chat 1:1 com envio/recebimento em tempo real (Socket.IO).
-- Contatos e busca (lista de usuários da Chat API).
-- Tema claro/escuro (via SettingsContext).
+---
 
-## Stack
+## 🛠️ Tecnologias e Arquitetura
 
-- Expo (React Native)
-- React Navigation (stack + tabs)
-- Firebase (Auth + Firestore)
-- Socket.IO Client
-- TypeScript
+### Frontend (Mobile)
+- **Expo / React Native**: Base do aplicativo.
+- **React Navigation**: Navegação por abas e pilhas (Stack & Tabs).
+- **Socket.IO Client**: Comunicação bidirecional e instantânea.
+- **Expo Contacts**: Integração com a agenda nativa do dispositivo.
+- **TypeScript**: Tipagem estática para maior segurança no desenvolvimento.
 
-## Estrutura de pastas (resumo)
+### Backend & Serviços
+- **Firebase Auth**: Autenticação segura por E-mail/Senha.
+- **Firebase Firestore**: Armazenamento de perfis, bio, status online e busca rápida de UIDs por telefone.
+- **Custom Chat API (Node.js/Express)**: Gerenciamento de conversas, histórico de mensagens e tokens JWT.
+- **MongoDB**: Banco de dados persistente para as mensagens da Chat API.
+- **Socket.IO Server**: Engine de tempo real hospedada no Render.com.
 
+---
+
+## 📁 Estrutura de Pastas (Principais)
+
+```bash
+src/
+ ├── components/       # Componentes reutilizáveis (Avatar, MessageToast, ChatItem)
+ ├── screens/          # Telas principais (Chats, Contatos, Configurações)
+ ├── services/         # Integrações (chatApi, chatSocket, authService, contactSync)
+ ├── config/           # Configurações de Firebase e Chat API
+ ├── hooks/            # Hooks customizados (useTheme, useAuth)
+ ├── navigation/       # Configuração de rotas e navigators
+ └── types/            # Definições de tipos TypeScript
 ```
-telegram-clone/
-  App.tsx
-  index.ts
-  app.json
-  src/
-    components/
-    screens/
-    navigation/
-    services/
-    config/
-    hooks/
-    types/
-    utils/
-    theme/
-```
 
-## Configuração
+---
 
-### 1) Instalar dependências
+## ⚙️ Configuração do Ambiente
 
+### 1. Clonar e Instalar
 ```bash
 npm install
 ```
 
-### 2) Variáveis de ambiente
+### 2. Variáveis de Ambiente (.env)
+Crie um arquivo `.env` na raiz (baseado no `.env.example`) com as seguintes chaves:
 
-Copie o arquivo de exemplo e preencha:
-
-```bash
-cp .env.example .env
-```
-
-O projeto lê variáveis diretamente do `process.env` (Expo). Todas precisam do prefixo `EXPO_PUBLIC_`.
-
-#### Firebase
-
-Preencha no `.env`:
-
+#### Firebase Config
+Obtenha estas chaves no Console do Firebase:
 - `EXPO_PUBLIC_FIREBASE_API_KEY`
 - `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN`
 - `EXPO_PUBLIC_FIREBASE_PROJECT_ID`
@@ -72,41 +65,26 @@ Preencha no `.env`:
 - `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
 - `EXPO_PUBLIC_FIREBASE_APP_ID`
 
-#### Chat API
+#### Chat API Config
+- `EXPO_PUBLIC_CHAT_API_URL`: URL do seu servidor backend (ex: `https://sua-api.onrender.com/api`)
 
-- `EXPO_PUBLIC_CHAT_API_URL`
-  - Exemplo: `https://chat-api-v2-tested.onrender.com`
+---
 
-> Dica: no Render (Free) a primeira requisição pode demorar ~50s porque o serviço “dorme”.
+## 🔄 Fluxo de Funcionamento
 
-## Como rodar
+1. **Autenticação Dupla**: Ao fazer login no Firebase, o app autentica automaticamente na Chat API usando as mesmas credenciais, gerando um token JWT persistente.
+2. **Sincronização de Contatos**: O app solicita permissão para ler a agenda. Ele normaliza os números de telefone e consulta no Firestore quais usuários correspondem àqueles números, os adicionando à lista de contatos.
+3. **Tempo Real**: O Socket.io conecta assim que a sessão é validada. Se uma mensagem chega e o usuário não está no chat aberto, um **MessageToast** customizado aparece no topo.
 
-```bash
-npm start
-```
+---
 
-Outros comandos:
+## ⚠️ Dúvidas Comuns e Troubleshooting
 
-```bash
-npm run android
-npm run ios
-npm run web
-```
+- **"Sessão Ausente" ou Loading Infinito**: O app agora possui um mecanismo de *retry* que aguarda o token ser salvo no dispositivo antes de liberar a tela principal. Se persistir, tente sair e entrar novamente na conta.
+- **ERRO 404 na API**: Certifique-se de que a `EXPO_PUBLIC_CHAT_API_URL` contenha o sufixo `/api` caso o seu backend utilize este prefixo de rotas.
+- **Delay no Render**: Como o backend gratuito do Render "dorme", a primeira mensagem ou o primeiro login do dia pode demorar até 50 segundos para responder.
 
-## Fluxo principal
+---
 
-1. App inicia em `App.tsx`.
-2. Firebase Auth define se o usuário está logado.
-3. No login/cadastro, o app registra/autentica o usuário na Chat API e salva `token` + `userId` em `AsyncStorage`.
-4. O app conecta no Socket.IO e escuta mensagens (`receive_message`).
-
-## Observações importantes
-
-- A Chat API ainda não implementa alguns recursos que existiam no CometChat (ex.: grupos, typing, receipts, contagem de não lidas).
-- Para produção real, recomenda-se:
-  - autenticar o Socket.IO (não confiar em `senderId` vindo do cliente)
-  - usar storage/CDN para uploads (no Render o disco é efêmero)
-
-## Licença
-
-Projeto para fins de estudo/protótipo.
+## 📄 Licença
+Projeto desenvolvido para fins educacionais e portfólio. Inspirado na interface oficial do Telegram.
