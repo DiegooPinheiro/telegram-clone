@@ -1,9 +1,24 @@
 ﻿import React, { useRef, useCallback, useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, KeyboardAvoidingView, Platform, Keyboard, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+  Alert,
+  Modal,
+  Pressable,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useHeaderHeight } from '@react-navigation/elements';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { RootStackParamList } from '../navigation/types';
 import { spacing } from '../theme/spacing';
 import MessageBubble from '../components/MessageBubble';
@@ -11,16 +26,17 @@ import MessageInput from '../components/MessageInput';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Avatar from '../components/Avatar';
 import useTheme from '../hooks/useTheme';
-import { chatGetMessages } from '../services/chatApi';
+import useOnlineStatusByEmail from '../hooks/useOnlineStatusByEmail';
+import { chatGetMessages, chatUploadMedia } from '../services/chatApi';
 import { getChatSession } from '../services/chatSession';
-import { onReceiveMessage, sendMessageSocket } from '../services/chatSocket';
+import { onReceiveMessage, onTypingEvent, sendMessageSocket, sendStopTypingSocket, sendTypingSocket } from '../services/chatSocket';
 import type { ChatApiMessage, ChatApiUser } from '../types/chatApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;
 
 export default function ChatScreen({ navigation, route }: Props) {
   const { colors } = useTheme();
-  const { conversationId, userId: receiverId, name, avatar } = route.params;
+  const { conversationId, userId: receiverId, name, avatar, username } = route.params;
 
   const flatListRef = useRef<FlatList>(null);
   const headerHeight = useHeaderHeight();
@@ -30,18 +46,23 @@ export default function ChatScreen({ navigation, route }: Props) {
   const [myUserId, setMyUserId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatApiMessage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [attachOpen, setAttachOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [otherTyping, setOtherTyping] = useState(false);
+
+  const { statusText, online } = useOnlineStatusByEmail(username || '', !!username);
 
   React.useLayoutEffect(() => {
     navigation.setOptions({
       headerTitle: () => (
         <View style={styles.headerTitleWrap}>
-          <Avatar name={name} size={38} uri={avatar ?? null} online={false} />
+          <Avatar name={name} size={38} uri={avatar ?? null} online={online} />
           <View style={styles.headerTextWrap}>
             <Text style={[styles.headerName, { color: colors.textPrimary }]} numberOfLines={1}>
               {name}
             </Text>
             <Text style={[styles.headerStatus, { color: colors.textSecondary }]} numberOfLines={1}>
-              via Chat API
+              {otherTyping ? 'digitando...' : (statusText || 'via Chat API')}
             </Text>
           </View>
         </View>
@@ -56,7 +77,7 @@ export default function ChatScreen({ navigation, route }: Props) {
       headerTintColor: colors.textPrimary,
       headerShadowVisible: false,
     });
-  }, [navigation, name, colors.background, colors.textPrimary, colors.textSecondary, avatar]);
+  }, [navigation, name, colors.background, colors.textPrimary, colors.textSecondary, avatar, online, otherTyping, statusText]);
 
   useEffect(() => {
     if (Platform.OS !== 'android') {
@@ -141,6 +162,27 @@ export default function ChatScreen({ navigation, route }: Props) {
     };
   }, [conversationId]);
 
+  useEffect(() => {
+    const unsubscribe = onTypingEvent((event, payload: any) => {
+      const convId = payload?.conversationId || payload?.conversation?._id;
+      if (!convId || convId !== conversationId) return;
+
+      const sender = payload?.senderId || payload?.userId;
+      if (sender && String(sender) !== String(receiverId)) return;
+
+      if (event === 'stop_typing' || event === 'user_stop_typing' || payload?.typing === false) {
+        setOtherTyping(false);
+        return;
+      }
+
+      setOtherTyping(true);
+    });
+
+    return () => {
+      unsubscribe?.();
+    };
+  }, [conversationId, receiverId]);
+
   const handleSend = useCallback(
     async (text: string) => {
       if (!myUserId) {
@@ -163,18 +205,116 @@ export default function ChatScreen({ navigation, route }: Props) {
     [conversationId, myUserId, receiverId]
   );
 
+  const handleUploadAndSend = useCallback(
+    async (file: { uri: string; name: string; type: string }) => {
+      if (!myUserId) {
+        Alert.alert('Erro', 'Sessão do chat ausente. Faça login novamente.');
+        return;
+      }
+
+      setUploading(true);
+      try {
+        const uploaded = await chatUploadMedia(file);
+        const displayName = uploaded.fileName || file.name;
+        const text = uploaded.mediaType === 'image' ? undefined : displayName;
+
+        sendMessageSocket({
+          conversationId,
+          senderId: myUserId,
+          receiverId,
+          text,
+          mediaUrl: uploaded.mediaUrl,
+          mediaType: uploaded.mediaType,
+        });
+      } catch (error: any) {
+        console.error('Erro ao enviar mídia:', error);
+        Alert.alert('Erro', error?.message || 'Não foi possível enviar o arquivo.');
+      } finally {
+        setUploading(false);
+      }
+    },
+    [conversationId, myUserId, receiverId]
+  );
+
+  const pickFromGallery = useCallback(async () => {
+    setAttachOpen(false);
+
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Permissão', 'Permita acesso à galeria para enviar arquivos.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      quality: 0.9,
+      allowsEditing: false,
+    });
+
+    if (result.canceled) return;
+    const asset = result.assets?.[0];
+    if (!asset?.uri) return;
+
+    const name = asset.fileName || `media-${Date.now()}`;
+    const type = asset.mimeType || (asset.type === 'video' ? 'video/mp4' : 'image/jpeg');
+    await handleUploadAndSend({ uri: asset.uri, name, type });
+  }, [handleUploadAndSend]);
+
+  const takePhoto = useCallback(async () => {
+    setAttachOpen(false);
+
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Permissão', 'Permita acesso à câmera para enviar fotos.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      quality: 0.9,
+      allowsEditing: false,
+    });
+
+    if (result.canceled) return;
+    const asset = result.assets?.[0];
+    if (!asset?.uri) return;
+
+    const name = asset.fileName || `foto-${Date.now()}.jpg`;
+    const type = asset.mimeType || 'image/jpeg';
+    await handleUploadAndSend({ uri: asset.uri, name, type });
+  }, [handleUploadAndSend]);
+
+  const pickDocument = useCallback(async () => {
+    setAttachOpen(false);
+
+    const result: any = await DocumentPicker.getDocumentAsync({
+      multiple: false,
+      copyToCacheDirectory: true,
+    });
+
+    if (result?.canceled) return;
+
+    const asset = result?.assets?.[0] ?? (result?.type === 'success' ? result : null);
+    if (!asset?.uri) return;
+
+    const name = asset.name || `arquivo-${Date.now()}`;
+    const type = asset.mimeType || 'application/octet-stream';
+    await handleUploadAndSend({ uri: asset.uri, name, type });
+  }, [handleUploadAndSend]);
+
   const renderMessage = useCallback(
     ({ item }: { item: ChatApiMessage }) => {
       const senderId = extractUserId(item.senderId);
       const isMine = !!myUserId && !!senderId && senderId === myUserId;
 
       const senderName = !isMine ? extractUserName(item.senderId) || name : undefined;
-      const text = item.text ? String(item.text) : item.mediaUrl ? '[Mídia]' : '';
+      const text = item.text ? String(item.text) : '';
       const timestamp = Math.floor(new Date(item.createdAt).getTime() / 1000);
 
       return (
         <MessageBubble
           message={text}
+          mediaUrl={item.mediaUrl}
+          mediaType={item.mediaType}
           timestamp={timestamp}
           isMine={isMine}
           senderName={senderName}
@@ -212,7 +352,19 @@ export default function ChatScreen({ navigation, route }: Props) {
             }
           />
 
-          <MessageInput onSend={handleSend} />
+          <MessageInput
+            onSend={handleSend}
+            onAttachPress={() => setAttachOpen(true)}
+            onTyping={() => {
+              if (!myUserId) return;
+              sendTypingSocket({ conversationId, senderId: myUserId, receiverId });
+            }}
+            onStopTyping={() => {
+              if (!myUserId) return;
+              sendStopTypingSocket({ conversationId, senderId: myUserId, receiverId });
+            }}
+            disabled={uploading}
+          />
         </KeyboardAvoidingView>
       ) : (
         <View style={[styles.flex, { paddingBottom: Math.max(0, keyboardHeight) }]}>
@@ -236,9 +388,54 @@ export default function ChatScreen({ navigation, route }: Props) {
             }
           />
 
-          <MessageInput onSend={handleSend} />
+          <MessageInput
+            onSend={handleSend}
+            onAttachPress={() => setAttachOpen(true)}
+            onTyping={() => {
+              if (!myUserId) return;
+              sendTypingSocket({ conversationId, senderId: myUserId, receiverId });
+            }}
+            onStopTyping={() => {
+              if (!myUserId) return;
+              sendStopTypingSocket({ conversationId, senderId: myUserId, receiverId });
+            }}
+            disabled={uploading}
+          />
         </View>
       )}
+
+      <Modal transparent animationType="slide" visible={attachOpen} onRequestClose={() => setAttachOpen(false)}>
+        <Pressable style={styles.sheetOverlay} onPress={() => setAttachOpen(false)} />
+        <View style={[styles.sheet, { backgroundColor: colors.background }]}>
+          <View style={styles.sheetHeader}>
+            <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>Enviar</Text>
+            {uploading ? <ActivityIndicator /> : null}
+          </View>
+
+          <TouchableOpacity style={styles.sheetItem} onPress={pickFromGallery} disabled={uploading}>
+            <Ionicons name="images-outline" size={22} color={colors.textPrimary} />
+            <Text style={[styles.sheetItemText, { color: colors.textPrimary }]}>Galeria</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.sheetItem} onPress={takePhoto} disabled={uploading}>
+            <Ionicons name="camera-outline" size={22} color={colors.textPrimary} />
+            <Text style={[styles.sheetItemText, { color: colors.textPrimary }]}>Câmera</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.sheetItem} onPress={pickDocument} disabled={uploading}>
+            <Ionicons name="document-outline" size={22} color={colors.textPrimary} />
+            <Text style={[styles.sheetItemText, { color: colors.textPrimary }]}>Arquivo</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.sheetItem, styles.sheetCancel]}
+            onPress={() => setAttachOpen(false)}
+            disabled={uploading}
+          >
+            <Text style={[styles.sheetCancelText, { color: colors.textSecondary }]}>Cancelar</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -320,6 +517,48 @@ const styles = StyleSheet.create({
   datePillText: {
     color: '#f2f2f2',
     fontSize: 13,
+    fontWeight: '600',
+  },
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+  },
+  sheet: {
+    paddingTop: 12,
+    paddingBottom: 16,
+    paddingHorizontal: 14,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 6,
+    paddingBottom: 8,
+  },
+  sheetTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  sheetItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+  },
+  sheetItemText: {
+    marginLeft: 10,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  sheetCancel: {
+    justifyContent: 'center',
+    marginTop: 6,
+  },
+  sheetCancelText: {
+    fontSize: 15,
     fontWeight: '600',
   },
 });

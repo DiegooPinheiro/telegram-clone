@@ -108,6 +108,7 @@ export default function ChatListScreen({ navigation }: Props) {
               userId: other._id,
               name,
               avatar,
+              username: other.username,
             });
           }}
         />

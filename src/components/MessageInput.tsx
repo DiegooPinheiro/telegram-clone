@@ -7,10 +7,19 @@ interface MessageInputProps {
   onSend: (text: string) => void;
   onTyping?: () => void;
   onStopTyping?: () => void;
+  onAttachPress?: () => void;
   placeholder?: string;
+  disabled?: boolean;
 }
 
-export default function MessageInput({ onSend, onTyping, onStopTyping, placeholder = 'Mensagem' }: MessageInputProps) {
+export default function MessageInput({
+  onSend,
+  onTyping,
+  onStopTyping,
+  onAttachPress,
+  placeholder = 'Mensagem',
+  disabled = false,
+}: MessageInputProps) {
   const [text, setText] = useState('');
   const { colors } = useTheme();
   const typingTimeoutRef = React.useRef<any>(null);
@@ -37,6 +46,10 @@ export default function MessageInput({ onSend, onTyping, onStopTyping, placehold
     if (!value) {
       return;
     }
+
+    if (disabled) {
+      return;
+    }
     
     if (onStopTyping) onStopTyping();
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
@@ -61,8 +74,14 @@ export default function MessageInput({ onSend, onTyping, onStopTyping, placehold
           placeholderTextColor={colors.textSecondary}
           multiline
           maxLength={4096}
+          editable={!disabled}
         />
-        <TouchableOpacity activeOpacity={0.7} style={styles.trailingButton}>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          style={styles.trailingButton}
+          onPress={onAttachPress}
+          disabled={disabled || !onAttachPress}
+        >
           <Ionicons name="attach-outline" size={22} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
@@ -71,7 +90,7 @@ export default function MessageInput({ onSend, onTyping, onStopTyping, placehold
         style={[styles.actionButton, { backgroundColor: colors.primary }]}
         onPress={handleSend}
         activeOpacity={0.8}
-        disabled={!hasText}
+        disabled={!hasText || disabled}
       >
         <Ionicons name={hasText ? 'send' : 'mic'} size={22} color="#ffffff" />
       </TouchableOpacity>

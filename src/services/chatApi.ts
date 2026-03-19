@@ -9,6 +9,12 @@ type RequestOptions = {
 };
 
 const normalizeBaseUrl = (value: string) => value.replace(/\/+$/, '');
+const toAbsoluteUrl = (baseUrl: string, url: string) => {
+  if (!url) return url;
+  if (/^https?:\/\//i.test(url)) return url;
+  if (url.startsWith('/')) return `${normalizeBaseUrl(baseUrl)}${url}`;
+  return `${normalizeBaseUrl(baseUrl)}/${url}`;
+};
 
 const requestJson = async <T>(
   path: string,
@@ -133,17 +139,22 @@ export const chatUploadMedia = async (file: {
   uri: string;
   name: string;
   type: string;
-}): Promise<{ mediaUrl: string; mediaType: string }> => {
+}): Promise<{ mediaUrl: string; mediaType: string; fileName?: string; size?: number }> => {
   const form = new FormData();
   // @ts-expect-error React Native FormData file
   form.append('media', file);
 
-  return requestJson<{ mediaUrl: string; mediaType: string }>(
+  const uploaded = await requestJson<{ mediaUrl: string; mediaType: string; fileName?: string; size?: number }>(
     '/api/media/upload',
     {
       method: 'POST',
       body: form,
     }
   );
+
+  return {
+    ...uploaded,
+    mediaUrl: toAbsoluteUrl(CHAT_API_CONFIG.BASE_URL, uploaded.mediaUrl),
+  };
 };
 

@@ -96,6 +96,7 @@ export default function ContactsScreen({ navigation }: Props) {
         userId: user._id,
         name: user.nome || user.username,
         avatar: user.foto || null,
+        username: user.username,
       });
     } catch (error: any) {
       console.error('Erro ao iniciar conversa:', error);

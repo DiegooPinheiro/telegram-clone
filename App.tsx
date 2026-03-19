@@ -41,8 +41,18 @@ export default function App() {
         }
       }
 
-      const senderName = message?.sender?.nome || message?.sender?.username || 'Nova mensagem';
-      const avatar = message?.sender?.foto || null;
+      const sender =
+        message?.sender ||
+        (message?.senderId && typeof message.senderId === 'object' ? message.senderId : null);
+
+      const senderName = sender?.nome || sender?.username || 'Nova mensagem';
+      const avatar = sender?.foto || null;
+      const username = sender?.username || undefined;
+      const senderId =
+        (sender?._id ? String(sender._id) : null) ||
+        (typeof message?.senderId === 'string' ? message.senderId : null) ||
+        '';
+
       const body = message?.text ? String(message.text) : '📎 Arquivo de mídia';
 
       showMessageNotification(senderName, body, {
@@ -52,9 +62,10 @@ export default function App() {
           if (message?.conversationId && navigationRef.isReady()) {
             (navigationRef as any).current?.navigate('Chat', {
               conversationId: message.conversationId,
-              userId: message?.sender?._id || '',
+              userId: senderId,
               name: senderName,
               avatar,
+              username,
             });
           }
         },

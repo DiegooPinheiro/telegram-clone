@@ -1,10 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Linking } from 'react-native';
 import useTheme from '../hooks/useTheme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface MessageBubbleProps {
   message: string;
+  mediaUrl?: string;
+  mediaType?: string;
   timestamp: number;
   isMine: boolean;
   senderName?: string;
@@ -13,6 +15,8 @@ interface MessageBubbleProps {
 
 export default function MessageBubble({
   message,
+  mediaUrl,
+  mediaType,
   timestamp,
   isMine,
   senderName,
@@ -26,6 +30,18 @@ export default function MessageBubble({
     hour12: false
   });
 
+  const openMedia = async () => {
+    if (!mediaUrl) return;
+    try {
+      await Linking.openURL(mediaUrl);
+    } catch {
+      // ignore
+    }
+  };
+
+  const isImage = !!mediaUrl && mediaType === 'image';
+  const showText = !!message?.trim();
+
   return (
     <View style={[styles.wrapper, isMine ? styles.wrapperMine : styles.wrapperTheirs]}>
       <View
@@ -38,33 +54,43 @@ export default function MessageBubble({
         {!isMine && senderName && (
           <Text style={[styles.senderName, { color: colors.primary }]}>{senderName}</Text>
         )}
-        
-        <View style={styles.messageContent}>
-          <Text style={[styles.messageText, { color: colors.textPrimary }]}>
-            {message}
-            {/* 
-               This is the secret: a nested View inside a Text element 
-               acts as an inline-block that follows the text flow.
-            */}
-            <View style={styles.timeInlineContainer}>
-              <Text
-                style={[
-                  styles.timestamp,
-                  { color: isMine ? 'rgba(255, 255, 255, 0.55)' : colors.textSecondary },
-                ]}
-              >
-                {time}
+
+        {mediaUrl ? (
+          isImage ? (
+            <TouchableOpacity activeOpacity={0.9} onPress={openMedia} style={styles.imageWrap}>
+              <Image source={{ uri: mediaUrl }} style={styles.image} resizeMode="cover" />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity activeOpacity={0.8} onPress={openMedia} style={styles.fileRow}>
+              <MaterialCommunityIcons name="file-outline" size={20} color={colors.textPrimary} />
+              <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>
+                {showText ? message : 'Arquivo'}
               </Text>
-              {isMine && status !== 'sending' && (
-                <MaterialCommunityIcons
-                  name={status === 'read' ? 'check-all' : 'check'}
-                  size={14}
-                  color={isMine ? 'rgba(255, 255, 255, 0.55)' : colors.primary}
-                  style={styles.statusIcon}
-                />
-              )}
-            </View>
+            </TouchableOpacity>
+          )
+        ) : null}
+
+        {showText && (!mediaUrl || isImage) ? (
+          <Text style={[styles.messageText, { color: colors.textPrimary }]}>{message}</Text>
+        ) : null}
+
+        <View style={styles.metaRow}>
+          <Text
+            style={[
+              styles.timestamp,
+              { color: isMine ? 'rgba(255, 255, 255, 0.55)' : colors.textSecondary },
+            ]}
+          >
+            {time}
           </Text>
+          {isMine && status !== 'sending' ? (
+            <MaterialCommunityIcons
+              name={status === 'read' ? 'check-all' : 'check'}
+              size={14}
+              color={isMine ? 'rgba(255, 255, 255, 0.55)' : colors.primary}
+              style={styles.statusIcon}
+            />
+          ) : null}
         </View>
 
         {/* Tail (Beak) using a more integrated approach */}
@@ -115,15 +141,7 @@ const styles = StyleSheet.create({
   messageText: {
     fontSize: 16,
     lineHeight: 20,
-  },
-  timeInlineContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    // These values are key for the "inline-block" effect
-    paddingLeft: 10,
-    height: 18,
-    marginBottom: -4, // Adjust to align with text baseline
+    marginBottom: 2,
   },
   timestamp: {
     fontSize: 11,
@@ -132,10 +150,43 @@ const styles = StyleSheet.create({
   statusIcon: {
     marginLeft: 3,
   },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: 2,
+  },
   senderName: {
     fontSize: 13,
     fontWeight: '700',
     marginBottom: 2,
+  },
+  imageWrap: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginBottom: 4,
+    alignSelf: 'flex-start',
+    maxWidth: 240,
+  },
+  image: {
+    width: 240,
+    height: 240,
+  },
+  fileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.12)',
+    marginBottom: 4,
+    maxWidth: 260,
+  },
+  fileName: {
+    marginLeft: 8,
+    fontSize: 15,
+    fontWeight: '600',
+    flex: 1,
   },
   tail: {
     position: 'absolute',

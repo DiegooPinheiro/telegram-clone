@@ -19,6 +19,7 @@
     userId: string;
     name: string;
     avatar?: string | null;
+    username?: string;
   };
   Profile: { uid?: string };
   Settings: undefined;
