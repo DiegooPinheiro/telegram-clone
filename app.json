@@ -11,7 +11,6 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "jsEngine": "jsc",
     "ios": {
       "supportsTablet": true
     },
@@ -22,10 +21,19 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.diegoopinheiro.telegramclone"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "64ccca21-0b6b-41ea-8c5a-86ad225af393"
+      }
+    },
+    "plugins": [
+      "expo-font"
+    ]
   }
 }

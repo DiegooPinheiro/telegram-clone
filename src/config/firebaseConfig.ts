@@ -6,14 +6,7 @@ import { initializeApp } from 'firebase/app';
 import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
-
-const getEnv = (key: string) => {
-  const value = process.env[key];
-  if (!value) {
-    throw new Error(`[Firebase] Variavel de ambiente ausente: ${key}`);
-  }
-  return value;
-};
+import { getEnv } from './env';
 
 const firebaseConfig = {
   apiKey: getEnv('EXPO_PUBLIC_FIREBASE_API_KEY'),
