@@ -3,7 +3,15 @@ import { CHAT_API_CONFIG } from '../config/chatApiConfig';
 import type { ChatApiMessage } from '../types/chatApi';
 
 type ReceiveMessageHandler = (message: ChatApiMessage | any) => void;
-type TypingHandler = (event: 'typing' | 'stop_typing' | 'user_typing' | 'user_stop_typing', payload: any) => void;
+type TypingEvent =
+  | 'typing'
+  | 'stop_typing'
+  | 'user_typing'
+  | 'user_stop_typing'
+  | 'typing_status'
+  | 'typingStatus';
+
+type TypingHandler = (event: TypingEvent, payload: any) => void;
 
 let socket: Socket | null = null;
 let currentUserId: string | null = null;
@@ -16,6 +24,8 @@ const typingWrappers = new Map<
     stop_typing: (payload: any) => void;
     user_typing: (payload: any) => void;
     user_stop_typing: (payload: any) => void;
+    typing_status: (payload: any) => void;
+    typingStatus: (payload: any) => void;
   }
 >();
 
@@ -28,6 +38,8 @@ const ensureTypingListeners = (handler: TypingHandler) => {
       stop_typing: (payload) => handler('stop_typing', payload),
       user_typing: (payload) => handler('user_typing', payload),
       user_stop_typing: (payload) => handler('user_stop_typing', payload),
+      typing_status: (payload) => handler('typing_status', payload),
+      typingStatus: (payload) => handler('typingStatus', payload),
     });
   }
 
@@ -36,6 +48,8 @@ const ensureTypingListeners = (handler: TypingHandler) => {
   socket?.on('stop_typing', wrappers.stop_typing);
   socket?.on('user_typing', wrappers.user_typing);
   socket?.on('user_stop_typing', wrappers.user_stop_typing);
+  socket?.on('typing_status', wrappers.typing_status);
+  socket?.on('typingStatus', wrappers.typingStatus);
 };
 
 const removeTypingListeners = (handler: TypingHandler) => {
@@ -46,6 +60,8 @@ const removeTypingListeners = (handler: TypingHandler) => {
   socket?.off('stop_typing', wrappers.stop_typing);
   socket?.off('user_typing', wrappers.user_typing);
   socket?.off('user_stop_typing', wrappers.user_stop_typing);
+  socket?.off('typing_status', wrappers.typing_status);
+  socket?.off('typingStatus', wrappers.typingStatus);
 };
 
 export const connectChatSocket = (userId: string) => {
@@ -125,12 +141,16 @@ export const sendMessageSocket = (payload: {
 
 export const sendTypingSocket = (payload: { conversationId: string; senderId: string; receiverId: string }) => {
   if (!socket) return;
-  socket.emit('typing', payload);
+  socket.emit('typing', { ...payload, typing: true });
+  socket.emit('typing_status', { ...payload, typing: true });
+  socket.emit('typingStatus', { ...payload, typing: true });
 };
 
 export const sendStopTypingSocket = (payload: { conversationId: string; senderId: string; receiverId: string }) => {
   if (!socket) return;
-  socket.emit('stop_typing', payload);
+  socket.emit('stop_typing', { ...payload, typing: false });
+  socket.emit('typing_status', { ...payload, typing: false });
+  socket.emit('typingStatus', { ...payload, typing: false });
 };
 
 export const isSocketConnected = () => {

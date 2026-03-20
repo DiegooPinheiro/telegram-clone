@@ -49,6 +49,7 @@ export default function ChatScreen({ navigation, route }: Props) {
   const [attachOpen, setAttachOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [otherTyping, setOtherTyping] = useState(false);
+  const typingTimeoutRef = useRef<any>(null);
 
   const { statusText, online } = useOnlineStatusByEmail(username || '', !!username);
 
@@ -167,8 +168,13 @@ export default function ChatScreen({ navigation, route }: Props) {
       const convId = payload?.conversationId || payload?.conversation?._id;
       if (!convId || convId !== conversationId) return;
 
-      const sender = payload?.senderId || payload?.userId;
+      const sender = payload?.senderId || payload?.userId || payload?.sender?._id || payload?.sender;
       if (sender && String(sender) !== String(receiverId)) return;
+
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
 
       if (event === 'stop_typing' || event === 'user_stop_typing' || payload?.typing === false) {
         setOtherTyping(false);
@@ -176,10 +182,17 @@ export default function ChatScreen({ navigation, route }: Props) {
       }
 
       setOtherTyping(true);
+      typingTimeoutRef.current = setTimeout(() => {
+        setOtherTyping(false);
+      }, 4500);
     });
 
     return () => {
       unsubscribe?.();
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
     };
   }, [conversationId, receiverId]);
 

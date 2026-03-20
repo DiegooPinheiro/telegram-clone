@@ -13,6 +13,7 @@ import MessageToast from './src/components/MessageToast';
 import { SettingsProvider } from './src/context/SettingsContext';
 import { connectChatSocket, disconnectChatSocket, onReceiveMessage } from './src/services/chatSocket';
 import { getChatSession } from './src/services/chatSession';
+import { startPresenceTracking } from './src/services/presenceService';
 
 export default function App() {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -24,12 +25,16 @@ export default function App() {
 
   useEffect(() => {
     let unsubscribe: (() => void) | null = null;
+    let stopPresence: (() => void) | null = null;
 
     if (!isAuthenticated) {
       disconnectChatSocket();
       setChatReady(false);
       return;
     }
+
+    // Atualiza online/offline baseado em background/foreground
+    stopPresence = startPresenceTracking();
 
     // Registra o listener mesmo antes do socket conectar.
     unsubscribe = onReceiveMessage((message: any) => {
@@ -107,6 +112,7 @@ export default function App() {
 
     return () => {
       unsubscribe?.();
+      stopPresence?.();
     };
   }, [isAuthenticated]);
 
