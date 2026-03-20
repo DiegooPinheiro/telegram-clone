@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, FlatList, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TextInput, TouchableOpacity, Alert, Modal, Pressable } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,7 +9,7 @@ import { spacing } from '../theme/spacing';
 import ChatListItem from '../components/ChatListItem';
 import LoadingSpinner from '../components/LoadingSpinner';
 import useTheme from '../hooks/useTheme';
-import { chatGetConversations } from '../services/chatApi';
+import { chatDeleteConversation, chatGetConversations } from '../services/chatApi';
 import { getChatSession } from '../services/chatSession';
 import { onReceiveMessage } from '../services/chatSocket';
 import type { ChatApiConversation, ChatApiUser } from '../types/chatApi';
@@ -23,6 +23,8 @@ export default function ChatListScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [myUserId, setMyUserId] = useState<string | null>(null);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [menuConversation, setMenuConversation] = useState<ChatApiConversation | null>(null);
 
   const loadConversations = useCallback(async () => {
     setLoading(true);
@@ -111,11 +113,47 @@ export default function ChatListScreen({ navigation }: Props) {
               username: other.username,
             });
           }}
+          onLongPress={() => {
+            setMenuConversation(item);
+            setMenuVisible(true);
+          }}
         />
       );
     },
     [navigation, myUserId]
   );
+
+  const handleDeleteConversation = useCallback(() => {
+    if (!menuConversation) return;
+
+    Alert.alert(
+      'Excluir conversa',
+      'Tem certeza que deseja excluir esta conversa? Isso pode apagar as mensagens deste chat.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await chatDeleteConversation(menuConversation._id);
+              setMenuVisible(false);
+              setMenuConversation(null);
+              setConversations((prev) => prev.filter((c) => c._id !== menuConversation._id));
+              loadConversations();
+            } catch (error: any) {
+              console.error('Erro ao excluir conversa:', error);
+              Alert.alert(
+                'Erro',
+                error?.message ||
+                  'Não foi possível excluir. Verifique se o backend possui rota DELETE /api/conversations/:id.'
+              );
+            }
+          },
+        },
+      ]
+    );
+  }, [menuConversation, loadConversations]);
 
   if (loading) {
     return <LoadingSpinner message="Carregando conversas..." />;
@@ -178,6 +216,36 @@ export default function ChatListScreen({ navigation }: Props) {
           <Ionicons name="add" size={28} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
+
+      <Modal transparent visible={menuVisible} animationType="fade" onRequestClose={() => setMenuVisible(false)}>
+        <Pressable style={styles.menuBackdrop} onPress={() => setMenuVisible(false)}>
+          <View style={[styles.menuCard, { backgroundColor: themeColors.surface, borderColor: themeColors.separator }]}>
+            <TouchableOpacity
+              style={[styles.menuItem, styles.menuItemBorder, { borderBottomColor: themeColors.separator }]}
+              activeOpacity={0.75}
+              onPress={() => {
+                setMenuVisible(false);
+                handleDeleteConversation();
+              }}
+            >
+              <Ionicons name="trash-outline" size={22} color={themeColors.textPrimary} />
+              <Text style={[styles.menuText, { color: themeColors.textPrimary }]}>Excluir conversa</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              activeOpacity={0.75}
+              onPress={() => {
+                setMenuVisible(false);
+                setMenuConversation(null);
+              }}
+            >
+              <Ionicons name="close-outline" size={22} color={themeColors.textSecondary} />
+              <Text style={[styles.menuText, { color: themeColors.textSecondary }]}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -264,5 +332,31 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  menuBackdrop: {
+    flex: 1,
+  },
+  menuCard: {
+    position: 'absolute',
+    right: 14,
+    bottom: 120,
+    width: 260,
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingHorizontal: 16,
+    minHeight: 54,
+  },
+  menuItemBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  menuText: {
+    fontSize: 17,
+    fontWeight: '500',
   },
 });

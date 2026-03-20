@@ -116,6 +116,10 @@ export const chatCreateConversation = async (participantId: string): Promise<Cha
   );
 };
 
+export const chatDeleteConversation = async (conversationId: string): Promise<{ message?: string } | any> => {
+  return requestJson<{ message?: string }>(`/api/conversations/${conversationId}`, { method: 'DELETE' });
+};
+
 export const chatGetMessages = async (conversationId: string): Promise<ChatApiMessage[]> => {
   return requestJson<ChatApiMessage[]>(`/api/messages/${conversationId}`, { method: 'GET' });
 };

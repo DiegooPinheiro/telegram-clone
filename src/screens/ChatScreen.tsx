@@ -27,7 +27,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import Avatar from '../components/Avatar';
 import useTheme from '../hooks/useTheme';
 import useOnlineStatusByEmail from '../hooks/useOnlineStatusByEmail';
-import { chatGetMessages, chatUploadMedia } from '../services/chatApi';
+import { chatDeleteConversation, chatGetMessages, chatUploadMedia } from '../services/chatApi';
 import { getChatSession } from '../services/chatSession';
 import { onReceiveMessage, onTypingEvent, sendMessageSocket, sendStopTypingSocket, sendTypingSocket } from '../services/chatSocket';
 import type { ChatApiMessage, ChatApiUser } from '../types/chatApi';
@@ -50,6 +50,7 @@ export default function ChatScreen({ navigation, route }: Props) {
   const [uploading, setUploading] = useState(false);
   const [otherTyping, setOtherTyping] = useState(false);
   const typingTimeoutRef = useRef<any>(null);
+  const [headerMenuVisible, setHeaderMenuVisible] = useState(false);
 
   const { statusText, online } = useOnlineStatusByEmail(username || '', !!username);
 
@@ -70,8 +71,12 @@ export default function ChatScreen({ navigation, route }: Props) {
       ),
       headerRight: () => (
         <View style={styles.headerActions}>
-          <Ionicons name="call-outline" size={24} color={colors.textPrimary} />
-          <Ionicons name="ellipsis-vertical" size={20} color={colors.textPrimary} />
+          <TouchableOpacity activeOpacity={0.75} onPress={() => Alert.alert('Chamada', 'Em breve.')}>
+            <Ionicons name="call-outline" size={24} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <TouchableOpacity activeOpacity={0.75} onPress={() => setHeaderMenuVisible(true)}>
+            <Ionicons name="ellipsis-vertical" size={20} color={colors.textPrimary} />
+          </TouchableOpacity>
         </View>
       ),
       headerStyle: { backgroundColor: colors.background },
@@ -79,6 +84,34 @@ export default function ChatScreen({ navigation, route }: Props) {
       headerShadowVisible: false,
     });
   }, [navigation, name, colors.background, colors.textPrimary, colors.textSecondary, avatar, online, otherTyping, statusText]);
+
+  const handleDeleteConversation = useCallback(() => {
+    Alert.alert(
+      'Excluir conversa',
+      'Tem certeza que deseja excluir esta conversa?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await chatDeleteConversation(conversationId);
+              setHeaderMenuVisible(false);
+              navigation.goBack();
+            } catch (error: any) {
+              console.error('Erro ao excluir conversa:', error);
+              Alert.alert(
+                'Erro',
+                error?.message ||
+                  'Não foi possível excluir. Verifique se o backend possui rota DELETE /api/conversations/:id.'
+              );
+            }
+          },
+        },
+      ]
+    );
+  }, [conversationId, navigation]);
 
   useEffect(() => {
     if (Platform.OS !== 'android') {
@@ -449,6 +482,33 @@ export default function ChatScreen({ navigation, route }: Props) {
           </TouchableOpacity>
         </View>
       </Modal>
+
+      <Modal transparent visible={headerMenuVisible} animationType="fade" onRequestClose={() => setHeaderMenuVisible(false)}>
+        <Pressable style={styles.menuBackdrop} onPress={() => setHeaderMenuVisible(false)}>
+          <View style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.separator }]}>
+            <TouchableOpacity
+              style={[styles.menuItem, styles.menuItemBorder, { borderBottomColor: colors.separator }]}
+              activeOpacity={0.75}
+              onPress={() => {
+                setHeaderMenuVisible(false);
+                handleDeleteConversation();
+              }}
+            >
+              <Ionicons name="trash-outline" size={22} color={colors.textPrimary} />
+              <Text style={[styles.menuText, { color: colors.textPrimary }]}>Excluir conversa</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              activeOpacity={0.75}
+              onPress={() => setHeaderMenuVisible(false)}
+            >
+              <Ionicons name="close-outline" size={22} color={colors.textSecondary} />
+              <Text style={[styles.menuText, { color: colors.textSecondary }]}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -573,5 +633,31 @@ const styles = StyleSheet.create({
   sheetCancelText: {
     fontSize: 15,
     fontWeight: '600',
+  },
+  menuBackdrop: {
+    flex: 1,
+  },
+  menuCard: {
+    position: 'absolute',
+    top: 10,
+    right: 14,
+    width: 260,
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingHorizontal: 16,
+    minHeight: 54,
+  },
+  menuItemBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  menuText: {
+    fontSize: 17,
+    fontWeight: '500',
   },
 });
