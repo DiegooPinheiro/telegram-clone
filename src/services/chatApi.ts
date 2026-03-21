@@ -132,6 +132,27 @@ export const chatSendMessageRest = async (payload: {
   );
 };
 
+export const chatDeleteManyMessages = async (payload: {
+  messageIds: string[];
+  deleteForEveryone?: boolean;
+}): Promise<{
+  message?: string;
+  deletedCount?: number;
+  conversationId?: string;
+  messageIds?: string[];
+  deletedBy?: string;
+  deleteForEveryone?: boolean;
+  lastMessage?: any;
+}> => {
+  return requestJson(
+    '/api/messages/delete-many',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }
+  );
+};
+
 export const chatUploadMedia = async (file: {
   uri: string;
   name: string;

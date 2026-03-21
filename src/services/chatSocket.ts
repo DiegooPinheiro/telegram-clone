@@ -11,6 +11,14 @@ type MessagesReadPayload = {
   read: boolean;
 };
 type MessagesReadHandler = (payload: MessagesReadPayload | any) => void;
+type MessagesDeletedPayload = {
+  conversationId: string;
+  messageIds: string[];
+  deletedBy: string;
+  deleteForEveryone?: boolean;
+  lastMessage?: any;
+};
+type MessagesDeletedHandler = (payload: MessagesDeletedPayload | any) => void;
 type TypingEvent =
   | 'typing'
   | 'stop_typing'
@@ -25,6 +33,7 @@ let socket: Socket | null = null;
 let currentUserId: string | null = null;
 const receiveHandlers = new Set<ReceiveMessageHandler>();
 const messagesReadHandlers = new Set<MessagesReadHandler>();
+const messagesDeletedHandlers = new Set<MessagesDeletedHandler>();
 const typingHandlers = new Set<TypingHandler>();
 const typingWrappers = new Map<
   TypingHandler,
@@ -106,6 +115,10 @@ export const connectChatSocket = async (userId: string) => {
     socket.on('messages_read', handler);
   }
 
+  for (const handler of messagesDeletedHandlers) {
+    socket.on('messages_deleted', handler);
+  }
+
   for (const handler of typingHandlers) {
     ensureTypingListeners(handler);
   }
@@ -142,6 +155,16 @@ export const onMessagesRead = (handler: MessagesReadHandler) => {
   return () => {
     messagesReadHandlers.delete(handler);
     socket?.off('messages_read', handler);
+  };
+};
+
+export const onMessagesDeleted = (handler: MessagesDeletedHandler) => {
+  messagesDeletedHandlers.add(handler);
+  socket?.on('messages_deleted', handler);
+
+  return () => {
+    messagesDeletedHandlers.delete(handler);
+    socket?.off('messages_deleted', handler);
   };
 };
 

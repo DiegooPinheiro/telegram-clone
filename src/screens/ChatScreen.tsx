@@ -29,10 +29,11 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import Avatar from '../components/Avatar';
 import useTheme from '../hooks/useTheme';
 import useOnlineStatusByEmail from '../hooks/useOnlineStatusByEmail';
-import { chatDeleteConversation, chatGetMessages, chatUploadMedia } from '../services/chatApi';
+import { chatDeleteConversation, chatDeleteManyMessages, chatGetMessages, chatUploadMedia } from '../services/chatApi';
 import { getChatSession } from '../services/chatSession';
 import {
   markMessagesReadSocket,
+  onMessagesDeleted,
   onMessagesRead,
   onReceiveMessage,
   onTypingEvent,
@@ -337,6 +338,22 @@ export default function ChatScreen({ navigation, route }: Props) {
   }, [conversationId]);
 
   useEffect(() => {
+    const unsubscribe = onMessagesDeleted((payload: any) => {
+      if (!payload || payload.conversationId !== conversationId || !Array.isArray(payload.messageIds)) {
+        return;
+      }
+
+      const deletedSet = new Set(payload.messageIds.map((id: string) => String(id)));
+      setMessages((prev) => prev.filter((message) => !deletedSet.has(String(message._id))));
+      setSelectedMessageIds((prev) => prev.filter((id) => !deletedSet.has(String(id))));
+    });
+
+    return () => {
+      unsubscribe?.();
+    };
+  }, [conversationId]);
+
+  useEffect(() => {
     const unsubscribe = onTypingEvent((event, payload: any) => {
       const convId = payload?.conversationId || payload?.conversation?._id;
       if (!convId || convId !== conversationId) return;
@@ -564,13 +581,23 @@ export default function ChatScreen({ navigation, route }: Props) {
     [myUserId, name, selectedMessageIds, selectionMode]
   );
 
-  const handleConfirmDeleteMessages = useCallback(() => {
-    const selectedSet = new Set(selectedMessageIds);
-    setMessages((prev) => prev.filter((message) => !selectedSet.has(message._id)));
-    setDeleteModalVisible(false);
-    setDeleteForBoth(false);
-    setSelectedMessageIds([]);
-  }, [selectedMessageIds]);
+  const handleConfirmDeleteMessages = useCallback(async () => {
+    try {
+      await chatDeleteManyMessages({
+        messageIds: selectedMessageIds,
+        deleteForEveryone: deleteForBoth,
+      });
+
+      const selectedSet = new Set(selectedMessageIds);
+      setMessages((prev) => prev.filter((message) => !selectedSet.has(message._id)));
+      setDeleteModalVisible(false);
+      setDeleteForBoth(false);
+      setSelectedMessageIds([]);
+    } catch (error: any) {
+      console.error('Erro ao apagar mensagens:', error);
+      Alert.alert('Erro', error?.message || 'Nao foi possivel apagar as mensagens.');
+    }
+  }, [deleteForBoth, selectedMessageIds]);
 
   if (loading) {
     return <LoadingSpinner message="Carregando mensagens..." />;
