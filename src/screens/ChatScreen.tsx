@@ -12,6 +12,7 @@ import {
   Pressable,
   TouchableOpacity,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -72,39 +73,80 @@ export default function ChatScreen({ navigation, route }: Props) {
   const [otherTyping, setOtherTyping] = useState(false);
   const typingTimeoutRef = useRef<any>(null);
   const [headerMenuVisible, setHeaderMenuVisible] = useState(false);
+  const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [deleteForBoth, setDeleteForBoth] = useState(false);
 
   const { statusText, online } = useOnlineStatusByEmail(username || '', !!username);
+  const selectionMode = selectedMessageIds.length > 0;
 
   React.useLayoutEffect(() => {
     navigation.setOptions({
+      headerLeft: () => (
+        selectionMode ? (
+          <TouchableOpacity activeOpacity={0.75} onPress={() => setSelectedMessageIds([])}>
+            <Ionicons name="close" size={26} color={colors.textPrimary} />
+          </TouchableOpacity>
+        ) : undefined
+      ),
       headerTitle: () => (
-        <View style={styles.headerTitleWrap}>
-          <Avatar name={name} size={38} uri={avatar ?? null} online={online} />
-          <View style={styles.headerTextWrap}>
-            <Text style={[styles.headerName, { color: colors.textPrimary }]} numberOfLines={1}>
-              {name}
-            </Text>
-            <Text style={[styles.headerStatus, { color: colors.textSecondary }]} numberOfLines={1}>
-              {otherTyping ? 'digitando...' : (statusText || 'via Chat API')}
-            </Text>
+        selectionMode ? (
+          <Text style={[styles.selectionTitle, { color: colors.textPrimary }]}>
+            {selectedMessageIds.length}
+          </Text>
+        ) : (
+          <View style={styles.headerTitleWrap}>
+            <Avatar name={name} size={38} uri={avatar ?? null} online={online} />
+            <View style={styles.headerTextWrap}>
+              <Text style={[styles.headerName, { color: colors.textPrimary }]} numberOfLines={1}>
+                {name}
+              </Text>
+              <Text style={[styles.headerStatus, { color: colors.textSecondary }]} numberOfLines={1}>
+                {otherTyping ? 'digitando...' : (statusText || 'via Chat API')}
+              </Text>
+            </View>
           </View>
-        </View>
+        )
       ),
       headerRight: () => (
-        <View style={styles.headerActions}>
-          <TouchableOpacity activeOpacity={0.75} onPress={() => Alert.alert('Chamada', 'Em breve.')}>
-            <Ionicons name="call-outline" size={24} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <TouchableOpacity activeOpacity={0.75} onPress={() => setHeaderMenuVisible(true)}>
-            <Ionicons name="ellipsis-vertical" size={20} color={colors.textPrimary} />
-          </TouchableOpacity>
-        </View>
+        selectionMode ? (
+          <View style={styles.selectionActions}>
+            <TouchableOpacity activeOpacity={0.75} onPress={() => Alert.alert('Editar', 'Em breve.')}>
+              <Ionicons name="create-outline" size={23} color={colors.textPrimary} />
+            </TouchableOpacity>
+            <TouchableOpacity activeOpacity={0.75} onPress={() => Alert.alert('Copiar', 'Em breve.')}>
+              <Ionicons name="copy-outline" size={23} color={colors.textPrimary} />
+            </TouchableOpacity>
+            <TouchableOpacity activeOpacity={0.75} onPress={() => Alert.alert('Encaminhar', 'Em breve.')}>
+              <Ionicons name="arrow-redo-outline" size={23} color={colors.textPrimary} />
+            </TouchableOpacity>
+            <TouchableOpacity activeOpacity={0.75} onPress={() => setDeleteModalVisible(true)}>
+              <Ionicons name="trash-outline" size={23} color={colors.textPrimary} />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.headerActions}>
+            <TouchableOpacity activeOpacity={0.75} onPress={() => Alert.alert('Chamada', 'Em breve.')}>
+              <Ionicons name="call-outline" size={24} color={colors.textPrimary} />
+            </TouchableOpacity>
+            <TouchableOpacity activeOpacity={0.75} onPress={() => setHeaderMenuVisible(true)}>
+              <Ionicons name="ellipsis-vertical" size={20} color={colors.textPrimary} />
+            </TouchableOpacity>
+          </View>
+        )
       ),
       headerStyle: { backgroundColor: colors.background },
       headerTintColor: colors.textPrimary,
       headerShadowVisible: false,
     });
-  }, [navigation, name, colors.background, colors.textPrimary, colors.textSecondary, avatar, online, otherTyping, statusText]);
+  }, [navigation, name, colors.background, colors.textPrimary, colors.textSecondary, avatar, online, otherTyping, statusText, selectionMode, selectedMessageIds.length]);
+
+  useEffect(() => {
+    if (!selectionMode) {
+      setDeleteModalVisible(false);
+      setDeleteForBoth(false);
+    }
+  }, [selectionMode]);
 
   const handleDeleteConversation = useCallback(() => {
     Alert.alert(
@@ -489,8 +531,11 @@ export default function ChatScreen({ navigation, route }: Props) {
         ? (item.read ? 'read' : item.localStatus || 'delivered')
         : undefined;
 
+      const selected = selectedMessageIds.includes(item._id);
+
       return (
         <MessageBubble
+          id={item._id}
           message={text}
           mediaUrl={item.mediaUrl}
           mediaType={item.mediaType}
@@ -498,11 +543,34 @@ export default function ChatScreen({ navigation, route }: Props) {
           isMine={isMine}
           senderName={senderName}
           status={status}
+          selectionMode={selectionMode}
+          selected={selected}
+          onLongPress={() => {
+            setSelectedMessageIds((prev) =>
+              prev.includes(item._id) ? prev : [item._id]
+            );
+          }}
+          onPress={() => {
+            if (!selectionMode) return;
+            setSelectedMessageIds((prev) =>
+              prev.includes(item._id)
+                ? prev.filter((id) => id !== item._id)
+                : [...prev, item._id]
+            );
+          }}
         />
       );
     },
-    [myUserId, name]
+    [myUserId, name, selectedMessageIds, selectionMode]
   );
+
+  const handleConfirmDeleteMessages = useCallback(() => {
+    const selectedSet = new Set(selectedMessageIds);
+    setMessages((prev) => prev.filter((message) => !selectedSet.has(message._id)));
+    setDeleteModalVisible(false);
+    setDeleteForBoth(false);
+    setSelectedMessageIds([]);
+  }, [selectedMessageIds]);
 
   if (loading) {
     return <LoadingSpinner message="Carregando mensagens..." />;
@@ -726,6 +794,34 @@ export default function ChatScreen({ navigation, route }: Props) {
           </View>
         </Pressable>
       </Modal>
+
+      <Modal transparent visible={deleteModalVisible} animationType="fade" onRequestClose={() => setDeleteModalVisible(false)}>
+        <View style={styles.deleteOverlay}>
+          <View style={[styles.deleteCard, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.deleteTitle, { color: colors.textPrimary }]}>Apagar mensagem</Text>
+            <Text style={[styles.deleteDescription, { color: colors.textPrimary }]}>
+              Tem certeza de que deseja apagar essa mensagem?
+            </Text>
+
+            <View style={styles.deleteOptionRow}>
+              <Switch value={deleteForBoth} onValueChange={setDeleteForBoth} />
+              <Text style={[styles.deleteOptionText, { color: colors.textPrimary }]}>
+                Apagar para {name} tambem
+              </Text>
+            </View>
+
+            <View style={styles.deleteActions}>
+              <TouchableOpacity activeOpacity={0.75} onPress={() => setDeleteModalVisible(false)}>
+                <Text style={[styles.deleteCancel, { color: '#8aa4ff' }]}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity activeOpacity={0.75} onPress={handleConfirmDeleteMessages}>
+                <Text style={styles.deleteConfirm}>Apagar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -774,6 +870,16 @@ const styles = StyleSheet.create({
     width: 58,
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  selectionActions: {
+    flexDirection: 'row',
+    width: 156,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  selectionTitle: {
+    fontSize: 22,
+    fontWeight: '500',
   },
   headerName: {
     color: '#fff',
@@ -876,5 +982,54 @@ const styles = StyleSheet.create({
   menuText: {
     fontSize: 17,
     fontWeight: '500',
+  },
+  deleteOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.48)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  deleteCard: {
+    width: '100%',
+    maxWidth: 420,
+    borderRadius: 18,
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 16,
+  },
+  deleteTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  deleteDescription: {
+    fontSize: 16,
+    lineHeight: 22,
+    marginBottom: 18,
+  },
+  deleteOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 22,
+  },
+  deleteOptionText: {
+    marginLeft: 10,
+    fontSize: 16,
+  },
+  deleteActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: 26,
+  },
+  deleteCancel: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  deleteConfirm: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#ff6666',
   },
 });

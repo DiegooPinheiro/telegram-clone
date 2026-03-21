@@ -1,9 +1,10 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Linking } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, View, Text, StyleSheet, Image, TouchableOpacity, Linking } from 'react-native';
 import useTheme from '../hooks/useTheme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface MessageBubbleProps {
+  id?: string;
   message: string;
   mediaUrl?: string;
   mediaType?: string;
@@ -11,9 +12,14 @@ interface MessageBubbleProps {
   isMine: boolean;
   senderName?: string;
   status?: 'sending' | 'sent' | 'delivered' | 'read';
+  selectionMode?: boolean;
+  selected?: boolean;
+  onPress?: () => void;
+  onLongPress?: () => void;
 }
 
 export default function MessageBubble({
+  id,
   message,
   mediaUrl,
   mediaType,
@@ -21,8 +27,23 @@ export default function MessageBubble({
   isMine,
   senderName,
   status = 'delivered',
+  selectionMode = false,
+  selected = false,
+  onPress,
+  onLongPress,
 }: MessageBubbleProps) {
   const { colors, isDark } = useTheme();
+  const selectAnim = useRef(new Animated.Value(selected ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.spring(selectAnim, {
+      toValue: selected ? 1 : 0,
+      damping: 16,
+      stiffness: 220,
+      mass: 0.9,
+      useNativeDriver: true,
+    }).start();
+  }, [selectAnim, selected]);
   
   const time = new Date(timestamp * 1000).toLocaleTimeString([], {
     hour: '2-digit',
@@ -55,20 +76,64 @@ export default function MessageBubble({
       : status === 'sent'
         ? 'check'
         : 'check-all';
+  const selectionScale = selectAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.72, 1],
+  });
+  const selectionOpacity = selectAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.85, 1],
+  });
 
   return (
-    <View style={[styles.wrapper, isMine ? styles.wrapperMine : styles.wrapperTheirs]}>
-      <View
-        style={[
-          styles.container,
-          isMine ? styles.mine : styles.theirs,
-          {
-            backgroundColor: isMine ? colors.bubbleMine : colors.bubbleTheirs,
-            shadowOpacity: isDark ? 0.22 : 0.1,
-            shadowRadius: isDark ? 4 : 2,
-          },
-        ]}
-      >
+    <TouchableOpacity
+      key={id}
+      activeOpacity={selectionMode ? 0.8 : 0.95}
+      onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={220}
+      style={[
+        styles.row,
+        isMine ? styles.rowMine : styles.rowTheirs,
+        selectionMode ? styles.rowSelectionMode : null,
+      ]}
+    >
+      {selectionMode && !isMine ? (
+        <View style={styles.selectionRailLeft}>
+          <Animated.View
+            style={[
+              styles.selectionCircle,
+              selected ? styles.selectionCircleActive : null,
+              {
+                opacity: selectionOpacity,
+                transform: [{ scale: selectionScale }],
+              },
+            ]}
+          >
+            {selected ? <MaterialCommunityIcons name="check" size={16} color="#fff" /> : null}
+          </Animated.View>
+        </View>
+      ) : null}
+
+      <View style={[styles.wrapper, isMine ? styles.wrapperMine : styles.wrapperTheirs]}>
+        <View
+          style={[
+            styles.container,
+            isMine ? styles.mine : styles.theirs,
+            {
+              backgroundColor: isMine ? colors.bubbleMine : colors.bubbleTheirs,
+              shadowOpacity: isDark ? 0.22 : 0.1,
+              shadowRadius: isDark ? 4 : 2,
+            },
+            selected
+              ? {
+                  backgroundColor: isMine
+                    ? (isDark ? '#6f8ec8' : '#dce7ff')
+                    : (isDark ? '#2a3950' : '#edf3ff'),
+                }
+              : null,
+          ]}
+        >
         {!isMine && senderName && (
           <Text style={[styles.senderName, { color: colors.primary }]}>{senderName}</Text>
         )}
@@ -121,22 +186,58 @@ export default function MessageBubble({
           ) : null}
         </View>
 
-        {/* Tail (Beak) using a more integrated approach */}
-        <View style={[
-          styles.tail,
-          isMine ? styles.tailMine : styles.tailTheirs,
-          { borderBottomColor: isMine ? colors.bubbleMine : colors.bubbleTheirs }
-        ]} />
+          {/* Tail (Beak) using a more integrated approach */}
+          <View style={[
+            styles.tail,
+            isMine ? styles.tailMine : styles.tailTheirs,
+            {
+              borderBottomColor: selected
+                ? (isMine
+                  ? (isDark ? '#6f8ec8' : '#dce7ff')
+                  : (isDark ? '#2a3950' : '#edf3ff'))
+                : (isMine ? colors.bubbleMine : colors.bubbleTheirs),
+            }
+          ]} />
+        </View>
       </View>
-    </View>
+      {selectionMode && isMine ? (
+        <View style={styles.selectionRailRight}>
+          <Animated.View
+            style={[
+              styles.selectionCircle,
+              selected ? styles.selectionCircleActive : null,
+              {
+                opacity: selectionOpacity,
+                transform: [{ scale: selectionScale }],
+              },
+            ]}
+          >
+            {selected ? <MaterialCommunityIcons name="check" size={16} color="#fff" /> : null}
+          </Animated.View>
+        </View>
+      ) : null}
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rowMine: {
+    justifyContent: 'flex-end',
+  },
+  rowTheirs: {
+    justifyContent: 'flex-start',
+  },
+  rowSelectionMode: {
+    paddingHorizontal: 6,
+  },
   wrapper: {
     maxWidth: '84%',
     marginVertical: 2,
-    paddingHorizontal: 8,
+    paddingHorizontal: 4,
   },
   wrapperMine: {
     alignSelf: 'flex-end',
@@ -260,5 +361,29 @@ const styles = StyleSheet.create({
     left: -5,
     bottom: 2,
     transform: [{ rotate: '234deg' }],
+  },
+  selectionRailLeft: {
+    width: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectionRailRight: {
+    width: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectionCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.82)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  selectionCircleActive: {
+    borderColor: '#43A047',
+    backgroundColor: '#43A047',
   },
 });
