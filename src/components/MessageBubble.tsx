@@ -22,7 +22,7 @@ export default function MessageBubble({
   senderName,
   status = 'delivered',
 }: MessageBubbleProps) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   
   const time = new Date(timestamp * 1000).toLocaleTimeString([], {
     hour: '2-digit',
@@ -41,6 +41,20 @@ export default function MessageBubble({
 
   const isImage = !!mediaUrl && mediaType === 'image';
   const showText = !!message?.trim();
+  const metaColor = isMine
+    ? (isDark ? '#9db7d3' : 'rgba(93, 108, 77, 0.88)')
+    : (isDark ? '#7f91a4' : colors.textTimestamp);
+  const statusColor = status === 'read'
+    ? (isDark ? '#8ec3f5' : '#4fa3f7')
+    : isMine
+      ? (isDark ? '#9db7d3' : 'rgba(93, 108, 77, 0.88)')
+      : colors.primary;
+  const statusIconName =
+    status === 'sending'
+      ? 'clock-outline'
+      : status === 'sent'
+        ? 'check'
+        : 'check-all';
 
   return (
     <View style={[styles.wrapper, isMine ? styles.wrapperMine : styles.wrapperTheirs]}>
@@ -48,7 +62,11 @@ export default function MessageBubble({
         style={[
           styles.container,
           isMine ? styles.mine : styles.theirs,
-          { backgroundColor: isMine ? colors.bubbleMine : colors.bubbleTheirs },
+          {
+            backgroundColor: isMine ? colors.bubbleMine : colors.bubbleTheirs,
+            shadowOpacity: isDark ? 0.22 : 0.1,
+            shadowRadius: isDark ? 4 : 2,
+          },
         ]}
       >
         {!isMine && senderName && (
@@ -71,23 +89,33 @@ export default function MessageBubble({
         ) : null}
 
         {showText && (!mediaUrl || isImage) ? (
-          <Text style={[styles.messageText, { color: colors.textPrimary }]}>{message}</Text>
+          <Text
+            style={[
+              styles.messageText,
+              isMine ? styles.messageTextMine : null,
+              isMine ? styles.messageTextWithMetaMine : null,
+              !isMine ? styles.messageTextWithMetaTheirs : null,
+              { color: colors.textPrimary },
+            ]}
+          >
+            {message}
+          </Text>
         ) : null}
 
-        <View style={styles.metaRow}>
+        <View style={[styles.metaRow, isMine ? styles.metaRowMine : styles.metaRowTheirs]}>
           <Text
             style={[
               styles.timestamp,
-              { color: isMine ? 'rgba(255, 255, 255, 0.55)' : colors.textSecondary },
+              { color: metaColor },
             ]}
           >
             {time}
           </Text>
-          {isMine && status !== 'sending' ? (
+          {isMine ? (
             <MaterialCommunityIcons
-              name={status === 'read' ? 'check-all' : 'check'}
+              name={statusIconName}
               size={14}
-              color={isMine ? 'rgba(255, 255, 255, 0.55)' : colors.primary}
+              color={statusColor}
               style={styles.statusIcon}
             />
           ) : null}
@@ -106,9 +134,9 @@ export default function MessageBubble({
 
 const styles = StyleSheet.create({
   wrapper: {
-    maxWidth: '85%',
-    marginVertical: 1,
-    paddingHorizontal: 10,
+    maxWidth: '84%',
+    marginVertical: 2,
+    paddingHorizontal: 8,
   },
   wrapperMine: {
     alignSelf: 'flex-end',
@@ -117,23 +145,25 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   container: {
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    paddingBottom: 5,
-    borderRadius: 18,
+    paddingHorizontal: 13,
+    paddingTop: 9,
+    paddingBottom: 6,
+    borderRadius: 19,
     position: 'relative',
     minWidth: 90,
-    elevation: 1,
+    elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
-    shadowRadius: 1,
+    shadowRadius: 2,
   },
   mine: {
-    borderBottomRightRadius: 2,
+    borderBottomRightRadius: 5,
+    paddingTop: 9,
+    paddingBottom: 7,
   },
   theirs: {
-    borderBottomLeftRadius: 2,
+    borderBottomLeftRadius: 5,
   },
   messageContent: {
     // No specific layout needed, let the Text handle it
@@ -141,20 +171,40 @@ const styles = StyleSheet.create({
   messageText: {
     fontSize: 16,
     lineHeight: 20,
-    marginBottom: 2,
+    marginBottom: 0,
+  },
+  messageTextMine: {
+    marginTop: 0,
+  },
+  messageTextWithMetaMine: {
+    paddingRight: 44,
+    paddingBottom: 6,
+  },
+  messageTextWithMetaTheirs: {
+    paddingRight: 38,
+    paddingBottom: 6,
   },
   timestamp: {
     fontSize: 11,
     lineHeight: 11,
+    fontWeight: '500',
   },
   statusIcon: {
     marginLeft: 3,
   },
   metaRow: {
+    position: 'absolute',
+    right: 12,
+    bottom: 6,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    marginTop: 2,
+  },
+  metaRowMine: {
+    right: 12,
+  },
+  metaRowTheirs: {
+    right: 12,
   },
   senderName: {
     fontSize: 13,
@@ -162,7 +212,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   imageWrap: {
-    borderRadius: 14,
+    borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 4,
     alignSelf: 'flex-start',
@@ -202,11 +252,13 @@ const styles = StyleSheet.create({
     borderRightColor: 'transparent',
   },
   tailMine: {
-    right: -6,
-    transform: [{ rotate: '130deg' }],
+    right: -5,
+    bottom: 2,
+    transform: [{ rotate: '126deg' }],
   },
   tailTheirs: {
-    left: -6,
-    transform: [{ rotate: '230deg' }],
+    left: -5,
+    bottom: 2,
+    transform: [{ rotate: '234deg' }],
   },
 });

@@ -34,6 +34,11 @@ import { onReceiveMessage, onTypingEvent, sendMessageSocket, sendStopTypingSocke
 import type { ChatApiMessage, ChatApiUser } from '../types/chatApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;
+type LocalMessageStatus = 'sending' | 'sent' | 'delivered' | 'read';
+type LocalChatMessage = ChatApiMessage & {
+  localStatus?: LocalMessageStatus;
+  localOnly?: boolean;
+};
 
 export default function ChatScreen({ navigation, route }: Props) {
   const EMOJI_SEARCH_LIFT = 176;
@@ -52,7 +57,7 @@ export default function ChatScreen({ navigation, route }: Props) {
   const keyboardOpeningTimeoutRef = useRef<any>(null);
 
   const [myUserId, setMyUserId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<ChatApiMessage[]>([]);
+  const [messages, setMessages] = useState<LocalChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [attachOpen, setAttachOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -167,7 +172,12 @@ export default function ChatScreen({ navigation, route }: Props) {
 
         const fetched = await chatGetMessages(conversationId);
         if (active) {
-          setMessages(fetched);
+          setMessages(
+            fetched.map((message) => ({
+              ...message,
+              localStatus: message.read ? 'read' : 'delivered',
+            }))
+          );
         }
       } catch (error: any) {
         console.error('Erro ao carregar mensagens:', error);
@@ -192,16 +202,46 @@ export default function ChatScreen({ navigation, route }: Props) {
         return;
       }
 
-      const normalized: ChatApiMessage = {
+      const normalized: LocalChatMessage = {
         ...message,
         // socket pode enviar senderId como string (sem populate)
         senderId: message.senderId,
         createdAt: message.createdAt || new Date().toISOString(),
         updatedAt: message.updatedAt || message.createdAt || new Date().toISOString(),
+        localStatus: message.read ? 'read' : 'delivered',
       };
 
       setMessages((prev) => {
-        if (prev.some((m) => m._id === normalized._id)) return prev;
+        const byIdIndex = prev.findIndex((m) => m._id === normalized._id);
+        if (byIdIndex >= 0) {
+          const next = [...prev];
+          next[byIdIndex] = {
+            ...next[byIdIndex],
+            ...normalized,
+            localStatus: normalized.read ? 'read' : next[byIdIndex].localStatus || 'delivered',
+            localOnly: false,
+          };
+          return next;
+        }
+
+        const optimisticIndex = prev.findIndex((m) =>
+          m.localOnly &&
+          extractUserId(m.senderId) === extractUserId(normalized.senderId) &&
+          m.text === normalized.text &&
+          m.mediaUrl === normalized.mediaUrl &&
+          m.mediaType === normalized.mediaType
+        );
+
+        if (optimisticIndex >= 0) {
+          const next = [...prev];
+          next[optimisticIndex] = {
+            ...normalized,
+            localStatus: normalized.read ? 'read' : 'delivered',
+            localOnly: false,
+          };
+          return next;
+        }
+
         return [...prev, normalized];
       });
     });
@@ -251,6 +291,19 @@ export default function ChatScreen({ navigation, route }: Props) {
         return;
       }
 
+      const optimisticMessage: LocalChatMessage = {
+        _id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        conversationId,
+        senderId: myUserId,
+        text,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        localStatus: 'sent',
+        localOnly: true,
+      };
+
+      setMessages((prev) => [...prev, optimisticMessage]);
+
       try {
         sendMessageSocket({
           conversationId,
@@ -259,6 +312,7 @@ export default function ChatScreen({ navigation, route }: Props) {
           text,
         });
       } catch (error: any) {
+        setMessages((prev) => prev.filter((m) => m._id !== optimisticMessage._id));
         console.error('Erro ao enviar:', error);
         Alert.alert('Erro', error?.message || 'Não foi possível enviar a mensagem.');
       }
@@ -274,10 +328,27 @@ export default function ChatScreen({ navigation, route }: Props) {
       }
 
       setUploading(true);
+      const optimisticId = `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       try {
         const uploaded = await chatUploadMedia(file);
         const displayName = uploaded.fileName || file.name;
         const text = uploaded.mediaType === 'image' ? undefined : displayName;
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            _id: optimisticId,
+            conversationId,
+            senderId: myUserId,
+            text,
+            mediaUrl: uploaded.mediaUrl,
+            mediaType: uploaded.mediaType,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            localStatus: 'sent',
+            localOnly: true,
+          },
+        ]);
 
         sendMessageSocket({
           conversationId,
@@ -288,6 +359,7 @@ export default function ChatScreen({ navigation, route }: Props) {
           mediaType: uploaded.mediaType,
         });
       } catch (error: any) {
+        setMessages((prev) => prev.filter((m) => m._id !== optimisticId));
         console.error('Erro ao enviar mídia:', error);
         Alert.alert('Erro', error?.message || 'Não foi possível enviar o arquivo.');
       } finally {
@@ -363,13 +435,16 @@ export default function ChatScreen({ navigation, route }: Props) {
   }, [handleUploadAndSend]);
 
   const renderMessage = useCallback(
-    ({ item }: { item: ChatApiMessage }) => {
+    ({ item }: { item: LocalChatMessage }) => {
       const senderId = extractUserId(item.senderId);
       const isMine = !!myUserId && !!senderId && senderId === myUserId;
 
       const senderName = !isMine ? extractUserName(item.senderId) || name : undefined;
       const text = item.text ? String(item.text) : '';
       const timestamp = Math.floor(new Date(item.createdAt).getTime() / 1000);
+      const status: LocalMessageStatus | undefined = isMine
+        ? (item.read ? 'read' : item.localStatus || 'delivered')
+        : undefined;
 
       return (
         <MessageBubble
@@ -379,6 +454,7 @@ export default function ChatScreen({ navigation, route }: Props) {
           timestamp={timestamp}
           isMine={isMine}
           senderName={senderName}
+          status={status}
         />
       );
     },
