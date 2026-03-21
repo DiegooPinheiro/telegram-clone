@@ -1,5 +1,6 @@
-﻿import { io, Socket } from 'socket.io-client';
+import { io, Socket } from 'socket.io-client';
 import { CHAT_API_CONFIG } from '../config/chatApiConfig';
+import { auth } from '../config/firebaseConfig';
 import type { ChatApiMessage } from '../types/chatApi';
 
 type ReceiveMessageHandler = (message: ChatApiMessage | any) => void;
@@ -64,17 +65,25 @@ const removeTypingListeners = (handler: TypingHandler) => {
   socket?.off('typingStatus', wrappers.typingStatus);
 };
 
-export const connectChatSocket = (userId: string) => {
+export const connectChatSocket = async (userId: string) => {
   if (socket && currentUserId === userId) {
     return socket;
   }
 
   disconnectChatSocket();
 
+  const firebaseToken = await auth.currentUser?.getIdToken();
+  if (!firebaseToken) {
+    throw new Error('Sessão do Firebase ausente. Não foi possível conectar o socket.');
+  }
+
   currentUserId = userId;
   socket = io(normalizeBaseUrl(CHAT_API_CONFIG.BASE_URL), {
     transports: ['websocket'],
     autoConnect: true,
+    auth: {
+      token: firebaseToken,
+    },
   });
 
   socket.on('connect', () => {

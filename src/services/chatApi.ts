@@ -1,11 +1,15 @@
 import { CHAT_API_CONFIG } from '../config/chatApiConfig';
-import { getChatSession } from './chatSession';
+import { auth } from '../config/firebaseConfig';
 import type { ChatApiConversation, ChatApiMessage, ChatApiUser } from '../types/chatApi';
-
-type Json = Record<string, any>;
 
 type RequestOptions = {
   auth?: boolean;
+};
+
+type FirebaseExchangePayload = {
+  email: string;
+  displayName: string;
+  photoURL?: string;
 };
 
 const normalizeBaseUrl = (value: string) => value.replace(/\/+$/, '');
@@ -14,6 +18,15 @@ const toAbsoluteUrl = (baseUrl: string, url: string) => {
   if (/^https?:\/\//i.test(url)) return url;
   if (url.startsWith('/')) return `${normalizeBaseUrl(baseUrl)}${url}`;
   return `${normalizeBaseUrl(baseUrl)}/${url}`;
+};
+
+const getFirebaseIdToken = async () => {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error('Sessão do Firebase ausente. Faça login novamente.');
+  }
+
+  return user.getIdToken();
 };
 
 const requestJson = async <T>(
@@ -30,11 +43,8 @@ const requestJson = async <T>(
 
   const needsAuth = options.auth !== false;
   if (needsAuth) {
-    const session = await getChatSession();
-    if (!session?.token) {
-      throw new Error('Sessão do chat ausente. Faça login novamente.');
-    }
-    headers.set('Authorization', `Bearer ${session.token}`);
+    const firebaseToken = await getFirebaseIdToken();
+    headers.set('Authorization', `Bearer ${firebaseToken}`);
   }
 
   if (!headers.has('Content-Type') && init.body && !(init.body instanceof FormData)) {
@@ -52,7 +62,8 @@ const requestJson = async <T>(
 
   if (!response.ok) {
     console.log(`[ChatAPI] Error Response (${response.status}):`, data);
-    const message = (data && typeof data === 'object' && data.message) ? data.message : `${response.status} ${response.statusText}`;
+    const message =
+      data && typeof data === 'object' && data.message ? data.message : `${response.status} ${response.statusText}`;
     throw new Error(message);
   }
 
@@ -64,36 +75,18 @@ export type ChatAuthResponse = {
   username: string;
   nome: string;
   foto?: string;
-  token: string;
 };
 
-export const chatRegister = async (payload: {
-  username: string;
-  nome: string;
-  password: string;
-  foto?: string;
-}): Promise<ChatAuthResponse> => {
+export const chatSyncFirebaseUser = async (
+  payload: FirebaseExchangePayload
+): Promise<ChatAuthResponse> => {
   return requestJson<ChatAuthResponse>(
-    '/api/users',
+    '/api/auth/firebase',
     {
       method: 'POST',
       body: JSON.stringify(payload),
     },
-    { auth: false }
-  );
-};
-
-export const chatLogin = async (payload: {
-  username: string;
-  password: string;
-}): Promise<ChatAuthResponse> => {
-  return requestJson<ChatAuthResponse>(
-    '/api/users/login',
-    {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    },
-    { auth: false }
+    { auth: true }
   );
 };
 
@@ -161,4 +154,3 @@ export const chatUploadMedia = async (file: {
     mediaUrl: toAbsoluteUrl(CHAT_API_CONFIG.BASE_URL, uploaded.mediaUrl),
   };
 };
-

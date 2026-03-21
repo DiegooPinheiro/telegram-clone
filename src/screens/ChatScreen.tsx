@@ -22,7 +22,8 @@ import * as DocumentPicker from 'expo-document-picker';
 import { RootStackParamList } from '../navigation/types';
 import { spacing } from '../theme/spacing';
 import MessageBubble from '../components/MessageBubble';
-import MessageInput from '../components/MessageInput';
+import MessageInput, { type MessageInputHandle } from '../components/MessageInput';
+import EmojiPickerPanel, { DEFAULT_EMOJI_PANEL_HEIGHT } from '../components/EmojiPickerPanel';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Avatar from '../components/Avatar';
 import useTheme from '../hooks/useTheme';
@@ -39,9 +40,14 @@ export default function ChatScreen({ navigation, route }: Props) {
   const { conversationId, userId: receiverId, name, avatar, username } = route.params;
 
   const flatListRef = useRef<FlatList>(null);
+  const messageInputRef = useRef<MessageInputHandle | null>(null);
   const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [lastKeyboardHeight, setLastKeyboardHeight] = useState(0);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [keyboardOpening, setKeyboardOpening] = useState(false);
+  const keyboardOpeningTimeoutRef = useRef<any>(null);
 
   const [myUserId, setMyUserId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatApiMessage[]>([]);
@@ -119,7 +125,15 @@ export default function ChatScreen({ navigation, route }: Props) {
     }
 
     const showSub = Keyboard.addListener('keyboardDidShow', (event) => {
-      setKeyboardHeight(event.endCoordinates?.height ?? 0);
+      const h = event.endCoordinates?.height ?? 0;
+      setKeyboardHeight(h);
+      if (h > 0) setLastKeyboardHeight(h);
+      setEmojiOpen(false);
+      setKeyboardOpening(false);
+      if (keyboardOpeningTimeoutRef.current) {
+        clearTimeout(keyboardOpeningTimeoutRef.current);
+        keyboardOpeningTimeoutRef.current = null;
+      }
     });
     const hideSub = Keyboard.addListener('keyboardDidHide', () => {
       setKeyboardHeight(0);
@@ -374,6 +388,14 @@ export default function ChatScreen({ navigation, route }: Props) {
     return <LoadingSpinner message="Carregando mensagens..." />;
   }
 
+  const reservedBottomHeight = keyboardHeight > 0
+    ? keyboardHeight
+    : emojiOpen
+      ? (lastKeyboardHeight || DEFAULT_EMOJI_PANEL_HEIGHT)
+      : keyboardOpening
+        ? (lastKeyboardHeight || DEFAULT_EMOJI_PANEL_HEIGHT)
+      : 0;
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundChat }]} edges={['bottom']}>
       {Platform.OS === 'ios' ? (
@@ -399,6 +421,7 @@ export default function ChatScreen({ navigation, route }: Props) {
           />
 
           <MessageInput
+            ref={messageInputRef}
             onSend={handleSend}
             onAttachPress={() => setAttachOpen(true)}
             onTyping={() => {
@@ -410,10 +433,45 @@ export default function ChatScreen({ navigation, route }: Props) {
               sendStopTypingSocket({ conversationId, senderId: myUserId, receiverId });
             }}
             disabled={uploading}
+            emojiOpen={emojiOpen}
+            onEmojiOpenChange={(open) => {
+              setEmojiOpen(open);
+
+              // Ao trocar de emoji -> teclado, o teclado demora alguns ms para aparecer.
+              // Mantém o "espaço" reservado nesse intervalo para evitar a piscada (descer/subir rápido).
+              if (!open && keyboardHeight === 0) {
+                setKeyboardOpening(true);
+                if (keyboardOpeningTimeoutRef.current) {
+                  clearTimeout(keyboardOpeningTimeoutRef.current);
+                }
+                keyboardOpeningTimeoutRef.current = setTimeout(() => {
+                  setKeyboardOpening(false);
+                  keyboardOpeningTimeoutRef.current = null;
+                }, 320);
+              } else if (open) {
+                setKeyboardOpening(false);
+                if (keyboardOpeningTimeoutRef.current) {
+                  clearTimeout(keyboardOpeningTimeoutRef.current);
+                  keyboardOpeningTimeoutRef.current = null;
+                }
+              }
+            }}
           />
+
+          <View style={{ height: reservedBottomHeight }}>
+            {emojiOpen && keyboardHeight === 0 ? (
+              <EmojiPickerPanel
+                visible
+                fill
+                height={reservedBottomHeight}
+                onClose={() => setEmojiOpen(false)}
+                onSelectEmoji={(emoji) => messageInputRef.current?.appendText?.(emoji)}
+              />
+            ) : null}
+          </View>
         </KeyboardAvoidingView>
       ) : (
-        <View style={[styles.flex, { paddingBottom: Math.max(0, keyboardHeight) }]}>
+        <View style={styles.flex}>
           <View style={[styles.chatWallpaper, { backgroundColor: colors.backgroundChat }]} />
 
           <FlatList
@@ -435,6 +493,7 @@ export default function ChatScreen({ navigation, route }: Props) {
           />
 
           <MessageInput
+            ref={messageInputRef}
             onSend={handleSend}
             onAttachPress={() => setAttachOpen(true)}
             onTyping={() => {
@@ -446,7 +505,40 @@ export default function ChatScreen({ navigation, route }: Props) {
               sendStopTypingSocket({ conversationId, senderId: myUserId, receiverId });
             }}
             disabled={uploading}
+            emojiOpen={emojiOpen}
+            onEmojiOpenChange={(open) => {
+              setEmojiOpen(open);
+
+              if (!open && keyboardHeight === 0) {
+                setKeyboardOpening(true);
+                if (keyboardOpeningTimeoutRef.current) {
+                  clearTimeout(keyboardOpeningTimeoutRef.current);
+                }
+                keyboardOpeningTimeoutRef.current = setTimeout(() => {
+                  setKeyboardOpening(false);
+                  keyboardOpeningTimeoutRef.current = null;
+                }, 320);
+              } else if (open) {
+                setKeyboardOpening(false);
+                if (keyboardOpeningTimeoutRef.current) {
+                  clearTimeout(keyboardOpeningTimeoutRef.current);
+                  keyboardOpeningTimeoutRef.current = null;
+                }
+              }
+            }}
           />
+
+          <View style={{ height: reservedBottomHeight }}>
+            {emojiOpen && keyboardHeight === 0 ? (
+              <EmojiPickerPanel
+                visible
+                fill
+                height={reservedBottomHeight}
+                onClose={() => setEmojiOpen(false)}
+                onSelectEmoji={(emoji) => messageInputRef.current?.appendText?.(emoji)}
+              />
+            ) : null}
+          </View>
         </View>
       )}
 

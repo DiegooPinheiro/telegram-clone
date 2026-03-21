@@ -38,9 +38,8 @@ export default function ContactsScreen({ navigation }: Props) {
     setLoading(true);
     setNoSession(false);
     try {
-      // Verificar se há sessão antes de buscar
       const session = await getChatSession();
-      if (!session?.token) {
+      if (!session?.userId) {
         console.warn('[ContactsScreen] Sessão não encontrada, aguardando...');
         setNoSession(true);
         setLoading(false);
@@ -110,11 +109,20 @@ export default function ContactsScreen({ navigation }: Props) {
 
   if (noSession) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]} edges={['left', 'right']}>
+      <SafeAreaView
+        style={[
+          styles.container,
+          { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' },
+        ]}
+        edges={['left', 'right']}
+      >
         <Text style={{ color: colors.textSecondary, fontSize: 16, textAlign: 'center', marginBottom: 16 }}>
           Sessão não encontrada. Faça login novamente.
         </Text>
-        <TouchableOpacity onPress={loadUsers} style={{ backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 24 }}>
+        <TouchableOpacity
+          onPress={loadUsers}
+          style={{ backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 24 }}
+        >
           <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>Tentar novamente</Text>
         </TouchableOpacity>
       </SafeAreaView>
@@ -130,7 +138,7 @@ export default function ContactsScreen({ navigation }: Props) {
         </TouchableOpacity>
       </View>
 
-      <View style={[styles.searchWrap, { backgroundColor: colors.inputBackground }]}> 
+      <View style={[styles.searchWrap, { backgroundColor: colors.inputBackground }]}>
         <Ionicons name="search-outline" size={20} color={colors.textSecondary} style={styles.searchIcon} />
         <TextInput
           style={[styles.searchInput, { color: colors.textPrimary }]}
@@ -156,11 +164,7 @@ export default function ContactsScreen({ navigation }: Props) {
             const subtitle = item.username;
 
             return (
-              <TouchableOpacity
-                style={styles.contactRow}
-                activeOpacity={0.75}
-                onPress={() => startChat(item)}
-              >
+              <TouchableOpacity style={styles.contactRow} activeOpacity={0.75} onPress={() => startChat(item)}>
                 <Avatar uri={item.foto || null} name={displayName} size={54} online={false} />
                 <View style={styles.contactInfo}>
                   <Text style={[styles.contactName, { color: colors.textPrimary }]}>{displayName}</Text>
@@ -171,7 +175,9 @@ export default function ContactsScreen({ navigation }: Props) {
               </TouchableOpacity>
             );
           }}
-          ListEmptyComponent={<Text style={[styles.emptyText, { color: colors.textSecondary }]}>Nenhum contato encontrado</Text>}
+          ListEmptyComponent={
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Nenhum contato encontrado</Text>
+          }
           stickySectionHeadersEnabled={false}
           showsVerticalScrollIndicator={false}
         />
