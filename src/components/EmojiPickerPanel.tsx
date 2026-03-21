@@ -1,8 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
-  FlatList,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -70,6 +68,42 @@ const mapCategory = (value: string | undefined): Exclude<CategoryKey, 'recent'> 
   return null;
 };
 
+const normalize = (value: string) =>
+  (value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+
+const PT_BR_SEARCH_SYNONYMS: Array<[string[], string[]]> = [
+  [['smile', 'smiley', 'grin', 'grinning', 'happy', 'joy', 'laugh', 'laughing'], ['sorriso', 'sorrindo', 'feliz', 'alegre', 'risada', 'rindo']],
+  [['sad', 'cry', 'crying', 'tears', 'sob'], ['triste', 'chorando', 'choro', 'lagrimas']],
+  [['angry', 'mad', 'rage'], ['bravo', 'raiva', 'irritado']],
+  [['love', 'heart', 'kiss', 'romance'], ['amor', 'coracao', 'beijo', 'romance', 'apaixonado']],
+  [['thumbsup', '+1', 'like', 'approve', 'ok_hand'], ['joinha', 'curtir', 'aprovado', 'ok']],
+  [['fire', 'flame'], ['fogo', 'chama']],
+  [['party', 'birthday', 'tada', 'celebration'], ['festa', 'aniversario', 'celebracao', 'comemoracao']],
+  [['car', 'automobile', 'taxi', 'bus'], ['carro', 'automovel', 'taxi', 'onibus']],
+  [['dog', 'cat', 'animal', 'paw'], ['cachorro', 'cao', 'gato', 'animal', 'pata']],
+  [['food', 'drink', 'pizza', 'burger', 'coffee'], ['comida', 'bebida', 'pizza', 'hamburguer', 'cafe']],
+  [['soccer', 'football', 'sport', 'ball'], ['futebol', 'esporte', 'bola']],
+  [['tree', 'flower', 'leaf', 'nature'], ['arvore', 'flor', 'folha', 'natureza']],
+  [['phone', 'mobile', 'computer', 'bulb'], ['telefone', 'celular', 'computador', 'lampada']],
+  [['flag', 'symbol', 'sign'], ['bandeira', 'simbolo', 'sinal']],
+];
+
+const expandPortugueseSynonyms = (tokens: string[]) => {
+  const expanded = new Set(tokens);
+
+  for (const [matchers, additions] of PT_BR_SEARCH_SYNONYMS) {
+    if (tokens.some((token) => matchers.some((matcher) => token.includes(matcher)))) {
+      additions.forEach((addition) => expanded.add(addition));
+    }
+  }
+
+  return Array.from(expanded);
+};
+
 const buildCatalog = () => {
   const byCategory: Record<Exclude<CategoryKey, 'recent'>, string[]> = {
     people: [],
@@ -98,17 +132,28 @@ const buildCatalog = () => {
 
     byCategory[cat].push(emoji);
 
-    const tokens = [
+    const tokens = expandPortugueseSynonyms([
       ...(row.keywords || []),
       ...(row.short_names || []),
       row.short_name || '',
       row.name || '',
     ]
-      .map((t) => String(t || '').toLowerCase())
-      .filter(Boolean)
-      .join(' ');
+      .map((t) => normalize(String(t || '')))
+      .filter(Boolean));
 
-    searchable.set(emoji, tokens);
+    const categoryHints: Record<Exclude<CategoryKey, 'recent'>, string[]> = {
+      people: ['pessoa', 'pessoas', 'rosto', 'emoji'],
+      nature: ['natureza', 'animal', 'animais'],
+      food: ['comida', 'bebida'],
+      activity: ['atividade', 'atividades', 'esporte'],
+      travel: ['viagem', 'transporte', 'lugares'],
+      objects: ['objeto', 'objetos'],
+      symbols: ['simbolo', 'simbolos'],
+    };
+
+    categoryHints[cat].forEach((hint) => tokens.push(hint));
+
+    searchable.set(emoji, Array.from(new Set(tokens)).join(' '));
   }
 
   // Dedup mantendo ordem
@@ -132,24 +177,34 @@ const CATEGORY_META: Array<{ key: CategoryKey; icon: keyof typeof Ionicons.glyph
   { key: 'symbols', icon: 'at-outline', label: 'Símbolos' },
 ];
 
-const normalize = (value: string) => (value || '').trim().toLowerCase();
+const withAlpha = (hex: string, alpha: string) => {
+  if (!hex?.startsWith('#')) return hex;
+  if (hex.length === 7) return `${hex}${alpha}`;
+  return hex;
+};
 
 export default function EmojiPickerPanel(props: {
   visible: boolean;
   height?: number;
   fill?: boolean;
+  keyboardHeight?: number;
+  onSearchFocusChange?: (focused: boolean) => void;
   onSelectEmoji: (emoji: string) => void;
   onClose: () => void;
 }) {
-  const { visible, height, fill, onSelectEmoji, onClose } = props;
+  const { visible, height, fill, keyboardHeight = 0, onSearchFocusChange, onSelectEmoji, onClose } = props;
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const isDark = colors.background === '#0e1621';
 
   const heightAnim = useRef(new Animated.Value(0)).current;
+  const scrollY = useRef(new Animated.Value(0)).current;
   const [tab, setTab] = useState<EmojiTab>('emoji');
   const [category, setCategory] = useState<CategoryKey>('recent');
   const [search, setSearch] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
   const [recents, setRecents] = useState<string[]>([]);
+  const [tabsHidden, setTabsHidden] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -176,6 +231,16 @@ export default function EmojiPickerPanel(props: {
       useNativeDriver: false,
     }).start();
   }, [visible, heightAnim, height, fill]);
+
+  useEffect(() => {
+    const id = scrollY.addListener(({ value }) => {
+      const nextHidden = value > 28;
+      setTabsHidden((prev) => (prev === nextHidden ? prev : nextHidden));
+    });
+    return () => {
+      scrollY.removeListener(id);
+    };
+  }, [scrollY]);
 
   const emojiPool = useMemo(() => {
     if (category === 'recent') {
@@ -207,7 +272,7 @@ export default function EmojiPickerPanel(props: {
     return unique.filter((emoji) => {
       const tokens = CATALOG.searchable.get(emoji);
       if (!tokens) return false;
-      return tokens.includes(q);
+      return tokens.includes(q) || emoji.includes(q);
     });
   }, [emojiPool, search, recents]);
 
@@ -225,6 +290,20 @@ export default function EmojiPickerPanel(props: {
   const containerStyle = fill
     ? [styles.panelFill, { backgroundColor: colors.surface }]
     : [styles.panel, { height: heightAnim, backgroundColor: colors.surface }];
+  useEffect(() => {
+    onSearchFocusChange?.(searchFocused);
+  }, [onSearchFocusChange, searchFocused]);
+
+  const footerOpacity = scrollY.interpolate({
+    inputRange: [0, 18, 32],
+    outputRange: [1, 1, 0],
+    extrapolate: 'clamp',
+  });
+  const footerTranslate = scrollY.interpolate({
+    inputRange: [0, 18, 32],
+    outputRange: [0, 0, 0],
+    extrapolate: 'clamp',
+  });
 
   return (
     <Animated.View style={containerStyle}>
@@ -250,10 +329,6 @@ export default function EmojiPickerPanel(props: {
             );
           })}
         </View>
-
-        <Pressable onPress={onClose} style={styles.closeButton}>
-          <Ionicons name="close" size={22} color={colors.textSecondary} />
-        </Pressable>
       </View>
 
       <View style={[styles.searchWrap, { backgroundColor: colors.backgroundSecondary }]}>
@@ -265,6 +340,8 @@ export default function EmojiPickerPanel(props: {
           placeholderTextColor={colors.textSecondary}
           style={[styles.searchInput, { color: colors.textPrimary }]}
           autoCorrect={false}
+          onFocus={() => setSearchFocused(true)}
+          onBlur={() => setSearchFocused(false)}
         />
       </View>
 
@@ -276,12 +353,12 @@ export default function EmojiPickerPanel(props: {
             </Text>
           </View>
         ) : (
-          <FlatList
+          <Animated.FlatList
             data={filtered}
             keyExtractor={(item, idx) => `${item}-${idx}`}
             numColumns={8}
             style={styles.emojiList}
-            contentContainerStyle={[styles.emojiGrid, { paddingBottom: 8 }]}
+            contentContainerStyle={[styles.emojiGrid, { paddingBottom: 92 + Math.max(0, insets.bottom) }]}
             renderItem={({ item }) => (
               <TouchableOpacity style={styles.emojiCell} activeOpacity={0.7} onPress={() => handlePick(item)}>
                 <Text style={styles.emojiText}>{item}</Text>
@@ -289,43 +366,94 @@ export default function EmojiPickerPanel(props: {
             )}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+              { useNativeDriver: true }
+            )}
+            scrollEventThrottle={16}
           />
         )}
       </View>
 
-      <View style={[styles.bottomTabs, { borderTopColor: colors.separator, paddingBottom: insets.bottom }]}>
-        <View style={[styles.tabPills, { backgroundColor: colors.backgroundSecondary }]}>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={[styles.tabPill, tab === 'emoji' ? { backgroundColor: colors.surface } : null]}
-            onPress={() => setTab('emoji')}
+      <Animated.View
+        pointerEvents={tabsHidden ? 'none' : 'auto'}
+        style={[
+          styles.floatingFooter,
+          {
+            bottom: Math.max(-34, (insets.bottom || 0) - 36),
+            opacity: footerOpacity,
+            transform: [{ translateY: footerTranslate }],
+          },
+        ]}
+      >
+        <View style={styles.floatingFooterRow}>
+          <View
+            style={[
+              styles.tabPillsFloating,
+              {
+                backgroundColor: isDark
+                  ? withAlpha(colors.backgroundSecondary, 'D9')
+                  : 'rgba(255,255,255,0.86)',
+                borderColor: isDark ? 'rgba(255,255,255,0.24)' : 'rgba(0,0,0,0.08)',
+              },
+            ]}
           >
-            <Text style={[styles.tabText, { color: tab === 'emoji' ? colors.textPrimary : colors.textSecondary }]}>
-              Emoji
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={[
+                styles.tabPill,
+                tab === 'emoji'
+                  ? {
+                      backgroundColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.98)',
+                      borderColor: isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.08)',
+                    }
+                  : null,
+              ]}
+              onPress={() => setTab('emoji')}
+            >
+              <Text style={[styles.tabText, { color: tab === 'emoji' ? colors.textPrimary : colors.textSecondary }]}>
+                Emoji
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={[styles.tabPill, tab === 'gifs' ? { backgroundColor: colors.surface } : null]}
-            onPress={() => setTab('gifs')}
-          >
-            <Text style={[styles.tabText, { color: tab === 'gifs' ? colors.textPrimary : colors.textSecondary }]}>
-              GIFs
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={[
+                styles.tabPill,
+                tab === 'gifs'
+                  ? {
+                      backgroundColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.98)',
+                      borderColor: isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.08)',
+                    }
+                  : null,
+              ]}
+              onPress={() => setTab('gifs')}
+            >
+              <Text style={[styles.tabText, { color: tab === 'gifs' ? colors.textPrimary : colors.textSecondary }]}>
+                GIFs
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={[styles.tabPill, tab === 'stickers' ? { backgroundColor: colors.surface } : null]}
-            onPress={() => setTab('stickers')}
-          >
-            <Text style={[styles.tabText, { color: tab === 'stickers' ? colors.textPrimary : colors.textSecondary }]}>
-              Stickers
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={[
+                styles.tabPill,
+                tab === 'stickers'
+                  ? {
+                      backgroundColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.98)',
+                      borderColor: isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.08)',
+                    }
+                  : null,
+              ]}
+              onPress={() => setTab('stickers')}
+            >
+              <Text style={[styles.tabText, { color: tab === 'stickers' ? colors.textPrimary : colors.textSecondary }]}>
+                Stickers
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      </Animated.View>
     </Animated.View>
   );
 }
@@ -338,6 +466,7 @@ const styles = StyleSheet.create({
   panelFill: {
     flex: 1,
     width: '100%',
+    position: 'relative',
   },
   topRow: {
     flexDirection: 'row',
@@ -353,13 +482,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   categoryButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  closeButton: {
     width: 34,
     height: 34,
     borderRadius: 17,
@@ -414,23 +536,42 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  bottomTabs: {
-    paddingTop: 8,
-    paddingHorizontal: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
+  floatingFooter: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingTop: 10,
+    paddingHorizontal: 12,
   },
-  tabPills: {
-    height: 38,
-    borderRadius: 20,
+  floatingFooterRow: {
+    height: 52,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tabPillsFloating: {
+    height: 42,
+    borderRadius: 22,
     flexDirection: 'row',
     padding: 4,
-    gap: 6,
+    borderWidth: 1,
+    width: 290,
+    maxWidth: '82%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    elevation: 8,
   },
   tabPill: {
     flex: 1,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   tabText: {
     fontSize: 14,

@@ -36,6 +36,7 @@ import type { ChatApiMessage, ChatApiUser } from '../types/chatApi';
 type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;
 
 export default function ChatScreen({ navigation, route }: Props) {
+  const EMOJI_SEARCH_LIFT = 176;
   const { colors } = useTheme();
   const { conversationId, userId: receiverId, name, avatar, username } = route.params;
 
@@ -46,6 +47,7 @@ export default function ChatScreen({ navigation, route }: Props) {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [lastKeyboardHeight, setLastKeyboardHeight] = useState(0);
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [emojiSearchFocused, setEmojiSearchFocused] = useState(false);
   const [keyboardOpening, setKeyboardOpening] = useState(false);
   const keyboardOpeningTimeoutRef = useRef<any>(null);
 
@@ -128,7 +130,6 @@ export default function ChatScreen({ navigation, route }: Props) {
       const h = event.endCoordinates?.height ?? 0;
       setKeyboardHeight(h);
       if (h > 0) setLastKeyboardHeight(h);
-      setEmojiOpen(false);
       setKeyboardOpening(false);
       if (keyboardOpeningTimeoutRef.current) {
         clearTimeout(keyboardOpeningTimeoutRef.current);
@@ -388,8 +389,9 @@ export default function ChatScreen({ navigation, route }: Props) {
     return <LoadingSpinner message="Carregando mensagens..." />;
   }
 
+  const searchLift = emojiOpen && emojiSearchFocused && keyboardHeight > 0 ? EMOJI_SEARCH_LIFT : 0;
   const reservedBottomHeight = keyboardHeight > 0
-    ? keyboardHeight
+    ? keyboardHeight + searchLift
     : emojiOpen
       ? (lastKeyboardHeight || DEFAULT_EMOJI_PANEL_HEIGHT)
       : keyboardOpening
@@ -459,11 +461,13 @@ export default function ChatScreen({ navigation, route }: Props) {
           />
 
           <View style={{ height: reservedBottomHeight }}>
-            {emojiOpen && keyboardHeight === 0 ? (
+            {emojiOpen ? (
               <EmojiPickerPanel
                 visible
                 fill
                 height={reservedBottomHeight}
+                keyboardHeight={keyboardHeight}
+                onSearchFocusChange={setEmojiSearchFocused}
                 onClose={() => setEmojiOpen(false)}
                 onSelectEmoji={(emoji) => messageInputRef.current?.appendText?.(emoji)}
               />
@@ -529,11 +533,13 @@ export default function ChatScreen({ navigation, route }: Props) {
           />
 
           <View style={{ height: reservedBottomHeight }}>
-            {emojiOpen && keyboardHeight === 0 ? (
+            {emojiOpen ? (
               <EmojiPickerPanel
                 visible
                 fill
                 height={reservedBottomHeight}
+                keyboardHeight={keyboardHeight}
+                onSearchFocusChange={setEmojiSearchFocused}
                 onClose={() => setEmojiOpen(false)}
                 onSelectEmoji={(emoji) => messageInputRef.current?.appendText?.(emoji)}
               />
