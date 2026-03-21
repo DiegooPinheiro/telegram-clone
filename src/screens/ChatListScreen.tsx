@@ -86,6 +86,9 @@ export default function ChatListScreen({ navigation }: Props) {
       const avatar = other?.foto || null;
 
       const lastMessageText = item.lastMessage?.text ? String(item.lastMessage.text) : '';
+      const lastMessageSenderId = extractParticipantId(item.lastMessage?.senderId);
+      const isOutgoing = !!myUserId && !!lastMessageSenderId && lastMessageSenderId === myUserId;
+      const unreadCount = !isOutgoing && lastMessageText ? 1 : 0;
       const timestamp = item.lastMessage?.createdAt
         ? Math.floor(new Date(item.lastMessage.createdAt).getTime() / 1000)
         : Math.floor(new Date(item.updatedAt).getTime() / 1000);
@@ -96,7 +99,9 @@ export default function ChatListScreen({ navigation }: Props) {
           name={name}
           lastMessage={lastMessageText || 'Toque para abrir'}
           timestamp={timestamp}
-          unreadCount={0}
+          unreadCount={unreadCount}
+          isOutgoing={isOutgoing}
+          outgoingRead={false}
           avatar={avatar}
           online={false}
           onPress={() => {
@@ -255,6 +260,13 @@ const getOtherParticipant = (conversation: ChatApiConversation, myUserId: string
   if (!myUserId) return conversation.participants[0];
 
   return conversation.participants.find((p) => p._id !== myUserId) || conversation.participants[0];
+};
+
+const extractParticipantId = (value: string | ChatApiUser | undefined): string | null => {
+  if (!value) return null;
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object' && value._id) return String(value._id);
+  return null;
 };
 
 const styles = StyleSheet.create({

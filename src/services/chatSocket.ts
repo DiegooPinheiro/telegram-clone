@@ -4,6 +4,13 @@ import { auth } from '../config/firebaseConfig';
 import type { ChatApiMessage } from '../types/chatApi';
 
 type ReceiveMessageHandler = (message: ChatApiMessage | any) => void;
+type MessagesReadPayload = {
+  conversationId: string;
+  readerId: string;
+  messageIds: string[];
+  read: boolean;
+};
+type MessagesReadHandler = (payload: MessagesReadPayload | any) => void;
 type TypingEvent =
   | 'typing'
   | 'stop_typing'
@@ -17,6 +24,7 @@ type TypingHandler = (event: TypingEvent, payload: any) => void;
 let socket: Socket | null = null;
 let currentUserId: string | null = null;
 const receiveHandlers = new Set<ReceiveMessageHandler>();
+const messagesReadHandlers = new Set<MessagesReadHandler>();
 const typingHandlers = new Set<TypingHandler>();
 const typingWrappers = new Map<
   TypingHandler,
@@ -94,6 +102,10 @@ export const connectChatSocket = async (userId: string) => {
     socket.on('receive_message', handler);
   }
 
+  for (const handler of messagesReadHandlers) {
+    socket.on('messages_read', handler);
+  }
+
   for (const handler of typingHandlers) {
     ensureTypingListeners(handler);
   }
@@ -123,6 +135,16 @@ export const onReceiveMessage = (handler: ReceiveMessageHandler) => {
   };
 };
 
+export const onMessagesRead = (handler: MessagesReadHandler) => {
+  messagesReadHandlers.add(handler);
+  socket?.on('messages_read', handler);
+
+  return () => {
+    messagesReadHandlers.delete(handler);
+    socket?.off('messages_read', handler);
+  };
+};
+
 export const onTypingEvent = (handler: TypingHandler) => {
   typingHandlers.add(handler);
   ensureTypingListeners(handler);
@@ -146,6 +168,11 @@ export const sendMessageSocket = (payload: {
   }
 
   socket.emit('send_message', payload);
+};
+
+export const markMessagesReadSocket = (conversationId: string) => {
+  if (!socket || !conversationId) return;
+  socket.emit('mark_messages_read', { conversationId });
 };
 
 export const sendTypingSocket = (payload: { conversationId: string; senderId: string; receiverId: string }) => {

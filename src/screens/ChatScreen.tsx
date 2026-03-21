@@ -30,7 +30,15 @@ import useTheme from '../hooks/useTheme';
 import useOnlineStatusByEmail from '../hooks/useOnlineStatusByEmail';
 import { chatDeleteConversation, chatGetMessages, chatUploadMedia } from '../services/chatApi';
 import { getChatSession } from '../services/chatSession';
-import { onReceiveMessage, onTypingEvent, sendMessageSocket, sendStopTypingSocket, sendTypingSocket } from '../services/chatSocket';
+import {
+  markMessagesReadSocket,
+  onMessagesRead,
+  onReceiveMessage,
+  onTypingEvent,
+  sendMessageSocket,
+  sendStopTypingSocket,
+  sendTypingSocket,
+} from '../services/chatSocket';
 import type { ChatApiMessage, ChatApiUser } from '../types/chatApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;
@@ -211,6 +219,12 @@ export default function ChatScreen({ navigation, route }: Props) {
         localStatus: message.read ? 'read' : 'delivered',
       };
 
+      const normalizedSenderId = extractUserId(normalized.senderId);
+      const incomingFromOtherUser =
+        !!normalizedSenderId &&
+        !!myUserId &&
+        normalizedSenderId !== myUserId;
+
       setMessages((prev) => {
         const byIdIndex = prev.findIndex((m) => m._id === normalized._id);
         if (byIdIndex >= 0) {
@@ -244,6 +258,35 @@ export default function ChatScreen({ navigation, route }: Props) {
 
         return [...prev, normalized];
       });
+
+      if (incomingFromOtherUser) {
+        markMessagesReadSocket(conversationId);
+      }
+    });
+
+    return () => {
+      unsubscribe?.();
+    };
+  }, [conversationId, myUserId]);
+
+  useEffect(() => {
+    const unsubscribe = onMessagesRead((payload: any) => {
+      if (!payload || payload.conversationId !== conversationId || !Array.isArray(payload.messageIds)) {
+        return;
+      }
+
+      const readSet = new Set(payload.messageIds.map((id: string) => String(id)));
+      setMessages((prev) =>
+        prev.map((message) =>
+          readSet.has(String(message._id))
+            ? {
+                ...message,
+                read: true,
+                localStatus: 'read',
+              }
+            : message
+        )
+      );
     });
 
     return () => {
