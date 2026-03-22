@@ -198,8 +198,52 @@ const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>((props, r
     <View>
       <View style={styles.container}>
         <View style={[styles.inputWrap, { backgroundColor: colors.inputBackground }]}>
+          <View style={recording ? styles.inputContentHidden : null}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={styles.leadingButton}
+              onPress={() => {
+                if (disabled || recording) return;
+                const next = !isEmojiOpen;
+                setEmojiOpen(next);
+                if (next) {
+                  inputRef.current?.blur();
+                  Keyboard.dismiss();
+                } else {
+                  inputRef.current?.focus();
+                }
+              }}
+            >
+              <Ionicons
+                name={isEmojiOpen ? 'keypad-outline' : 'happy-outline'}
+                size={22}
+                color={colors.textSecondary}
+              />
+            </TouchableOpacity>
+            <TextInput
+              ref={inputRef}
+              style={[styles.input, { color: colors.textPrimary }]}
+              value={text}
+              onChangeText={handleChangeText}
+              placeholder={placeholder}
+              placeholderTextColor={colors.textSecondary}
+              multiline
+              maxLength={4096}
+              editable={!disabled && !recording}
+              onFocus={() => setEmojiOpen(false)}
+            />
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={styles.trailingButton}
+              onPress={onAttachPress}
+              disabled={disabled || !onAttachPress || recording}
+            >
+              <Ionicons name="attach-outline" size={22} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
           {recording ? (
-            <View style={styles.recordingWrap}>
+            <View style={styles.recordingWrap} pointerEvents="box-none">
               <View style={styles.recordingIndicator}>
                 <View style={styles.recordingDot} />
                 <Text style={[styles.recordingTime, { color: colors.textPrimary }]}>{recordingLabel}</Text>
@@ -262,51 +306,7 @@ const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>((props, r
                 </View>
               )}
             </View>
-          ) : (
-            <>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                style={styles.leadingButton}
-                onPress={() => {
-                  if (disabled) return;
-                  const next = !isEmojiOpen;
-                  setEmojiOpen(next);
-                  if (next) {
-                    inputRef.current?.blur();
-                    Keyboard.dismiss();
-                  } else {
-                    inputRef.current?.focus();
-                  }
-                }}
-              >
-                <Ionicons
-                  name={isEmojiOpen ? 'keypad-outline' : 'happy-outline'}
-                  size={22}
-                  color={colors.textSecondary}
-                />
-              </TouchableOpacity>
-              <TextInput
-                ref={inputRef}
-                style={[styles.input, { color: colors.textPrimary }]}
-                value={text}
-                onChangeText={handleChangeText}
-                placeholder={placeholder}
-                placeholderTextColor={colors.textSecondary}
-                multiline
-                maxLength={4096}
-                editable={!disabled}
-                onFocus={() => setEmojiOpen(false)}
-              />
-              <TouchableOpacity
-                activeOpacity={0.7}
-                style={styles.trailingButton}
-                onPress={onAttachPress}
-                disabled={disabled || !onAttachPress}
-              >
-                <Ionicons name="attach-outline" size={22} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </>
-          )}
+          ) : null}
         </View>
 
         {hasText || recordingLocked ? (
@@ -388,22 +388,32 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 26,
     backgroundColor: '#1a201bff',
+    position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
     paddingLeft: 6,
     paddingRight: 6,
   },
+  inputContentHidden: {
+    opacity: 0,
+  },
   recordingWrap: {
+    position: 'absolute',
+    left: 6,
+    right: 6,
+    top: 0,
+    bottom: 0,
     flex: 1,
-    height: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     paddingLeft: 10,
+    paddingRight: 6,
   },
   recordingIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
     marginRight: 10,
+    minWidth: 68,
   },
   recordingDot: {
     width: 10,
@@ -419,6 +429,7 @@ const styles = StyleSheet.create({
   recordingHint: {
     flex: 1,
     fontSize: 14,
+    fontWeight: '500',
   },
   recordingHintWrap: {
     flex: 1,
@@ -427,12 +438,16 @@ const styles = StyleSheet.create({
   },
   recordingHintAnimated: {
     flex: 1,
+    justifyContent: 'center',
   },
   recordingLockIcon: {
     marginRight: 6,
   },
   recordingLockHint: {
-    width: 32,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -460,6 +475,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 4,
   },
   actionButtonTouch: {
     width: '100%',

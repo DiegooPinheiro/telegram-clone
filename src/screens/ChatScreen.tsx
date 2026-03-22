@@ -839,12 +839,13 @@ export default function ChatScreen({ navigation, route }: Props) {
             });
 
             if (loadedStatus.didJustFinish) {
-              audioSoundRef.current?.setPositionAsync(0).catch(() => undefined);
-              setActiveAudio((prev) =>
-                prev && prev.uri === uri
-                  ? { ...prev, isPlaying: false, positionMillis: 0 }
-                  : prev
-              );
+              audioSoundRef.current
+                ?.unloadAsync()
+                .catch(() => undefined)
+                .finally(() => {
+                  audioSoundRef.current = null;
+                });
+              setActiveAudio((prev) => (prev && prev.uri === uri ? null : prev));
             }
           }
         );
