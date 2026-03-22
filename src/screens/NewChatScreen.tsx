@@ -8,7 +8,7 @@ import { spacing } from '../theme/spacing';
 import ContactItem from '../components/ContactItem';
 import LoadingSpinner from '../components/LoadingSpinner';
 import useTheme from '../hooks/useTheme';
-import { chatCreateConversation, chatListUsers } from '../services/chatApi';
+import { chatListUsers } from '../services/chatApi';
 import type { ChatApiUser } from '../types/chatApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NewChat'>;
@@ -46,20 +46,13 @@ export default function NewChatScreen({ navigation }: Props) {
     });
   }, [users, search]);
 
-  const handleStartChat = async (user: ChatApiUser) => {
-    try {
-      const conversation = await chatCreateConversation(user._id);
-      navigation.navigate('Chat', {
-        conversationId: conversation._id,
-        userId: user._id,
-        name: user.nome || user.username,
-        avatar: user.foto || null,
-        username: user.username,
-      });
-    } catch (error: any) {
-      console.error('Erro ao criar conversa:', error);
-      Alert.alert('Erro', error?.message || 'Não foi possível criar a conversa.');
-    }
+  const handleStartChat = (user: ChatApiUser) => {
+    navigation.navigate('Chat', {
+      userId: user._id,
+      name: user.nome || user.username,
+      avatar: user.foto || null,
+      username: user.username,
+    });
   };
 
   if (loading) {

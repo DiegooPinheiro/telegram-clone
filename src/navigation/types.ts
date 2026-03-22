@@ -15,7 +15,7 @@
   // Screens
   ChatList: undefined;
   Chat: {
-    conversationId: string;
+    conversationId?: string;
     userId: string;
     name: string;
     avatar?: string | null;

@@ -29,7 +29,13 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import Avatar from '../components/Avatar';
 import useTheme from '../hooks/useTheme';
 import useOnlineStatusByEmail from '../hooks/useOnlineStatusByEmail';
-import { chatDeleteConversation, chatDeleteManyMessages, chatGetMessages, chatUploadMedia } from '../services/chatApi';
+import {
+  chatCreateConversation,
+  chatDeleteConversation,
+  chatDeleteManyMessages,
+  chatGetMessages,
+  chatUploadMedia,
+} from '../services/chatApi';
 import { getChatSession } from '../services/chatSession';
 import {
   markMessagesReadSocket,
@@ -53,7 +59,7 @@ type LocalChatMessage = ChatApiMessage & {
 export default function ChatScreen({ navigation, route }: Props) {
   const EMOJI_SEARCH_LIFT = 176;
   const { colors } = useTheme();
-  const { conversationId, userId: receiverId, name, avatar, username } = route.params;
+  const { conversationId: initialConversationId, userId: receiverId, name, avatar, username } = route.params;
 
   const flatListRef = useRef<FlatList>(null);
   const messageInputRef = useRef<MessageInputHandle | null>(null);
@@ -67,6 +73,7 @@ export default function ChatScreen({ navigation, route }: Props) {
   const keyboardOpeningTimeoutRef = useRef<any>(null);
 
   const [myUserId, setMyUserId] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(initialConversationId ?? null);
   const [messages, setMessages] = useState<LocalChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [attachOpen, setAttachOpen] = useState(false);
@@ -80,6 +87,10 @@ export default function ChatScreen({ navigation, route }: Props) {
 
   const { statusText, online } = useOnlineStatusByEmail(username || '', !!username);
   const selectionMode = selectedMessageIds.length > 0;
+
+  useEffect(() => {
+    setConversationId(initialConversationId ?? null);
+  }, [initialConversationId]);
 
   React.useLayoutEffect(() => {
     navigation.setOptions({
@@ -150,6 +161,11 @@ export default function ChatScreen({ navigation, route }: Props) {
   }, [selectionMode]);
 
   const handleDeleteConversation = useCallback(() => {
+    if (!conversationId) {
+      setHeaderMenuVisible(false);
+      return;
+    }
+
     Alert.alert(
       'Excluir conversa',
       'Tem certeza que deseja excluir esta conversa?',
@@ -219,6 +235,13 @@ export default function ChatScreen({ navigation, route }: Props) {
 
         if (active) {
           setMyUserId(session.userId);
+        }
+
+        if (!conversationId) {
+          if (active) {
+            setMessages([]);
+          }
+          return;
         }
 
         const fetched = await chatGetMessages(conversationId);
@@ -308,7 +331,7 @@ export default function ChatScreen({ navigation, route }: Props) {
         return [...prev, normalized];
       });
 
-      if (incomingFromOtherUser) {
+      if (incomingFromOtherUser && conversationId) {
         markMessagesReadSocket(conversationId);
       }
     });
@@ -392,6 +415,17 @@ export default function ChatScreen({ navigation, route }: Props) {
     };
   }, [conversationId, receiverId]);
 
+  const ensureConversationId = useCallback(async () => {
+    if (conversationId) {
+      return conversationId;
+    }
+
+    const conversation = await chatCreateConversation(receiverId);
+    setConversationId(conversation._id);
+    navigation.setParams({ conversationId: conversation._id });
+    return conversation._id;
+  }, [conversationId, navigation, receiverId]);
+
   const handleSend = useCallback(
     async (text: string) => {
       if (!myUserId) {
@@ -399,10 +433,19 @@ export default function ChatScreen({ navigation, route }: Props) {
         return;
       }
 
+      let resolvedConversationId: string;
+      try {
+        resolvedConversationId = await ensureConversationId();
+      } catch (error: any) {
+        console.error('Erro ao iniciar conversa:', error);
+        Alert.alert('Erro', error?.message || 'Não foi possível iniciar a conversa.');
+        return;
+      }
+
       const optimisticMessage: LocalChatMessage = {
         _id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         clientMessageId: `client-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        conversationId,
+        conversationId: resolvedConversationId,
         senderId: myUserId,
         text,
         createdAt: new Date().toISOString(),
@@ -415,7 +458,7 @@ export default function ChatScreen({ navigation, route }: Props) {
 
       try {
         sendMessageSocket({
-          conversationId,
+          conversationId: resolvedConversationId,
           senderId: myUserId,
           receiverId,
           clientMessageId: optimisticMessage.clientMessageId || undefined,
@@ -427,7 +470,7 @@ export default function ChatScreen({ navigation, route }: Props) {
         Alert.alert('Erro', error?.message || 'Não foi possível enviar a mensagem.');
       }
     },
-    [conversationId, myUserId, receiverId]
+    [ensureConversationId, myUserId, receiverId]
   );
 
   const handleUploadAndSend = useCallback(
@@ -441,6 +484,7 @@ export default function ChatScreen({ navigation, route }: Props) {
       const optimisticId = `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const clientMessageId = `client-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       try {
+        const resolvedConversationId = await ensureConversationId();
         const uploaded = await chatUploadMedia(file);
         const displayName = uploaded.fileName || file.name;
         const text = uploaded.mediaType === 'image' ? undefined : displayName;
@@ -450,7 +494,7 @@ export default function ChatScreen({ navigation, route }: Props) {
           {
             _id: optimisticId,
             clientMessageId,
-            conversationId,
+            conversationId: resolvedConversationId,
             senderId: myUserId,
             text,
             mediaUrl: uploaded.mediaUrl,
@@ -463,7 +507,7 @@ export default function ChatScreen({ navigation, route }: Props) {
         ]);
 
         sendMessageSocket({
-          conversationId,
+          conversationId: resolvedConversationId,
           senderId: myUserId,
           receiverId,
           clientMessageId,
@@ -479,7 +523,7 @@ export default function ChatScreen({ navigation, route }: Props) {
         setUploading(false);
       }
     },
-    [conversationId, myUserId, receiverId]
+    [ensureConversationId, myUserId, receiverId]
   );
 
   const pickFromGallery = useCallback(async () => {
@@ -652,11 +696,11 @@ export default function ChatScreen({ navigation, route }: Props) {
             onSend={handleSend}
             onAttachPress={() => setAttachOpen(true)}
             onTyping={() => {
-              if (!myUserId) return;
+              if (!myUserId || !conversationId) return;
               sendTypingSocket({ conversationId, senderId: myUserId, receiverId });
             }}
             onStopTyping={() => {
-              if (!myUserId) return;
+              if (!myUserId || !conversationId) return;
               sendStopTypingSocket({ conversationId, senderId: myUserId, receiverId });
             }}
             disabled={uploading}
@@ -726,11 +770,11 @@ export default function ChatScreen({ navigation, route }: Props) {
             onSend={handleSend}
             onAttachPress={() => setAttachOpen(true)}
             onTyping={() => {
-              if (!myUserId) return;
+              if (!myUserId || !conversationId) return;
               sendTypingSocket({ conversationId, senderId: myUserId, receiverId });
             }}
             onStopTyping={() => {
-              if (!myUserId) return;
+              if (!myUserId || !conversationId) return;
               sendStopTypingSocket({ conversationId, senderId: myUserId, receiverId });
             }}
             disabled={uploading}

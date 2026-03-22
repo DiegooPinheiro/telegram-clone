@@ -15,7 +15,7 @@ import { RootStackParamList } from '../navigation/types';
 import Avatar from '../components/Avatar';
 import LoadingSpinner from '../components/LoadingSpinner';
 import useTheme from '../hooks/useTheme';
-import { chatCreateConversation, chatListUsers } from '../services/chatApi';
+import { chatListUsers } from '../services/chatApi';
 import { getChatSession } from '../services/chatSession';
 import type { ChatApiUser } from '../types/chatApi';
 
@@ -87,20 +87,13 @@ export default function ContactsScreen({ navigation }: Props) {
       .map(([title, data]) => ({ title, data }));
   }, [filteredUsers]);
 
-  const startChat = async (user: ChatApiUser) => {
-    try {
-      const conversation = await chatCreateConversation(user._id);
-      navigation.navigate('Chat', {
-        conversationId: conversation._id,
-        userId: user._id,
-        name: user.nome || user.username,
-        avatar: user.foto || null,
-        username: user.username,
-      });
-    } catch (error: any) {
-      console.error('Erro ao iniciar conversa:', error);
-      Alert.alert('Erro', error?.message || 'Não foi possível iniciar a conversa.');
-    }
+  const startChat = (user: ChatApiUser) => {
+    navigation.navigate('Chat', {
+      userId: user._id,
+      name: user.nome || user.username,
+      avatar: user.foto || null,
+      username: user.username,
+    });
   };
 
   if (loading) {
