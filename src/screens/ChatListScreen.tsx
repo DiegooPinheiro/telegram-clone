@@ -88,7 +88,7 @@ export default function ChatListScreen({ navigation }: Props) {
       const lastMessageText = item.lastMessage?.text ? String(item.lastMessage.text) : '';
       const lastMessageSenderId = extractParticipantId(item.lastMessage?.senderId);
       const isOutgoing = !!myUserId && !!lastMessageSenderId && lastMessageSenderId === myUserId;
-      const unreadCount = !isOutgoing && lastMessageText ? 1 : 0;
+      const unreadCount = Number(item.unreadCount || 0);
       const timestamp = item.lastMessage?.createdAt
         ? Math.floor(new Date(item.lastMessage.createdAt).getTime() / 1000)
         : Math.floor(new Date(item.updatedAt).getTime() / 1000);

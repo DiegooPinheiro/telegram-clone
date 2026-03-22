@@ -257,6 +257,7 @@ export default function ChatScreen({ navigation, route }: Props) {
         ...message,
         // socket pode enviar senderId como string (sem populate)
         senderId: message.senderId,
+        clientMessageId: message.clientMessageId || null,
         createdAt: message.createdAt || new Date().toISOString(),
         updatedAt: message.updatedAt || message.createdAt || new Date().toISOString(),
         localStatus: message.read ? 'read' : 'delivered',
@@ -283,10 +284,15 @@ export default function ChatScreen({ navigation, route }: Props) {
 
         const optimisticIndex = prev.findIndex((m) =>
           m.localOnly &&
-          extractUserId(m.senderId) === extractUserId(normalized.senderId) &&
-          m.text === normalized.text &&
-          m.mediaUrl === normalized.mediaUrl &&
-          m.mediaType === normalized.mediaType
+          (
+            (!!normalized.clientMessageId && normalized.clientMessageId === m.clientMessageId) ||
+            (
+              extractUserId(m.senderId) === extractUserId(normalized.senderId) &&
+              m.text === normalized.text &&
+              m.mediaUrl === normalized.mediaUrl &&
+              m.mediaType === normalized.mediaType
+            )
+          )
         );
 
         if (optimisticIndex >= 0) {
@@ -395,6 +401,7 @@ export default function ChatScreen({ navigation, route }: Props) {
 
       const optimisticMessage: LocalChatMessage = {
         _id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        clientMessageId: `client-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         conversationId,
         senderId: myUserId,
         text,
@@ -411,6 +418,7 @@ export default function ChatScreen({ navigation, route }: Props) {
           conversationId,
           senderId: myUserId,
           receiverId,
+          clientMessageId: optimisticMessage.clientMessageId || undefined,
           text,
         });
       } catch (error: any) {
@@ -431,6 +439,7 @@ export default function ChatScreen({ navigation, route }: Props) {
 
       setUploading(true);
       const optimisticId = `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const clientMessageId = `client-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       try {
         const uploaded = await chatUploadMedia(file);
         const displayName = uploaded.fileName || file.name;
@@ -440,6 +449,7 @@ export default function ChatScreen({ navigation, route }: Props) {
           ...prev,
           {
             _id: optimisticId,
+            clientMessageId,
             conversationId,
             senderId: myUserId,
             text,
@@ -456,6 +466,7 @@ export default function ChatScreen({ navigation, route }: Props) {
           conversationId,
           senderId: myUserId,
           receiverId,
+          clientMessageId,
           text,
           mediaUrl: uploaded.mediaUrl,
           mediaType: uploaded.mediaType,

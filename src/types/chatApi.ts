@@ -8,6 +8,7 @@
 export type ChatApiConversation = {
   _id: string;
   participants: ChatApiUser[];
+  unreadCount?: number;
   lastMessage?: {
     text?: string;
     senderId?: string | ChatApiUser;
@@ -21,6 +22,7 @@ export type ChatApiMessage = {
   _id: string;
   conversationId: string;
   senderId: string | ChatApiUser;
+  clientMessageId?: string | null;
   text?: string;
   mediaUrl?: string;
   mediaType?: string;

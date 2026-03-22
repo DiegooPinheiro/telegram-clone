@@ -182,6 +182,7 @@ export const sendMessageSocket = (payload: {
   conversationId: string;
   senderId: string;
   receiverId: string;
+  clientMessageId?: string;
   text?: string;
   mediaUrl?: string;
   mediaType?: string;
