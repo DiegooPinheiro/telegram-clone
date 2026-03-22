@@ -82,6 +82,10 @@ export default function ChatScreen({ navigation, route }: Props) {
   const messageInputRef = useRef<MessageInputHandle | null>(null);
   const openingFileRef = useRef(false);
   const audioSoundRef = useRef<Audio.Sound | null>(null);
+  const audioActionLockRef = useRef(false);
+  const deletingMessagesRef = useRef(false);
+  const sendingMessageRef = useRef(false);
+  const sendingMediaRef = useRef(false);
   const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -106,6 +110,7 @@ export default function ChatScreen({ navigation, route }: Props) {
   const [viewerImage, setViewerImage] = useState<ViewerImage | null>(null);
   const [openingFileUri, setOpeningFileUri] = useState<string | null>(null);
   const [activeAudio, setActiveAudio] = useState<ActiveAudio | null>(null);
+  const [deletingMessages, setDeletingMessages] = useState(false);
 
   const { statusText, online } = useOnlineStatusByEmail(username || '', !!username);
   const selectionMode = selectedMessageIds.length > 0;
@@ -462,12 +467,19 @@ export default function ChatScreen({ navigation, route }: Props) {
         return;
       }
 
+      if (sendingMessageRef.current) {
+        return;
+      }
+
+      sendingMessageRef.current = true;
+
       let resolvedConversationId: string;
       try {
         resolvedConversationId = await ensureConversationId();
       } catch (error: any) {
         console.error('Erro ao iniciar conversa:', error);
         Alert.alert('Erro', error?.message || 'Não foi possível iniciar a conversa.');
+        sendingMessageRef.current = false;
         return;
       }
 
@@ -497,6 +509,10 @@ export default function ChatScreen({ navigation, route }: Props) {
         setMessages((prev) => prev.filter((m) => m._id !== optimisticMessage._id));
         console.error('Erro ao enviar:', error);
         Alert.alert('Erro', error?.message || 'Não foi possível enviar a mensagem.');
+      } finally {
+        setTimeout(() => {
+          sendingMessageRef.current = false;
+        }, 220);
       }
     },
     [ensureConversationId, myUserId, receiverId]
@@ -508,6 +524,12 @@ export default function ChatScreen({ navigation, route }: Props) {
         Alert.alert('Erro', 'Sessão do chat ausente. Faça login novamente.');
         return;
       }
+
+      if (sendingMediaRef.current) {
+        return;
+      }
+
+      sendingMediaRef.current = true;
 
       setUploading(true);
       const optimisticId = `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -550,6 +572,9 @@ export default function ChatScreen({ navigation, route }: Props) {
         Alert.alert('Erro', error?.message || 'Não foi possível enviar o arquivo.');
       } finally {
         setUploading(false);
+        setTimeout(() => {
+          sendingMediaRef.current = false;
+        }, 260);
       }
     },
     [ensureConversationId, myUserId, receiverId]
@@ -608,6 +633,12 @@ export default function ChatScreen({ navigation, route }: Props) {
 
   const handleAudioPress = useCallback(
     async ({ uri, fileName }: { uri: string; fileName: string; mediaType?: string }) => {
+      if (audioActionLockRef.current) {
+        return;
+      }
+
+      audioActionLockRef.current = true;
+
       try {
         if (activeAudio?.uri === uri && audioSoundRef.current) {
           const status = await audioSoundRef.current.getStatusAsync();
@@ -678,6 +709,10 @@ export default function ChatScreen({ navigation, route }: Props) {
       } catch (error: any) {
         console.error('Erro ao reproduzir áudio:', error);
         Alert.alert('Erro', error?.message || 'Nao foi possivel reproduzir o áudio.');
+      } finally {
+        setTimeout(() => {
+          audioActionLockRef.current = false;
+        }, 260);
       }
     },
     [activeAudio?.uri]
@@ -842,6 +877,13 @@ export default function ChatScreen({ navigation, route }: Props) {
   );
 
   const handleConfirmDeleteMessages = useCallback(async () => {
+    if (deletingMessagesRef.current || selectedMessageIds.length === 0) {
+      return;
+    }
+
+    deletingMessagesRef.current = true;
+    setDeletingMessages(true);
+
     try {
       await chatDeleteManyMessages({
         messageIds: selectedMessageIds,
@@ -856,6 +898,9 @@ export default function ChatScreen({ navigation, route }: Props) {
     } catch (error: any) {
       console.error('Erro ao apagar mensagens:', error);
       Alert.alert('Erro', error?.message || 'Nao foi possivel apagar as mensagens.');
+    } finally {
+      deletingMessagesRef.current = false;
+      setDeletingMessages(false);
     }
   }, [deleteForBoth, selectedMessageIds]);
 
@@ -1183,19 +1228,21 @@ export default function ChatScreen({ navigation, route }: Props) {
             </Text>
 
             <View style={styles.deleteOptionRow}>
-              <Switch value={deleteForBoth} onValueChange={setDeleteForBoth} />
+              <Switch value={deleteForBoth} onValueChange={setDeleteForBoth} disabled={deletingMessages} />
               <Text style={[styles.deleteOptionText, { color: colors.textPrimary }]}>
                 Apagar para {name} tambem
               </Text>
             </View>
 
             <View style={styles.deleteActions}>
-              <TouchableOpacity activeOpacity={0.75} onPress={() => setDeleteModalVisible(false)}>
+              <TouchableOpacity activeOpacity={0.75} onPress={() => setDeleteModalVisible(false)} disabled={deletingMessages}>
                 <Text style={[styles.deleteCancel, { color: '#8aa4ff' }]}>Cancelar</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity activeOpacity={0.75} onPress={handleConfirmDeleteMessages}>
-                <Text style={styles.deleteConfirm}>Apagar</Text>
+              <TouchableOpacity activeOpacity={0.75} onPress={handleConfirmDeleteMessages} disabled={deletingMessages}>
+                <Text style={[styles.deleteConfirm, deletingMessages ? styles.deleteConfirmDisabled : null]}>
+                  {deletingMessages ? 'Apagando...' : 'Apagar'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1487,6 +1534,9 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     color: '#ff6666',
+  },
+  deleteConfirmDisabled: {
+    opacity: 0.6,
   },
   viewerScreen: {
     flex: 1,
