@@ -82,10 +82,12 @@ export default function ChatScreen({ navigation, route }: Props) {
   const messageInputRef = useRef<MessageInputHandle | null>(null);
   const openingFileRef = useRef(false);
   const audioSoundRef = useRef<Audio.Sound | null>(null);
+  const recordingRef = useRef<Audio.Recording | null>(null);
   const audioActionLockRef = useRef(false);
   const deletingMessagesRef = useRef(false);
   const sendingMessageRef = useRef(false);
   const sendingMediaRef = useRef(false);
+  const recordingActionRef = useRef(false);
   const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -111,6 +113,8 @@ export default function ChatScreen({ navigation, route }: Props) {
   const [openingFileUri, setOpeningFileUri] = useState<string | null>(null);
   const [activeAudio, setActiveAudio] = useState<ActiveAudio | null>(null);
   const [deletingMessages, setDeletingMessages] = useState(false);
+  const [recordingVoice, setRecordingVoice] = useState(false);
+  const [recordingDurationMs, setRecordingDurationMs] = useState(0);
 
   const { statusText, online } = useOnlineStatusByEmail(username || '', !!username);
   const selectionMode = selectedMessageIds.length > 0;
@@ -191,6 +195,8 @@ export default function ChatScreen({ navigation, route }: Props) {
     return () => {
       audioSoundRef.current?.unloadAsync().catch(() => undefined);
       audioSoundRef.current = null;
+      recordingRef.current?.stopAndUnloadAsync().catch(() => undefined);
+      recordingRef.current = null;
     };
   }, []);
 
@@ -631,6 +637,134 @@ export default function ChatScreen({ navigation, route }: Props) {
     []
   );
 
+  const handleStartVoiceRecording = useCallback(async () => {
+    if (recordingActionRef.current || recordingVoice || uploading) {
+      return;
+    }
+
+    recordingActionRef.current = true;
+
+    try {
+      const permission = await Audio.requestPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Permissão', 'Permita acesso ao microfone para gravar áudio.');
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: true,
+        staysActiveInBackground: false,
+      });
+
+      const recording = new Audio.Recording();
+      recording.setOnRecordingStatusUpdate((status) => {
+        setRecordingDurationMs(status.durationMillis || 0);
+      });
+      recording.setProgressUpdateInterval(200);
+      await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      await recording.startAsync();
+
+      recordingRef.current = recording;
+      setRecordingDurationMs(0);
+      setRecordingVoice(true);
+    } catch (error: any) {
+      console.error('Erro ao iniciar gravação:', error);
+      Alert.alert('Erro', error?.message || 'Não foi possível iniciar a gravação.');
+    } finally {
+      setTimeout(() => {
+        recordingActionRef.current = false;
+      }, 250);
+    }
+  }, [recordingVoice, uploading]);
+
+  const finishVoiceRecording = useCallback(async () => {
+    const recording = recordingRef.current;
+    if (!recording) {
+      return null;
+    }
+
+    await recording.stopAndUnloadAsync();
+    const status = await recording.getStatusAsync();
+    const uri = recording.getURI();
+    recordingRef.current = null;
+    setRecordingVoice(false);
+    setRecordingDurationMs(0);
+
+    await Audio.setAudioModeAsync({
+      allowsRecordingIOS: false,
+      playsInSilentModeIOS: true,
+      shouldDuckAndroid: true,
+      staysActiveInBackground: false,
+    });
+
+    if (!uri) {
+      return null;
+    }
+
+    return {
+      uri,
+      durationMillis: status.durationMillis || 0,
+    };
+  }, []);
+
+  const handleCancelVoiceRecording = useCallback(async () => {
+    if (recordingActionRef.current) {
+      return;
+    }
+
+    recordingActionRef.current = true;
+
+    try {
+      const result = await finishVoiceRecording();
+      if (result?.uri) {
+        await FileSystem.deleteAsync(result.uri, { idempotent: true });
+      }
+    } catch (error) {
+      console.error('Erro ao cancelar gravação:', error);
+    } finally {
+      setTimeout(() => {
+        recordingActionRef.current = false;
+      }, 220);
+    }
+  }, [finishVoiceRecording]);
+
+  const handleSendVoiceRecording = useCallback(async () => {
+    if (recordingActionRef.current) {
+      return;
+    }
+
+    recordingActionRef.current = true;
+
+    try {
+      const result = await finishVoiceRecording();
+      if (!result?.uri) {
+        return;
+      }
+
+      if (result.durationMillis < 700) {
+        await FileSystem.deleteAsync(result.uri, { idempotent: true });
+        Alert.alert('Áudio muito curto', 'Grave por pelo menos 1 segundo para enviar.');
+        return;
+      }
+
+      const extension = result.uri.split('.').pop()?.toLowerCase() || 'm4a';
+      await handleUploadAndSend({
+        uri: result.uri,
+        name: `audio-${Date.now()}.${extension}`,
+        type: extension === 'caf' ? 'audio/x-caf' : extension === '3gp' ? 'audio/3gpp' : 'audio/mp4',
+      });
+    } catch (error: any) {
+      console.error('Erro ao enviar gravação:', error);
+      Alert.alert('Erro', error?.message || 'Não foi possível enviar o áudio.');
+    } finally {
+      setTimeout(() => {
+        recordingActionRef.current = false;
+      }, 240);
+    }
+  }, [finishVoiceRecording, handleUploadAndSend]);
+
   const handleAudioPress = useCallback(
     async ({ uri, fileName }: { uri: string; fileName: string; mediaType?: string }) => {
       if (audioActionLockRef.current) {
@@ -644,9 +778,26 @@ export default function ChatScreen({ navigation, route }: Props) {
           const status = await audioSoundRef.current.getStatusAsync();
           if (!status.isLoaded) return;
 
+          const finished =
+            typeof status.durationMillis === 'number' &&
+            status.durationMillis > 0 &&
+            status.positionMillis >= status.durationMillis - 180;
+
           if (status.isPlaying) {
             await audioSoundRef.current.pauseAsync();
             setActiveAudio((prev) => (prev ? { ...prev, isPlaying: false } : prev));
+          } else if (finished) {
+            await audioSoundRef.current.setPositionAsync(0);
+            await audioSoundRef.current.playAsync();
+            setActiveAudio((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    isPlaying: true,
+                    positionMillis: 0,
+                  }
+                : prev
+            );
           } else {
             await audioSoundRef.current.playAsync();
             setActiveAudio((prev) => (prev ? { ...prev, isPlaying: true } : prev));
@@ -688,6 +839,7 @@ export default function ChatScreen({ navigation, route }: Props) {
             });
 
             if (loadedStatus.didJustFinish) {
+              audioSoundRef.current?.setPositionAsync(0).catch(() => undefined);
               setActiveAudio((prev) =>
                 prev && prev.uri === uri
                   ? { ...prev, isPlaying: false, positionMillis: 0 }
@@ -961,7 +1113,15 @@ export default function ChatScreen({ navigation, route }: Props) {
           <MessageInput
             ref={messageInputRef}
             onSend={handleSend}
-            onAttachPress={() => setAttachOpen(true)}
+            onAttachPress={() => {
+              if (recordingVoice) return;
+              setAttachOpen(true);
+            }}
+            recording={recordingVoice}
+            recordingDurationMs={recordingDurationMs}
+            onStartRecording={handleStartVoiceRecording}
+            onCancelRecording={handleCancelVoiceRecording}
+            onSendRecording={handleSendVoiceRecording}
             onTyping={() => {
               if (!myUserId || !conversationId) return;
               sendTypingSocket({ conversationId, senderId: myUserId, receiverId });
@@ -1052,7 +1212,15 @@ export default function ChatScreen({ navigation, route }: Props) {
           <MessageInput
             ref={messageInputRef}
             onSend={handleSend}
-            onAttachPress={() => setAttachOpen(true)}
+            onAttachPress={() => {
+              if (recordingVoice) return;
+              setAttachOpen(true);
+            }}
+            recording={recordingVoice}
+            recordingDurationMs={recordingDurationMs}
+            onStartRecording={handleStartVoiceRecording}
+            onCancelRecording={handleCancelVoiceRecording}
+            onSendRecording={handleSendVoiceRecording}
             onTyping={() => {
               if (!myUserId || !conversationId) return;
               sendTypingSocket({ conversationId, senderId: myUserId, receiverId });
