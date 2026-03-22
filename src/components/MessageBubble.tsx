@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, View, Text, StyleSheet, Image, TouchableOpacity, Linking } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, View, Text, StyleSheet, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
 import useTheme from '../hooks/useTheme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -16,6 +16,14 @@ interface MessageBubbleProps {
   selected?: boolean;
   onPress?: () => void;
   onLongPress?: () => void;
+  onImagePress?: (payload: { uri: string; timestamp: number; senderName?: string }) => void;
+  onFilePress?: (payload: { uri: string; fileName: string; mediaType?: string }) => void;
+  onAudioPress?: (payload: { uri: string; fileName: string; mediaType?: string }) => void;
+  fileOpening?: boolean;
+  isAudioPlaying?: boolean;
+  audioProgress?: number;
+  audioPositionLabel?: string;
+  audioDurationLabel?: string;
 }
 
 export default function MessageBubble({
@@ -31,9 +39,18 @@ export default function MessageBubble({
   selected = false,
   onPress,
   onLongPress,
+  onImagePress,
+  onFilePress,
+  onAudioPress,
+  fileOpening = false,
+  isAudioPlaying = false,
+  audioProgress = 0,
+  audioPositionLabel = '0:00',
+  audioDurationLabel = '0:00',
 }: MessageBubbleProps) {
   const { colors, isDark } = useTheme();
   const selectAnim = useRef(new Animated.Value(selected ? 1 : 0)).current;
+  const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null);
 
   useEffect(() => {
     Animated.spring(selectAnim, {
@@ -44,6 +61,31 @@ export default function MessageBubble({
       useNativeDriver: true,
     }).start();
   }, [selectAnim, selected]);
+
+  useEffect(() => {
+    if (!mediaUrl || mediaType !== 'image') {
+      setImageSize(null);
+      return;
+    }
+
+    let active = true;
+
+    Image.getSize(
+      mediaUrl,
+      (width, height) => {
+        if (!active || !width || !height) return;
+        setImageSize({ width, height });
+      },
+      () => {
+        if (!active) return;
+        setImageSize(null);
+      }
+    );
+
+    return () => {
+      active = false;
+    };
+  }, [mediaType, mediaUrl]);
   
   const time = new Date(timestamp * 1000).toLocaleTimeString([], {
     hour: '2-digit',
@@ -51,16 +93,8 @@ export default function MessageBubble({
     hour12: false
   });
 
-  const openMedia = async () => {
-    if (!mediaUrl) return;
-    try {
-      await Linking.openURL(mediaUrl);
-    } catch {
-      // ignore
-    }
-  };
-
   const isImage = !!mediaUrl && mediaType === 'image';
+  const isAudio = !!mediaUrl && isAudioMedia(mediaType, fileNameFromMessage(message, mediaUrl));
   const showText = !!message?.trim();
   const metaColor = isMine
     ? (isDark ? '#9db7d3' : 'rgba(93, 108, 77, 0.88)')
@@ -84,6 +118,57 @@ export default function MessageBubble({
     inputRange: [0, 1],
     outputRange: [0.85, 1],
   });
+  const imageFrame = useMemo(() => {
+    const maxWidth = 250;
+    const maxHeight = 340;
+    const minWidth = 160;
+
+    if (!imageSize?.width || !imageSize?.height) {
+      return { width: 240, height: 240 };
+    }
+
+    const ratio = imageSize.width / imageSize.height;
+    let width = imageSize.width;
+    let height = imageSize.height;
+
+    if (width > maxWidth) {
+      width = maxWidth;
+      height = width / ratio;
+    }
+
+    if (height > maxHeight) {
+      height = maxHeight;
+      width = height * ratio;
+    }
+
+    if (width < minWidth) {
+      width = minWidth;
+      height = width / ratio;
+      if (height > maxHeight) {
+        height = maxHeight;
+        width = height * ratio;
+      }
+    }
+
+    return {
+      width: Math.round(width),
+      height: Math.round(height),
+    };
+  }, [imageSize]);
+  const fileName = useMemo(() => fileNameFromMessage(message, mediaUrl), [mediaUrl, message]);
+  const fileExtension = useMemo(() => {
+    const parts = fileName.split('.');
+    if (parts.length < 2) return 'DOC';
+    return parts.pop()!.slice(0, 4).toUpperCase();
+  }, [fileName]);
+  const fileSubtitle = useMemo(() => {
+    if (fileExtension === 'PDF') return 'Documento PDF';
+    if (['DOC', 'DOCX'].includes(fileExtension)) return 'Documento';
+    if (['XLS', 'XLSX', 'CSV'].includes(fileExtension)) return 'Planilha';
+    if (['ZIP', 'RAR', '7Z'].includes(fileExtension)) return 'Arquivo compactado';
+    if (['TXT', 'MD'].includes(fileExtension)) return 'Arquivo de texto';
+    return 'Toque para abrir';
+  }, [fileExtension]);
 
   return (
     <TouchableOpacity
@@ -140,15 +225,103 @@ export default function MessageBubble({
 
         {mediaUrl ? (
           isImage ? (
-            <TouchableOpacity activeOpacity={0.9} onPress={openMedia} style={styles.imageWrap}>
-              <Image source={{ uri: mediaUrl }} style={styles.image} resizeMode="cover" />
+            <TouchableOpacity
+              activeOpacity={0.92}
+              onPress={() => {
+                if (!mediaUrl) return;
+                onImagePress?.({ uri: mediaUrl, timestamp, senderName });
+              }}
+              style={[styles.imageWrap, imageFrame]}
+            >
+              <Image source={{ uri: mediaUrl }} style={[styles.image, imageFrame]} resizeMode="contain" />
+            </TouchableOpacity>
+          ) : isAudio ? (
+            <TouchableOpacity
+              activeOpacity={0.88}
+              onPress={() => {
+                if (selectionMode) {
+                  onPress?.();
+                  return;
+                }
+                if (!mediaUrl) return;
+                onAudioPress?.({ uri: mediaUrl, fileName, mediaType });
+              }}
+              style={[styles.audioRow, { backgroundColor: isMine ? '#69a9de' : '#5f96d2' }]}
+              disabled={fileOpening}
+            >
+              <View style={styles.audioThumb}>
+                <MaterialCommunityIcons
+                  name={isAudioPlaying ? 'pause' : 'play'}
+                  size={26}
+                  color="#ffffff"
+                />
+              </View>
+
+              <View style={styles.audioBody}>
+                <Text style={styles.audioTitle} numberOfLines={1}>
+                  {trimAudioTitle(fileName)}
+                </Text>
+                <View style={styles.audioProgressTrack}>
+                  <View style={[styles.audioProgressFill, { width: `${Math.max(0, Math.min(100, audioProgress * 100))}%` }]} />
+                </View>
+                <Text style={styles.audioTime}>
+                  {audioPositionLabel} / {audioDurationLabel}
+                </Text>
+              </View>
+
+              <MaterialCommunityIcons
+                name="dots-vertical"
+                size={20}
+                color="rgba(255,255,255,0.92)"
+                style={styles.audioMenuIcon}
+              />
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity activeOpacity={0.8} onPress={openMedia} style={styles.fileRow}>
-              <MaterialCommunityIcons name="file-outline" size={20} color={colors.textPrimary} />
-              <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>
-                {showText ? message : 'Arquivo'}
-              </Text>
+            <TouchableOpacity
+              activeOpacity={0.86}
+              onPress={() => {
+                if (selectionMode) {
+                  onPress?.();
+                  return;
+                }
+
+                if (!mediaUrl) return;
+                onFilePress?.({
+                  uri: mediaUrl,
+                  fileName,
+                  mediaType,
+                });
+              }}
+              style={[styles.fileRow, { backgroundColor: isMine ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.06)' }]}
+              disabled={fileOpening}
+            >
+              <View style={styles.fileIconCircle}>
+                {fileOpening ? (
+                  <ActivityIndicator size="small" color={isMine ? '#6f8ec8' : colors.primary} />
+                ) : (
+                  <MaterialCommunityIcons
+                    name={fileExtension === 'PDF' ? 'file-pdf-box' : 'file-document-outline'}
+                    size={28}
+                    color={isMine ? '#6f8ec8' : colors.primary}
+                  />
+                )}
+              </View>
+
+              <View style={styles.fileBody}>
+                <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>
+                  {fileName}
+                </Text>
+                <Text style={[styles.fileSubtitle, { color: metaColor }]} numberOfLines={1}>
+                  {fileOpening ? 'Abrindo arquivo...' : fileSubtitle}
+                </Text>
+              </View>
+
+              <MaterialCommunityIcons
+                name="dots-vertical"
+                size={20}
+                color={metaColor}
+                style={styles.fileMenuIcon}
+              />
             </TouchableOpacity>
           )
         ) : null}
@@ -219,6 +392,36 @@ export default function MessageBubble({
     </TouchableOpacity>
   );
 }
+
+const fileNameFromMessage = (message: string, mediaUrl?: string) => {
+  if (message?.trim()) {
+    return message.trim();
+  }
+
+  if (!mediaUrl) {
+    return 'Arquivo';
+  }
+
+  const lastChunk = mediaUrl.split('/').pop()?.split('?')[0] || 'Arquivo';
+  try {
+    return decodeURIComponent(lastChunk);
+  } catch {
+    return lastChunk;
+  }
+};
+
+const isAudioMedia = (mediaType?: string, fileName?: string) => {
+  if (mediaType === 'audio' || mediaType?.startsWith?.('audio/')) {
+    return true;
+  }
+
+  const ext = fileName?.split('.').pop()?.toLowerCase();
+  return ['mp3', 'wav', 'm4a', 'aac', 'ogg', 'flac', 'opus'].includes(ext || '');
+};
+
+const trimAudioTitle = (value: string) => {
+  return value.replace(/\.[a-z0-9]{2,5}$/i, '');
+};
 
 const styles = StyleSheet.create({
   row: {
@@ -317,7 +520,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: 4,
     alignSelf: 'flex-start',
-    maxWidth: 240,
+    backgroundColor: 'rgba(0,0,0,0.05)',
   },
   image: {
     width: 240,
@@ -327,17 +530,86 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0,0,0,0.12)',
+    paddingHorizontal: 12,
+    borderRadius: 16,
     marginBottom: 4,
-    maxWidth: 260,
+    minWidth: 220,
+    maxWidth: 290,
+  },
+  fileIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  fileBody: {
+    flex: 1,
+    minWidth: 0,
   },
   fileName: {
-    marginLeft: 8,
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
+  },
+  fileSubtitle: {
+    marginTop: 4,
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  fileMenuIcon: {
+    marginLeft: 8,
+  },
+  audioRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: 230,
+    maxWidth: 300,
+    borderRadius: 18,
+    paddingVertical: 10,
+    paddingLeft: 10,
+    paddingRight: 8,
+    marginBottom: 4,
+  },
+  audioThumb: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  audioBody: {
     flex: 1,
+    minWidth: 0,
+  },
+  audioTitle: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  audioProgressTrack: {
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.38)',
+    marginTop: 8,
+    overflow: 'hidden',
+  },
+  audioProgressFill: {
+    height: '100%',
+    borderRadius: 2,
+    backgroundColor: '#ffffff',
+  },
+  audioTime: {
+    marginTop: 6,
+    color: 'rgba(255,255,255,0.92)',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  audioMenuIcon: {
+    marginLeft: 8,
   },
   tail: {
     position: 'absolute',

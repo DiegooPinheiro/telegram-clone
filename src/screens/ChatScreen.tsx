@@ -4,6 +4,7 @@ import {
   Text,
   FlatList,
   StyleSheet,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Keyboard,
@@ -13,6 +14,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Switch,
+  Linking,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -20,6 +22,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useHeaderHeight } from '@react-navigation/elements';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as IntentLauncher from 'expo-intent-launcher';
+import { Audio, type AVPlaybackStatusSuccess } from 'expo-av';
 import { RootStackParamList } from '../navigation/types';
 import { spacing } from '../theme/spacing';
 import MessageBubble from '../components/MessageBubble';
@@ -55,6 +60,18 @@ type LocalChatMessage = ChatApiMessage & {
   localStatus?: LocalMessageStatus;
   localOnly?: boolean;
 };
+type ViewerImage = {
+  uri: string;
+  timestamp: number;
+  senderName?: string;
+};
+type ActiveAudio = {
+  uri: string;
+  fileName: string;
+  isPlaying: boolean;
+  positionMillis: number;
+  durationMillis: number;
+};
 
 export default function ChatScreen({ navigation, route }: Props) {
   const EMOJI_SEARCH_LIFT = 176;
@@ -63,6 +80,8 @@ export default function ChatScreen({ navigation, route }: Props) {
 
   const flatListRef = useRef<FlatList>(null);
   const messageInputRef = useRef<MessageInputHandle | null>(null);
+  const openingFileRef = useRef(false);
+  const audioSoundRef = useRef<Audio.Sound | null>(null);
   const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -84,6 +103,9 @@ export default function ChatScreen({ navigation, route }: Props) {
   const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [deleteForBoth, setDeleteForBoth] = useState(false);
+  const [viewerImage, setViewerImage] = useState<ViewerImage | null>(null);
+  const [openingFileUri, setOpeningFileUri] = useState<string | null>(null);
+  const [activeAudio, setActiveAudio] = useState<ActiveAudio | null>(null);
 
   const { statusText, online } = useOnlineStatusByEmail(username || '', !!username);
   const selectionMode = selectedMessageIds.length > 0;
@@ -159,6 +181,13 @@ export default function ChatScreen({ navigation, route }: Props) {
       setDeleteForBoth(false);
     }
   }, [selectionMode]);
+
+  useEffect(() => {
+    return () => {
+      audioSoundRef.current?.unloadAsync().catch(() => undefined);
+      audioSoundRef.current = null;
+    };
+  }, []);
 
   const handleDeleteConversation = useCallback(() => {
     if (!conversationId) {
@@ -526,6 +555,147 @@ export default function ChatScreen({ navigation, route }: Props) {
     [ensureConversationId, myUserId, receiverId]
   );
 
+  const handleOpenFile = useCallback(
+    async ({ uri, fileName, mediaType }: { uri: string; fileName: string; mediaType?: string }) => {
+      if (openingFileRef.current) {
+        return;
+      }
+
+      openingFileRef.current = true;
+      setOpeningFileUri(uri);
+
+      try {
+        const normalizedName = sanitizeFileName(fileName || extractFileNameFromUrl(uri));
+        const inferredMimeType = resolveMimeType(normalizedName, mediaType);
+
+        if (Platform.OS !== 'android') {
+          await Linking.openURL(uri);
+          return;
+        }
+
+        const cacheDir = FileSystem.cacheDirectory;
+        if (!cacheDir) {
+          throw new Error('Armazenamento temporário indisponível.');
+        }
+
+        const localUri = `${cacheDir}${Date.now()}-${normalizedName}`;
+        const downloaded = await FileSystem.downloadAsync(uri, localUri);
+        const contentUri = await FileSystem.getContentUriAsync(downloaded.uri);
+
+        await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+          data: contentUri,
+          type: inferredMimeType,
+          flags: 1,
+        });
+      } catch (error: any) {
+        console.error('Erro ao abrir arquivo:', error);
+        const message = String(error?.message || '');
+        if (!message.includes('IntentLauncher activity is already started')) {
+          Alert.alert(
+            'Nao foi possivel abrir o arquivo',
+            error?.message || 'Verifique se existe um aplicativo compatível instalado no aparelho.'
+          );
+        }
+      } finally {
+        setTimeout(() => {
+          openingFileRef.current = false;
+          setOpeningFileUri((current) => (current === uri ? null : current));
+        }, 900);
+      }
+    },
+    []
+  );
+
+  const handleAudioPress = useCallback(
+    async ({ uri, fileName }: { uri: string; fileName: string; mediaType?: string }) => {
+      try {
+        if (activeAudio?.uri === uri && audioSoundRef.current) {
+          const status = await audioSoundRef.current.getStatusAsync();
+          if (!status.isLoaded) return;
+
+          if (status.isPlaying) {
+            await audioSoundRef.current.pauseAsync();
+            setActiveAudio((prev) => (prev ? { ...prev, isPlaying: false } : prev));
+          } else {
+            await audioSoundRef.current.playAsync();
+            setActiveAudio((prev) => (prev ? { ...prev, isPlaying: true } : prev));
+          }
+          return;
+        }
+
+        if (audioSoundRef.current) {
+          await audioSoundRef.current.unloadAsync();
+          audioSoundRef.current = null;
+        }
+
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+          shouldDuckAndroid: true,
+        });
+
+        const { sound, status } = await Audio.Sound.createAsync(
+          { uri },
+          { shouldPlay: true },
+          (playbackStatus) => {
+            if (!playbackStatus.isLoaded) {
+              return;
+            }
+
+            const loadedStatus = playbackStatus as AVPlaybackStatusSuccess;
+            setActiveAudio((prev) => {
+              if (!prev || prev.uri !== uri) {
+                return prev;
+              }
+
+              return {
+                ...prev,
+                isPlaying: loadedStatus.isPlaying,
+                positionMillis: loadedStatus.positionMillis || 0,
+                durationMillis: loadedStatus.durationMillis || prev.durationMillis || 0,
+              };
+            });
+
+            if (loadedStatus.didJustFinish) {
+              setActiveAudio((prev) =>
+                prev && prev.uri === uri
+                  ? { ...prev, isPlaying: false, positionMillis: 0 }
+                  : prev
+              );
+            }
+          }
+        );
+
+        audioSoundRef.current = sound;
+        const loadedStatus = status as AVPlaybackStatusSuccess;
+        setActiveAudio({
+          uri,
+          fileName,
+          isPlaying: loadedStatus.isPlaying ?? true,
+          positionMillis: loadedStatus.positionMillis || 0,
+          durationMillis: loadedStatus.durationMillis || 0,
+        });
+      } catch (error: any) {
+        console.error('Erro ao reproduzir áudio:', error);
+        Alert.alert('Erro', error?.message || 'Nao foi possivel reproduzir o áudio.');
+      }
+    },
+    [activeAudio?.uri]
+  );
+
+  const handleCloseAudioPlayer = useCallback(async () => {
+    try {
+      if (audioSoundRef.current) {
+        await audioSoundRef.current.unloadAsync();
+      }
+    } catch {
+      // ignore
+    } finally {
+      audioSoundRef.current = null;
+      setActiveAudio(null);
+    }
+  }, []);
+
   const pickFromGallery = useCallback(async () => {
     setAttachOpen(false);
 
@@ -615,8 +785,43 @@ export default function ChatScreen({ navigation, route }: Props) {
           isMine={isMine}
           senderName={senderName}
           status={status}
+          fileOpening={!!item.mediaUrl && openingFileUri === item.mediaUrl}
           selectionMode={selectionMode}
           selected={selected}
+          onFilePress={handleOpenFile}
+          onAudioPress={handleAudioPress}
+          isAudioPlaying={!!item.mediaUrl && activeAudio?.uri === item.mediaUrl && activeAudio.isPlaying}
+          audioProgress={
+            !!item.mediaUrl && activeAudio?.uri === item.mediaUrl && activeAudio.durationMillis > 0
+              ? activeAudio.positionMillis / activeAudio.durationMillis
+              : 0
+          }
+          audioPositionLabel={
+            !!item.mediaUrl && activeAudio?.uri === item.mediaUrl
+              ? formatAudioTime(activeAudio.positionMillis)
+              : '0:00'
+          }
+          audioDurationLabel={
+            !!item.mediaUrl && activeAudio?.uri === item.mediaUrl && activeAudio.durationMillis > 0
+              ? formatAudioTime(activeAudio.durationMillis)
+              : '0:00'
+          }
+          onImagePress={({ uri, timestamp: imageTimestamp, senderName: imageSenderName }) => {
+            if (selectionMode) {
+              setSelectedMessageIds((prev) =>
+                prev.includes(item._id)
+                  ? prev.filter((id) => id !== item._id)
+                  : [...prev, item._id]
+              );
+              return;
+            }
+
+            setViewerImage({
+              uri,
+              timestamp: imageTimestamp,
+              senderName: imageSenderName,
+            });
+          }}
           onLongPress={() => {
             setSelectedMessageIds((prev) =>
               prev.includes(item._id) ? prev : [item._id]
@@ -633,7 +838,7 @@ export default function ChatScreen({ navigation, route }: Props) {
         />
       );
     },
-    [myUserId, name, selectedMessageIds, selectionMode]
+    [activeAudio, handleAudioPress, handleOpenFile, myUserId, name, openingFileUri, selectedMessageIds, selectionMode]
   );
 
   const handleConfirmDeleteMessages = useCallback(async () => {
@@ -672,6 +877,23 @@ export default function ChatScreen({ navigation, route }: Props) {
       {Platform.OS === 'ios' ? (
         <KeyboardAvoidingView behavior="padding" style={styles.flex} keyboardVerticalOffset={headerHeight}>
           <View style={[styles.chatWallpaper, { backgroundColor: colors.backgroundChat }]} />
+          {activeAudio ? (
+            <View style={styles.inlineAudioPlayer}>
+              <TouchableOpacity activeOpacity={0.8} onPress={() => handleAudioPress(activeAudio)}>
+                <Ionicons
+                  name={activeAudio.isPlaying ? 'pause' : 'play'}
+                  size={20}
+                  color="#8ea8ff"
+                />
+              </TouchableOpacity>
+              <Text style={styles.inlineAudioText} numberOfLines={1}>
+                {trimAudioFileName(activeAudio.fileName)}
+              </Text>
+              <TouchableOpacity activeOpacity={0.8} onPress={handleCloseAudioPlayer}>
+                <Ionicons name="close" size={20} color="rgba(255,255,255,0.72)" />
+              </TouchableOpacity>
+            </View>
+          ) : null}
 
           <FlatList
             ref={flatListRef}
@@ -746,6 +968,23 @@ export default function ChatScreen({ navigation, route }: Props) {
       ) : (
         <View style={styles.flex}>
           <View style={[styles.chatWallpaper, { backgroundColor: colors.backgroundChat }]} />
+          {activeAudio ? (
+            <View style={styles.inlineAudioPlayer}>
+              <TouchableOpacity activeOpacity={0.8} onPress={() => handleAudioPress(activeAudio)}>
+                <Ionicons
+                  name={activeAudio.isPlaying ? 'pause' : 'play'}
+                  size={20}
+                  color="#8ea8ff"
+                />
+              </TouchableOpacity>
+              <Text style={styles.inlineAudioText} numberOfLines={1}>
+                {trimAudioFileName(activeAudio.fileName)}
+              </Text>
+              <TouchableOpacity activeOpacity={0.8} onPress={handleCloseAudioPlayer}>
+                <Ionicons name="close" size={20} color="rgba(255,255,255,0.72)" />
+              </TouchableOpacity>
+            </View>
+          ) : null}
 
           <FlatList
             ref={flatListRef}
@@ -816,6 +1055,64 @@ export default function ChatScreen({ navigation, route }: Props) {
           </View>
         </View>
       )}
+
+      <Modal
+        transparent={false}
+        animationType="fade"
+        visible={!!viewerImage}
+        onRequestClose={() => setViewerImage(null)}
+      >
+        <SafeAreaView style={styles.viewerScreen} edges={['top', 'bottom']}>
+          <View style={styles.viewerHeader}>
+            <TouchableOpacity activeOpacity={0.75} onPress={() => setViewerImage(null)}>
+              <Ionicons name="arrow-back" size={27} color="#ffffff" />
+            </TouchableOpacity>
+
+            <View style={styles.viewerHeaderText}>
+              <Text style={styles.viewerTitle} numberOfLines={1}>
+                {viewerImage?.senderName || name}
+              </Text>
+              <Text style={styles.viewerSubtitle}>
+                {viewerImage
+                  ? `hoje às ${new Date(viewerImage.timestamp * 1000).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: false,
+                    })}`
+                  : ''}
+              </Text>
+            </View>
+
+            <View style={styles.viewerActions}>
+              <TouchableOpacity activeOpacity={0.75} onPress={() => Alert.alert('Pincel', 'Em breve.')}>
+                <Ionicons name="brush-outline" size={22} color="#ffffff" />
+              </TouchableOpacity>
+              <TouchableOpacity activeOpacity={0.75} onPress={() => Alert.alert('Compartilhar', 'Em breve.')}>
+                <Ionicons name="arrow-redo-outline" size={24} color="#ffffff" />
+              </TouchableOpacity>
+              <TouchableOpacity activeOpacity={0.75} onPress={() => Alert.alert('Mais opções', 'Em breve.')}>
+                <Ionicons name="ellipsis-vertical" size={20} color="#ffffff" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.viewerCounterWrap}>
+            <View style={styles.viewerCounterPill}>
+              <Text style={styles.viewerCounterText}>1 de 1</Text>
+            </View>
+          </View>
+
+          <View style={styles.viewerImageWrap}>
+            {viewerImage ? (
+              <Image
+                source={{ uri: viewerImage.uri }}
+                style={styles.viewerImage}
+                resizeMode="contain"
+              />
+            ) : null}
+          </View>
+        </SafeAreaView>
+      </Modal>
 
       <Modal transparent animationType="slide" visible={attachOpen} onRequestClose={() => setAttachOpen(false)}>
         <Pressable style={styles.sheetOverlay} onPress={() => setAttachOpen(false)} />
@@ -923,6 +1220,65 @@ const extractUserName = (value: string | ChatApiUser | any): string | null => {
   return null;
 };
 
+const extractFileNameFromUrl = (uri: string) => {
+  const rawName = uri.split('/').pop()?.split('?')[0] || 'arquivo';
+  try {
+    return decodeURIComponent(rawName);
+  } catch {
+    return rawName;
+  }
+};
+
+const sanitizeFileName = (value: string) => {
+  const safe = value.replace(/[<>:"/\\|?*\u0000-\u001F]+/g, '_').trim();
+  return safe || 'arquivo';
+};
+
+const resolveMimeType = (fileName: string, mediaType?: string) => {
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  if (mediaType && mediaType.includes('/')) {
+    return mediaType;
+  }
+
+  switch (ext) {
+    case 'pdf':
+      return 'application/pdf';
+    case 'doc':
+      return 'application/msword';
+    case 'docx':
+      return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    case 'xls':
+      return 'application/vnd.ms-excel';
+    case 'xlsx':
+      return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    case 'ppt':
+      return 'application/vnd.ms-powerpoint';
+    case 'pptx':
+      return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+    case 'txt':
+      return 'text/plain';
+    case 'csv':
+      return 'text/csv';
+    case 'zip':
+      return 'application/zip';
+    case 'rar':
+      return 'application/vnd.rar';
+    default:
+      return 'application/octet-stream';
+  }
+};
+
+const formatAudioTime = (millis: number) => {
+  const totalSeconds = Math.max(0, Math.floor(millis / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
+};
+
+const trimAudioFileName = (value: string) => {
+  return value.replace(/\.[a-z0-9]{2,5}$/i, '');
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -995,6 +1351,24 @@ const styles = StyleSheet.create({
   datePillText: {
     color: '#f2f2f2',
     fontSize: 13,
+    fontWeight: '600',
+  },
+  inlineAudioPlayer: {
+    marginHorizontal: 12,
+    marginTop: 6,
+    marginBottom: 6,
+    paddingHorizontal: 14,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(27,27,31,0.92)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  inlineAudioText: {
+    flex: 1,
+    color: '#ffffff',
+    fontSize: 15,
     fontWeight: '600',
   },
   sheetOverlay: {
@@ -1113,5 +1487,61 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     color: '#ff6666',
+  },
+  viewerScreen: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
+  viewerHeader: {
+    height: 56,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  viewerHeaderText: {
+    flex: 1,
+    marginLeft: 14,
+  },
+  viewerTitle: {
+    color: '#ffffff',
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  viewerSubtitle: {
+    color: 'rgba(255,255,255,0.82)',
+    fontSize: 13,
+    marginTop: 2,
+  },
+  viewerActions: {
+    minWidth: 92,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  viewerCounterWrap: {
+    alignItems: 'center',
+    paddingTop: 10,
+  },
+  viewerCounterPill: {
+    backgroundColor: 'rgba(52,52,52,0.82)',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  viewerCounterText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  viewerImageWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    paddingBottom: 12,
+  },
+  viewerImage: {
+    width: '100%',
+    height: '100%',
   },
 });
