@@ -59,7 +59,7 @@ export default function AppNavigator() {
           options={({ route }) => {
             const routeName = getFocusedRouteNameFromRoute(route) ?? 'ChatList';
             return {
-              headerShown: routeName !== 'Profile' && routeName !== 'Contacts',
+              headerShown: false,
             title: 'Telegram Clone',
             headerLeft: () => null,
             headerRight: () => (

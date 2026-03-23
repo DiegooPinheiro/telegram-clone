@@ -75,14 +75,15 @@ export default function ProfileScreen({ navigation }: Props) {
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
-      edges={["left", "right"]}
+      edges={["top", "left", "right"]}
     >
-      <View style={[styles.topBar, { paddingTop: insets.top + 16 }]}>
+      <View style={styles.topBar}>
+        <View style={{ flex: 1 }} />
         <TouchableOpacity style={styles.topBarButton}>
-          <MaterialIcons name="qr-code-scanner" size={24} color={colors.textPrimary} />
+          <Ionicons name="qr-code-outline" size={26} color={colors.textPrimary} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.topBarButton} onPress={() => {}}>
-          <MaterialIcons name="more-vert" size={24} color={colors.textPrimary} />
+          <Ionicons name="ellipsis-vertical" size={26} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
@@ -183,21 +184,24 @@ export default function ProfileScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 10,
   },
   scrollContent: {
     paddingBottom: 100,
   },
   topBar: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: 8,
+    alignItems: "center",
+    marginBottom: 16,
+    marginTop: 4,
   },
   topBarButton: {
-    width: 40,
-    height: 40,
-    alignItems: "center",
+    width: 36,
+    height: 36,
+    alignItems: "flex-end",
     justifyContent: "center",
+    marginLeft: 16,
   },
   profileHeader: {
     alignItems: "center",
@@ -216,7 +220,6 @@ const styles = StyleSheet.create({
   actionButtonsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
     marginBottom: 24,
     gap: 12,
   },
@@ -235,7 +238,6 @@ const styles = StyleSheet.create({
   },
   infoCard: {
     borderRadius: 12,
-    marginHorizontal: 16,
     padding: 16,
     marginBottom: 24,
   },

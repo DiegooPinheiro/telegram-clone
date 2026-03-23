@@ -112,123 +112,112 @@ export default function ContactsScreen({ navigation }: Props) {
     });
   };
 
-  if (loading) {
-    return <LoadingSpinner message="Carregando contatos..." />;
-  }
-
-  if (noSession) {
-    return (
-      <SafeAreaView
-        style={[
-          styles.container,
-          { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' },
-        ]}
-        edges={['top', 'left', 'right']}
-      >
-        <Text style={{ color: colors.textSecondary, fontSize: 16, textAlign: 'center', marginBottom: 16 }}>
-          Sessão não encontrada. Faça login novamente.
-        </Text>
-        <TouchableOpacity
-          onPress={loadUsers}
-          style={{ backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 24 }}
-        >
-          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>Tentar novamente</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
-    );
-  }
-
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       {/* Fixed Header */}
       <View style={styles.headerRow}>
-        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Contatos</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
+          {loading ? 'Carregando...' : 'Contatos'}
+        </Text>
         <TouchableOpacity style={styles.headerAction} onPress={loadUsers}>
           <MaterialCommunityIcons name="playlist-check" size={26} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
-      {/* Contact List with Scrollable Header Elements */}
-      <SectionList
-        sections={sections}
-        keyExtractor={(item) => item._id}
-        contentContainerStyle={[styles.sectionContent, { flexGrow: 1 }]}
-        style={{ flex: 1 }}
-        ListHeaderComponent={
-          <View>
-            <View style={[styles.searchWrap, { backgroundColor: isDark ? '#1C1C1E' : '#E5E5EA' }]}>
-              <Ionicons name="search-outline" size={20} color={colors.textSecondary} style={styles.searchIcon} />
-              <TextInput
-                style={[styles.searchInput, { color: colors.textPrimary }]}
-                placeholder="Buscar Contatos"
-                placeholderTextColor={colors.textSecondary}
-                value={search}
-                onChangeText={setSearch}
-              />
-            </View>
+      {noSession ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 16, textAlign: 'center', marginBottom: 16 }}>
+            Sessão não encontrada. Faça login novamente.
+          </Text>
+          <TouchableOpacity
+            onPress={loadUsers}
+            style={{ backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 24 }}
+          >
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>Tentar novamente</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <SectionList
+          sections={sections}
+          keyExtractor={(item) => item._id}
+          contentContainerStyle={[styles.sectionContent, { flexGrow: 1 }]}
+          style={{ flex: 1 }}
+          ListHeaderComponent={
+            <View>
+              <View style={[styles.searchWrap, { backgroundColor: isDark ? '#1C1C1E' : '#E5E5EA' }]}>
+                <Ionicons name="search-outline" size={20} color={colors.textSecondary} style={styles.searchIcon} />
+                <TextInput
+                  style={[styles.searchInput, { color: colors.textPrimary }]}
+                  placeholder="Buscar Contatos"
+                  placeholderTextColor={colors.textSecondary}
+                  value={search}
+                  onChangeText={setSearch}
+                />
+              </View>
 
-            <View style={[styles.actionsCard, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
-              <TouchableOpacity style={[styles.actionRow, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.separator }]} activeOpacity={0.7}>
-                <View style={[styles.sideLetterWrap, { alignItems: 'flex-start' }]}>
-                  <View style={[styles.actionIconBg, { backgroundColor: '#2196F3' }]}>
-                    <Ionicons name="person-add" size={16} color="#FFF" />
+              <View style={[styles.actionsCard, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+                <TouchableOpacity style={[styles.actionRow, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.separator }]} activeOpacity={0.7}>
+                  <View style={[styles.sideLetterWrap, { alignItems: 'flex-start' }]}>
+                    <View style={[styles.actionIconBg, { backgroundColor: '#2196F3' }]}>
+                      <Ionicons name="person-add" size={16} color="#FFF" />
+                    </View>
                   </View>
-                </View>
-                <View style={styles.contactInfo}>
-                  <Text style={[styles.actionText, { color: colors.textPrimary }]}>Convidar Amigos</Text>
-                </View>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.actionRow} activeOpacity={0.7}>
-                <View style={[styles.sideLetterWrap, { alignItems: 'flex-start' }]}>
-                  <View style={[styles.actionIconBg, { backgroundColor: '#4CAF50' }]}>
-                    <Ionicons name="call" size={16} color="#FFF" />
+                  <View style={styles.contactInfo}>
+                    <Text style={[styles.actionText, { color: colors.textPrimary }]}>Convidar Amigos</Text>
                   </View>
-                </View>
-                <View style={styles.contactInfo}>
-                  <Text style={[styles.actionText, { color: colors.textPrimary }]}>Chamadas recentes</Text>
-                </View>
-              </TouchableOpacity>
-            </View>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.actionRow} activeOpacity={0.7}>
+                  <View style={[styles.sideLetterWrap, { alignItems: 'flex-start' }]}>
+                    <View style={[styles.actionIconBg, { backgroundColor: '#4CAF50' }]}>
+                      <Ionicons name="call" size={16} color="#FFF" />
+                    </View>
+                  </View>
+                  <View style={styles.contactInfo}>
+                    <Text style={[styles.actionText, { color: colors.textPrimary }]}>Chamadas recentes</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
 
-            <View style={[styles.listCardTop, { backgroundColor: colors.surface }]}>
-              <Text style={[styles.listTitle, { color: colors.primary }]}>Listado por Nome</Text>
+              <View style={[styles.listCardTop, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.listTitle, { color: colors.primary }]}>Listado por Nome</Text>
+              </View>
             </View>
-          </View>
-        }
-        renderItem={({ item, index, section }) => {
-          const displayName = item.nome || item.username;
-          const subtitle = 'visto recentemente';
+          }
+          renderItem={({ item, index, section }) => {
+            const displayName = item.nome || item.username;
+            const subtitle = 'visto recentemente';
 
-          return (
-            <View style={[styles.contactRowWrap, { backgroundColor: colors.surface }]}>
-              {index === 0 ? (
-                <View style={styles.sideLetterWrap}>
-                  <Text style={[styles.sideLetter, { color: colors.textSecondary }]}>{section.title}</Text>
-                </View>
-              ) : (
-                <View style={styles.sideLetterWrap} />
-              )}
-              <TouchableOpacity style={styles.contactRow} activeOpacity={0.75} onPress={() => startChat(item)}>
-                <Avatar uri={item.foto || null} name={displayName} size={42} online={false} />
-                <View style={styles.contactInfo}>
-                  <Text style={[styles.contactName, { color: colors.textPrimary }]}>{displayName}</Text>
-                  <Text style={[styles.contactStatus, { color: colors.textSecondary }]} numberOfLines={1}>
-                    {subtitle}
-                  </Text>
-                </View>
-              </TouchableOpacity>
+            return (
+              <View style={[styles.contactRowWrap, { backgroundColor: colors.surface }]}>
+                {index === 0 ? (
+                  <View style={styles.sideLetterWrap}>
+                    <Text style={[styles.sideLetter, { color: colors.textSecondary }]}>{section.title}</Text>
+                  </View>
+                ) : (
+                  <View style={styles.sideLetterWrap} />
+                )}
+                <TouchableOpacity style={styles.contactRow} activeOpacity={0.75} onPress={() => startChat(item)}>
+                  <Avatar uri={item.foto || null} name={displayName} size={42} online={false} />
+                  <View style={styles.contactInfo}>
+                    <Text style={[styles.contactName, { color: colors.textPrimary }]}>{displayName}</Text>
+                    <Text style={[styles.contactStatus, { color: colors.textSecondary }]} numberOfLines={1}>
+                      {subtitle}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            );
+          }}
+          ListEmptyComponent={
+            <View style={[styles.emptyStateWrap, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Nenhum contato encontrado</Text>
             </View>
-          );
-        }}
-        ListEmptyComponent={
-          <View style={[styles.emptyStateWrap, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Nenhum contato encontrado</Text>
-          </View>
-        }
-        ListFooterComponent={<View style={[styles.listCardBottom, { backgroundColor: colors.surface }]} />}
-        stickySectionHeadersEnabled={false}
-        showsVerticalScrollIndicator={false}
-      />
+          }
+          ListFooterComponent={<View style={[styles.listCardBottom, { backgroundColor: colors.surface }]} />}
+          stickySectionHeadersEnabled={false}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
 
       <TouchableOpacity
         style={[styles.fab, { bottom: insets.bottom + 82, backgroundColor: colors.primary }]}

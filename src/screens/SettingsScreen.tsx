@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -71,13 +71,23 @@ export default function SettingsScreen({ navigation }: Props) {
   const headerUsername = profile?.username ? `@${profile.username}` : '@username';
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['left', 'right']}>
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 120 }]}> 
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+      <View style={styles.topBar}>
+        <View style={{ flex: 1 }} />
+        <TouchableOpacity style={styles.topBarButton}>
+          <Ionicons name="search-outline" size={26} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.topBarButton}>
+          <Ionicons name="ellipsis-vertical" size={26} color={colors.textPrimary} />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 120 }]} showsVerticalScrollIndicator={false}> 
         <View style={styles.header}>
           <TouchableOpacity activeOpacity={0.8} style={styles.avatarContainer} onPress={() => navigation.navigate('EditProfile')}>
-            <Avatar uri={profile?.photoURL || photoURL} name={profile?.displayName || displayName || 'User'} size={80} />
-            <View style={styles.cameraBadge}>
-              <Ionicons name="camera" size={16} color="#FFF" />
+            <Avatar uri={profile?.photoURL || photoURL} name={profile?.displayName || displayName || 'User'} size={100} />
+            <View style={[styles.cameraBadge, { borderColor: colors.background }]}>
+              <Ionicons name="camera" size={18} color="#FFF" />
             </View>
           </TouchableOpacity>
           <Text style={[styles.headerName, { color: colors.textPrimary }]}>{profile?.displayName || displayName || 'Sem nome'}</Text>
@@ -100,7 +110,7 @@ export default function SettingsScreen({ navigation }: Props) {
             onPress={() => {}}
           />
           <SettingRow
-            iconName="lock-closed"
+            iconName="key"
             iconBgColor="#34C759"
             label="Privacidade e Seguranca"
             subtitle="Visto por Ultimo, Dispositivos, Chaves de Acesso"
@@ -212,13 +222,13 @@ const settingStyles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 16,
   },
   iconContainer: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
@@ -251,41 +261,56 @@ const settingStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 10,
   },
   scrollContent: {
     paddingBottom: 40,
   },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    marginTop: 4,
+  },
+  topBarButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    marginLeft: 16,
+  },
   header: {
     alignItems: 'center',
-    paddingVertical: 24,
+    paddingTop: 8,
+    paddingBottom: 32,
   },
   avatarContainer: {
     position: 'relative',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   cameraBadge: {
     position: 'absolute',
     bottom: 0,
-    right: -4,
+    right: 0,
     backgroundColor: '#5E5CE6',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#000000',
+    borderWidth: 3,
   },
   headerName: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 6,
+    letterSpacing: 0.5,
   },
   headerPhone: {
     fontSize: 14,
   },
   section: {
-    marginHorizontal: 16,
     marginBottom: 24,
     borderRadius: 12,
     overflow: 'hidden',

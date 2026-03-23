@@ -1,9 +1,9 @@
-﻿import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, FlatList, StyleSheet, TextInput, TouchableOpacity, Alert, Modal, Pressable } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../navigation/types';
 import { spacing } from '../theme/spacing';
 import ChatListItem from '../components/ChatListItem';
@@ -160,15 +160,20 @@ export default function ChatListScreen({ navigation }: Props) {
     );
   }, [menuConversation, loadConversations]);
 
-  if (loading) {
-    return <LoadingSpinner message="Carregando conversas..." />;
-  }
-
   return (
-    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
-      <View style={[styles.searchContainer, { backgroundColor: themeColors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]} edges={['top', 'left', 'right']}>
+      <View style={styles.headerRow}>
+        <Text style={[styles.headerTitle, { color: themeColors.textPrimary }]}>
+          {loading ? 'Carregando...' : 'Telegram Clone'}
+        </Text>
+        <TouchableOpacity style={styles.headerAction} onPress={() => {}}>
+          <Ionicons name="ellipsis-vertical" size={26} color={themeColors.textPrimary} />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.searchWrap}>
         <View style={[styles.searchBar, { backgroundColor: themeColors.inputBackground }]}>
-          <Ionicons name="search" size={18} color={themeColors.textSecondary} style={styles.searchIcon} />
+          <Ionicons name="search" size={20} color={themeColors.textSecondary} style={styles.searchIcon} />
           <TextInput
             style={[styles.searchInput, { color: themeColors.textPrimary }]}
             placeholder="Buscar Chats"
@@ -251,7 +256,7 @@ export default function ChatListScreen({ navigation }: Props) {
           </View>
         </Pressable>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -272,25 +277,42 @@ const extractParticipantId = (value: string | ChatApiUser | undefined): string |
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 10,
   },
-  searchContainer: {
-    padding: spacing.md,
-    paddingBottom: spacing.sm,
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    marginTop: 4,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+  },
+  headerAction: {
+    width: 36,
+    height: 36,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  searchWrap: {
+    marginBottom: 16,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 44,
-    borderRadius: 12,
-    paddingHorizontal: spacing.md,
+    height: 48,
+    borderRadius: 24,
+    paddingHorizontal: 16,
   },
   searchIcon: {
-    marginRight: spacing.sm,
+    marginRight: 10,
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
-    height: '100%',
   },
   listContent: {
     paddingVertical: spacing.xs,
@@ -307,18 +329,15 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#141518',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: '#2D2E33',
   },
   fabPrimary: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#4F7CFF',
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 8,
