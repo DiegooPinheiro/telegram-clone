@@ -11,7 +11,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import useTheme from '../hooks/useTheme';
 import { chatDeleteConversation, chatGetConversations } from '../services/chatApi';
 import { getChatSession } from '../services/chatSession';
-import { onReceiveMessage } from '../services/chatSocket';
+import { onMessagesDeleted, onMessageUpdated, onReceiveMessage } from '../services/chatSocket';
 import { useSettings } from '../context/SettingsContext';
 import type { ChatApiConversation, ChatApiUser } from '../types/chatApi';
 
@@ -67,6 +67,20 @@ export default function ChatListScreen({ navigation }: Props) {
 
     return () => {
       unsubscribe?.();
+    };
+  }, [loadConversations]);
+
+  useEffect(() => {
+    const unsubscribeDeleted = onMessagesDeleted(() => {
+      loadConversations();
+    });
+    const unsubscribeUpdated = onMessageUpdated(() => {
+      loadConversations();
+    });
+
+    return () => {
+      unsubscribeDeleted?.();
+      unsubscribeUpdated?.();
     };
   }, [loadConversations]);
 

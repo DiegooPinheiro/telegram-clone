@@ -15,6 +15,9 @@ import {
   ActivityIndicator,
   Switch,
   Linking,
+  Animated,
+  LayoutAnimation,
+  UIManager,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -124,6 +127,7 @@ export default function ChatScreen({ navigation, route }: Props) {
   const [recordingDurationMs, setRecordingDurationMs] = useState(0);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingMessagePreview, setEditingMessagePreview] = useState('');
+  const editingBarAnim = useRef(new Animated.Value(0)).current;
 
   const { statusText, online } = useOnlineStatusByEmail(username || '', !!username);
   const selectionMode = selectedMessageIds.length > 0;
@@ -136,6 +140,20 @@ export default function ChatScreen({ navigation, route }: Props) {
     extractUserId(selectedEditableMessage.senderId) === myUserId &&
     !selectedEditableMessage.mediaUrl &&
     !!selectedEditableMessage.text?.trim();
+
+  useEffect(() => {
+    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    Animated.timing(editingBarAnim, {
+      toValue: editingMessageId ? 1 : 0,
+      duration: 180,
+      useNativeDriver: true,
+    }).start();
+  }, [editingBarAnim, editingMessageId]);
 
   useEffect(() => {
     setConversationId(initialConversationId ?? null);
@@ -443,6 +461,7 @@ export default function ChatScreen({ navigation, route }: Props) {
       }
 
       const deletedSet = new Set(payload.messageIds.map((id: string) => String(id)));
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setMessages((prev) => prev.filter((message) => !deletedSet.has(String(message._id))));
       setSelectedMessageIds((prev) => prev.filter((id) => !deletedSet.has(String(id))));
     });
@@ -1206,6 +1225,7 @@ export default function ChatScreen({ navigation, route }: Props) {
       });
 
       const selectedSet = new Set(selectedMessageIds);
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setMessages((prev) => prev.filter((message) => !selectedSet.has(message._id)));
       setDeleteModalVisible(false);
       setDeleteForBoth(false);
@@ -1272,7 +1292,24 @@ export default function ChatScreen({ navigation, route }: Props) {
           />
 
           {editingMessageId ? (
-            <View style={[styles.editingBar, { backgroundColor: colors.inputBackground, borderTopColor: colors.separator }]}>
+            <Animated.View
+              style={[
+                styles.editingBar,
+                {
+                  backgroundColor: colors.inputBackground,
+                  borderTopColor: colors.separator,
+                  opacity: editingBarAnim,
+                  transform: [
+                    {
+                      translateY: editingBarAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [10, 0],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
               <View style={styles.editingBarTextWrap}>
                 <Text style={[styles.editingBarTitle, { color: colors.primary }]}>Editando mensagem</Text>
                 <Text style={[styles.editingBarPreview, { color: colors.textSecondary }]} numberOfLines={1}>
@@ -1282,7 +1319,7 @@ export default function ChatScreen({ navigation, route }: Props) {
               <TouchableOpacity activeOpacity={0.75} onPress={handleCancelEditingMessage}>
                 <Ionicons name="close" size={22} color={colors.textSecondary} />
               </TouchableOpacity>
-            </View>
+            </Animated.View>
           ) : null}
 
           <MessageInput
@@ -1385,7 +1422,24 @@ export default function ChatScreen({ navigation, route }: Props) {
           />
 
           {editingMessageId ? (
-            <View style={[styles.editingBar, { backgroundColor: colors.inputBackground, borderTopColor: colors.separator }]}>
+            <Animated.View
+              style={[
+                styles.editingBar,
+                {
+                  backgroundColor: colors.inputBackground,
+                  borderTopColor: colors.separator,
+                  opacity: editingBarAnim,
+                  transform: [
+                    {
+                      translateY: editingBarAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [10, 0],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
               <View style={styles.editingBarTextWrap}>
                 <Text style={[styles.editingBarTitle, { color: colors.primary }]}>Editando mensagem</Text>
                 <Text style={[styles.editingBarPreview, { color: colors.textSecondary }]} numberOfLines={1}>
@@ -1395,7 +1449,7 @@ export default function ChatScreen({ navigation, route }: Props) {
               <TouchableOpacity activeOpacity={0.75} onPress={handleCancelEditingMessage}>
                 <Ionicons name="close" size={22} color={colors.textSecondary} />
               </TouchableOpacity>
-            </View>
+            </Animated.View>
           ) : null}
 
           <MessageInput
