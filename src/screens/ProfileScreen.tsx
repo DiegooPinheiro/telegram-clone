@@ -36,13 +36,13 @@ export default function ProfileScreen({ navigation }: Props) {
     });
   }, [navigation]);
 
-  const loadProfile = useCallback(async () => {
+  const loadProfile = useCallback(async (isInitial = false) => {
     if (!currentUserId) {
       setLoading(false);
       return;
     }
     try {
-      setLoading(true);
+      if (isInitial) setLoading(true);
       const data = await getUserProfile(currentUserId);
       if (data) {
         setProfile(data as UserProfile);
@@ -55,24 +55,24 @@ export default function ProfileScreen({ navigation }: Props) {
   }, [currentUserId]);
 
   useEffect(() => {
-    loadProfile();
+    loadProfile(true);
   }, [loadProfile]);
 
   useFocusEffect(
     useCallback(() => {
-      loadProfile();
+      loadProfile(false);
     }, [loadProfile])
   );
-
-  if (loading) {
-    return <LoadingSpinner message="Carregando perfil..." />;
-  }
 
   const displayName = profile?.displayName?.trim() || authName || "Sem Nome";
   const photo = profile?.photoURL || authPhoto || null;
   const username = profile?.username?.trim() ? `@${profile.username}` : "@username";
   const phone = profile?.phone?.trim() || "Adicionar Celular";
   const birthday = profile?.birthday?.trim() || "Adicionar Aniversário";
+
+  if (!profile && loading) {
+    return <LoadingSpinner message="Carregando perfil..." />;
+  }
 
   return (
     <SafeAreaView
@@ -82,10 +82,10 @@ export default function ProfileScreen({ navigation }: Props) {
       <View style={styles.topBar}>
         <View style={{ flex: 1 }} />
         <TouchableOpacity style={styles.topBarButton}>
-          <Ionicons name="qr-code-outline" size={26} color={colors.textPrimary} />
+          <Ionicons name="qr-code-outline" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.topBarButton} onPress={() => setMenuVisible(true)}>
-          <Ionicons name="ellipsis-vertical" size={26} color={colors.textPrimary} />
+          <Ionicons name="ellipsis-vertical" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
@@ -181,6 +181,7 @@ export default function ProfileScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: 10,
   },
   scrollContent: {
     paddingBottom: 100,
@@ -188,14 +189,16 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: "row",
     alignItems: "center",
-    height: 56,
+    marginBottom: 16,
+    marginTop: 4,
     paddingHorizontal: 16,
   },
   topBarButton: {
     width: 36,
     height: 36,
-    alignItems: "center",
+    alignItems: "flex-end",
     justifyContent: "center",
+    marginLeft: 16,
   },
   profileHeader: {
     alignItems: "center",

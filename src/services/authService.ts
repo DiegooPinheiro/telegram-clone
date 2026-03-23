@@ -5,6 +5,7 @@ import {
   onAuthStateChanged,
   User,
   updateProfile,
+  deleteUser,
 } from 'firebase/auth';
 import {
   doc,
@@ -15,6 +16,7 @@ import {
   query,
   where,
   getDocs,
+  deleteDoc,
 } from 'firebase/firestore';
 import { auth, db } from '../config/firebaseConfig';
 import { UserProfile } from '../types/user';
@@ -219,4 +221,34 @@ export const updateUserProfile = async (
  */
 export const getCurrentUser = () => {
   return auth.currentUser;
+};
+
+/**
+ * Deletar conta do usuário.
+ * Remove o perfil no Firestore e a conta no Firebase Auth.
+ */
+export const deleteUserAccount = async () => {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Usuário não autenticado.');
+
+  // 1. Remover do Firestore
+  try {
+    await deleteDoc(doc(db, 'users', user.uid));
+  } catch (error) {
+    console.error('[AuthService] Erro ao deletar documento no Firestore:', error);
+  }
+
+  // 2. Limpar sessão local
+  await clearChatSession();
+  disconnectChatSocket();
+
+  // 3. Remover do Firebase Auth
+  try {
+    await deleteUser(user);
+  } catch (error: any) {
+    if (error.code === 'auth/requires-recent-login') {
+      throw new Error('Para deletar sua conta, você precisa fazer login novamente por segurança.');
+    }
+    throw error;
+  }
 };

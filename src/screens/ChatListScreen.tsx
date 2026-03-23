@@ -169,7 +169,7 @@ export default function ChatListScreen({ navigation }: Props) {
           {loading ? 'Carregando...' : 'Telegram Clone'}
         </Text>
         <TouchableOpacity style={styles.headerAction} onPress={() => setGlobalMenuVisible(true)}>
-          <Ionicons name="ellipsis-vertical" size={26} color={themeColors.textPrimary} />
+          <Ionicons name="ellipsis-vertical" size={22} color={themeColors.textPrimary} />
         </TouchableOpacity>
       </View>
 

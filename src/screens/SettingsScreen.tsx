@@ -12,12 +12,13 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
 import useAuth from '../hooks/useAuth';
-import { getUserProfile, signOut } from '../services/authService';
+import { getUserProfile, signOut, deleteUserAccount } from '../services/authService';
 import Avatar from '../components/Avatar';
 import { useSettings } from '../context/SettingsContext';
 import useTheme from '../hooks/useTheme';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { UserProfile } from '../types/user';
+import CustomAlert from '../components/CustomAlert';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
 
@@ -27,6 +28,22 @@ export default function SettingsScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+
+  const [alertConfig, setAlertConfig] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    confirmLabel?: string;
+    isDestructive?: boolean;
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
+  const hideAlert = () => setAlertConfig(prev => ({ ...prev, visible: false }));
 
   const loadProfile = useCallback(async () => {
     if (!uid) return;
@@ -51,20 +68,39 @@ export default function SettingsScreen({ navigation }: Props) {
   );
 
   const handleLogout = () => {
-    Alert.alert('Sair', 'Deseja realmente sair da conta?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Sair',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await signOut();
-          } catch (error: any) {
-            Alert.alert('Erro', error.message || 'Erro ao sair');
-          }
-        },
+    setAlertConfig({
+      visible: true,
+      title: 'Sair da Conta',
+      message: 'Deseja realmente sair da sua conta?',
+      confirmLabel: 'SAIR',
+      isDestructive: true,
+      onConfirm: async () => {
+        hideAlert();
+        try {
+          await signOut();
+        } catch (error: any) {
+          Alert.alert('Erro', error.message || 'Erro ao sair');
+        }
       },
-    ]);
+    });
+  };
+
+  const handleDeleteAccount = () => {
+    setAlertConfig({
+      visible: true,
+      title: 'Deletar Conta',
+      message: 'AVISO: Isso apagara permanentemente todos os seus dados. Esta acao nao pode ser desfeita.',
+      confirmLabel: 'DELETAR',
+      isDestructive: true,
+      onConfirm: async () => {
+        hideAlert();
+        try {
+          await deleteUserAccount();
+        } catch (error: any) {
+          Alert.alert('Erro', error.message || 'Erro ao deletar conta');
+        }
+      },
+    });
   };
 
   const headerPhone = profile?.phone || '+55 (XX) XXXXX-XXXX';
@@ -75,10 +111,10 @@ export default function SettingsScreen({ navigation }: Props) {
       <View style={styles.topBar}>
         <View style={{ flex: 1 }} />
         <TouchableOpacity style={styles.topBarButton}>
-          <Ionicons name="search-outline" size={26} color={colors.textPrimary} />
+          <Ionicons name="search-outline" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.topBarButton}>
-          <Ionicons name="ellipsis-vertical" size={26} color={colors.textPrimary} />
+          <Ionicons name="ellipsis-vertical" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
@@ -148,10 +184,20 @@ export default function SettingsScreen({ navigation }: Props) {
         </View>
 
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
-
+          <SettingRow iconName="trash-outline" iconBgColor="#FF3B30" label="Deletar sua conta" onPress={handleDeleteAccount} />
           <SettingRow iconName="exit-outline" iconBgColor="#FF3B30" label="Sair da Conta" onPress={handleLogout} isLast />
         </View>
       </ScrollView>
+
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        onCancel={hideAlert}
+        onConfirm={alertConfig.onConfirm}
+        confirmLabel={alertConfig.confirmLabel}
+        isDestructive={alertConfig.isDestructive}
+      />
     </SafeAreaView>
   );
 }
@@ -300,5 +346,3 @@ const styles = StyleSheet.create({
     backgroundColor: '#1C1C1D',
   },
 });
-
-
