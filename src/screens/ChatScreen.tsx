@@ -1,4 +1,4 @@
-﻿import React, { useRef, useCallback, useEffect, useState } from 'react';
+import React, { useRef, useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -138,7 +138,17 @@ export default function ChatScreen({ navigation, route }: Props) {
             {selectedMessageIds.length}
           </Text>
         ) : (
-          <View style={styles.headerTitleWrap}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={styles.headerTitleWrap}
+            onPress={() =>
+              navigation.navigate('ContactProfile', {
+                username,
+                name,
+                avatar,
+              })
+            }
+          >
             <Avatar name={name} size={38} uri={avatar ?? null} online={online} />
             <View style={styles.headerTextWrap}>
               <Text style={[styles.headerName, { color: colors.textPrimary }]} numberOfLines={1}>
@@ -148,7 +158,7 @@ export default function ChatScreen({ navigation, route }: Props) {
                 {otherTyping ? 'digitando...' : (statusText || 'via Chat API')}
               </Text>
             </View>
-          </View>
+          </TouchableOpacity>
         )
       ),
       headerRight: () => (
@@ -645,10 +655,13 @@ export default function ChatScreen({ navigation, route }: Props) {
     recordingActionRef.current = true;
 
     try {
-      const permission = await Audio.requestPermissionsAsync();
+      let permission = await Audio.getPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert('Permissão', 'Permita acesso ao microfone para gravar áudio.');
-        return;
+        permission = await Audio.requestPermissionsAsync();
+        if (!permission.granted) {
+          Alert.alert('Permissão', 'Permita acesso ao microfone para gravar áudio.');
+          return;
+        }
       }
 
       await Audio.setAudioModeAsync({

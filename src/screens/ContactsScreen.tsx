@@ -30,7 +30,7 @@ type ContactSection = {
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default function ContactsScreen({ navigation }: Props) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const [search, setSearch] = useState('');
   const [users, setUsers] = useState<ChatApiUser[]>([]);
@@ -51,7 +51,6 @@ export default function ContactsScreen({ navigation }: Props) {
       }
 
       if (!session?.userId) {
-        console.warn('[ContactsScreen] Sessão não encontrada após tentativas de sincronização.');
         setNoSession(true);
         return;
       }
@@ -124,7 +123,7 @@ export default function ContactsScreen({ navigation }: Props) {
           styles.container,
           { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' },
         ]}
-        edges={['left', 'right']}
+        edges={['top', 'left', 'right']}
       >
         <Text style={{ color: colors.textSecondary, fontSize: 16, textAlign: 'center', marginBottom: 16 }}>
           Sessão não encontrada. Faça login novamente.
@@ -140,42 +139,77 @@ export default function ContactsScreen({ navigation }: Props) {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+      {/* Fixed Header */}
       <View style={styles.headerRow}>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Contatos</Text>
         <TouchableOpacity style={styles.headerAction} onPress={loadUsers}>
-          <MaterialCommunityIcons name="refresh" size={24} color={colors.textPrimary} />
+          <MaterialCommunityIcons name="playlist-check" size={26} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
-      <View style={[styles.searchWrap, { backgroundColor: colors.inputBackground }]}>
-        <Ionicons name="search-outline" size={20} color={colors.textSecondary} style={styles.searchIcon} />
-        <TextInput
-          style={[styles.searchInput, { color: colors.textPrimary }]}
-          placeholder="Buscar Contatos"
-          placeholderTextColor={colors.textSecondary}
-          value={search}
-          onChangeText={setSearch}
-        />
-      </View>
+      {/* Contact List with Scrollable Header Elements */}
+      <SectionList
+        sections={sections}
+        keyExtractor={(item) => item._id}
+        contentContainerStyle={[styles.sectionContent, { flexGrow: 1 }]}
+        style={{ flex: 1 }}
+        ListHeaderComponent={
+          <View>
+            <View style={[styles.searchWrap, { backgroundColor: isDark ? '#1C1C1E' : '#E5E5EA' }]}>
+              <Ionicons name="search-outline" size={20} color={colors.textSecondary} style={styles.searchIcon} />
+              <TextInput
+                style={[styles.searchInput, { color: colors.textPrimary }]}
+                placeholder="Buscar Contatos"
+                placeholderTextColor={colors.textSecondary}
+                value={search}
+                onChangeText={setSearch}
+              />
+            </View>
 
-      <View style={[styles.listCard, { backgroundColor: colors.surface }]}>
-        <Text style={[styles.listTitle, { color: colors.primary }]}>Listado por Nome</Text>
+            <View style={[styles.actionsCard, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+              <TouchableOpacity style={[styles.actionRow, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.separator }]} activeOpacity={0.7}>
+                <View style={[styles.sideLetterWrap, { alignItems: 'flex-start' }]}>
+                  <View style={[styles.actionIconBg, { backgroundColor: '#2196F3' }]}>
+                    <Ionicons name="person-add" size={16} color="#FFF" />
+                  </View>
+                </View>
+                <View style={styles.contactInfo}>
+                  <Text style={[styles.actionText, { color: colors.textPrimary }]}>Convidar Amigos</Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.actionRow} activeOpacity={0.7}>
+                <View style={[styles.sideLetterWrap, { alignItems: 'flex-start' }]}>
+                  <View style={[styles.actionIconBg, { backgroundColor: '#4CAF50' }]}>
+                    <Ionicons name="call" size={16} color="#FFF" />
+                  </View>
+                </View>
+                <View style={styles.contactInfo}>
+                  <Text style={[styles.actionText, { color: colors.textPrimary }]}>Chamadas recentes</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
 
-        <SectionList
-          sections={sections}
-          keyExtractor={(item) => item._id}
-          contentContainerStyle={styles.sectionContent}
-          renderSectionHeader={({ section }) => (
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{section.title}</Text>
-          )}
-          renderItem={({ item }) => {
-            const displayName = item.nome || item.username;
-            const subtitle = item.username;
+            <View style={[styles.listCardTop, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.listTitle, { color: colors.primary }]}>Listado por Nome</Text>
+            </View>
+          </View>
+        }
+        renderItem={({ item, index, section }) => {
+          const displayName = item.nome || item.username;
+          const subtitle = 'visto recentemente';
 
-            return (
+          return (
+            <View style={[styles.contactRowWrap, { backgroundColor: colors.surface }]}>
+              {index === 0 ? (
+                <View style={styles.sideLetterWrap}>
+                  <Text style={[styles.sideLetter, { color: colors.textSecondary }]}>{section.title}</Text>
+                </View>
+              ) : (
+                <View style={styles.sideLetterWrap} />
+              )}
               <TouchableOpacity style={styles.contactRow} activeOpacity={0.75} onPress={() => startChat(item)}>
-                <Avatar uri={item.foto || null} name={displayName} size={54} online={false} />
+                <Avatar uri={item.foto || null} name={displayName} size={42} online={false} />
                 <View style={styles.contactInfo}>
                   <Text style={[styles.contactName, { color: colors.textPrimary }]}>{displayName}</Text>
                   <Text style={[styles.contactStatus, { color: colors.textSecondary }]} numberOfLines={1}>
@@ -183,15 +217,18 @@ export default function ContactsScreen({ navigation }: Props) {
                   </Text>
                 </View>
               </TouchableOpacity>
-            );
-          }}
-          ListEmptyComponent={
+            </View>
+          );
+        }}
+        ListEmptyComponent={
+          <View style={[styles.emptyStateWrap, { backgroundColor: colors.surface }]}>
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Nenhum contato encontrado</Text>
-          }
-          stickySectionHeadersEnabled={false}
-          showsVerticalScrollIndicator={false}
-        />
-      </View>
+          </View>
+        }
+        ListFooterComponent={<View style={[styles.listCardBottom, { backgroundColor: colors.surface }]} />}
+        stickySectionHeadersEnabled={false}
+        showsVerticalScrollIndicator={false}
+      />
 
       <TouchableOpacity
         style={[styles.fab, { bottom: insets.bottom + 82, backgroundColor: colors.primary }]}
@@ -207,7 +244,6 @@ export default function ContactsScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
     paddingHorizontal: 16,
     paddingTop: 10,
   },
@@ -215,82 +251,113 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14,
+    marginBottom: 16,
+    marginTop: 4,
   },
   headerTitle: {
-    color: '#ffffff',
-    fontSize: 40,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: 'bold',
   },
   headerAction: {
     width: 36,
     height: 36,
-    alignItems: 'center',
+    alignItems: 'flex-end',
     justifyContent: 'center',
-    borderRadius: 18,
   },
   searchWrap: {
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#1A1A1D',
+    height: 48,
+    borderRadius: 24,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    marginBottom: 14,
+    marginBottom: 16,
   },
   searchIcon: {
     marginRight: 10,
   },
   searchInput: {
     flex: 1,
-    color: '#ffffff',
-    fontSize: 18,
+    fontSize: 16,
   },
-  listCard: {
-    flex: 1,
-    backgroundColor: '#141518',
-    borderRadius: 22,
-    paddingTop: 14,
-    paddingHorizontal: 14,
-    paddingBottom: 10,
+  actionsCard: {
+    borderRadius: 14,
+    marginBottom: 16,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  actionIconBg: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  actionText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  listCardTop: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 16,
+    paddingHorizontal: 16,
+  },
+  listCardBottom: {
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    height: 16,
+  },
+  emptyStateWrap: {
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    paddingBottom: 24,
   },
   listTitle: {
-    color: '#8C92FF',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   sectionContent: {
     paddingBottom: 120,
   },
-  sectionHeader: {
-    color: '#6E6E73',
-    fontSize: 16,
-    fontWeight: '600',
-    marginTop: 8,
-    marginBottom: 6,
-  },
-  contactRow: {
+  contactRowWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  sideLetterWrap: {
+    width: 36,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  sideLetter: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  contactRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
   },
   contactInfo: {
-    marginLeft: 12,
+    marginLeft: 14,
     flex: 1,
   },
   contactName: {
-    color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '600',
     marginBottom: 2,
   },
   contactStatus: {
-    color: '#8E8E93',
-    fontSize: 14,
+    fontSize: 13,
   },
   emptyText: {
-    color: '#8E8E93',
     fontSize: 16,
     textAlign: 'center',
     marginTop: 24,
@@ -298,11 +365,9 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: 20,
-    bottom: 108,
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#4F7CFF',
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 6,

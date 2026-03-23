@@ -22,6 +22,12 @@
     username?: string;
   };
   Profile: { uid?: string };
+  ContactProfile: {
+    uid?: string;
+    username?: string;
+    name?: string;
+    avatar?: string | null;
+  };
   Settings: undefined;
   Contacts: undefined;
   NewChat: undefined;

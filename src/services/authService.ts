@@ -175,6 +175,20 @@ export const getUserProfile = async (uid: string) => {
 };
 
 /**
+ * Buscar perfil de um usuário pelo username.
+ */
+export const getUserProfileByUsername = async (username: string) => {
+  const normalizedUsername = username.trim().replace(/^@+/, '');
+  if (!normalizedUsername) return null;
+
+  const q = query(collection(db, 'users'), where('username', '==', normalizedUsername));
+  const querySnapshot = await getDocs(q);
+  if (querySnapshot.empty) return null;
+
+  return querySnapshot.docs[0].data();
+};
+
+/**
  * Atualizar perfil do usuário logado.
  */
 export const updateUserProfile = async (

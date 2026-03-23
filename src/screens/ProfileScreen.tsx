@@ -1,55 +1,56 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-} from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+} from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useFocusEffect } from '@react-navigation/native';
-import { RootStackParamList } from '../navigation/types';
-import { getUserProfile } from '../services/authService';
-import useOnlineStatus from '../hooks/useOnlineStatus';
-import Avatar from '../components/Avatar';
-import LoadingSpinner from '../components/LoadingSpinner';
-import { UserProfile } from '../types/user';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import useAuth from '../hooks/useAuth';
-import useTheme from '../hooks/useTheme';
+import { RootStackParamList } from "../navigation/types";
+import { getUserProfile } from "../services/authService";
+import Avatar from "../components/Avatar";
+import LoadingSpinner from "../components/LoadingSpinner";
+import { UserProfile } from "../types/user";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import useAuth from "../hooks/useAuth";
+import useTheme from "../hooks/useTheme";
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
+type Props = NativeStackScreenProps<RootStackParamList, "Profile">;
 
-export default function ProfileScreen({ navigation, route }: Props) {
-  const { uid: currentUserId } = useAuth();
-  const { colors, isDark } = useTheme();
+export default function ProfileScreen({ navigation }: Props) {
+  const { uid: currentUserId, displayName: authName, photoURL: authPhoto } = useAuth();
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
 
-  const uid = route.params?.uid || currentUserId;
-
-  const { statusText, online } = useOnlineStatus(uid || '');
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  React.useLayoutEffect(() => {
+    navigation.setOptions({
+      headerShown: false,
+    });
+  }, [navigation]);
+
   const loadProfile = useCallback(async () => {
-    if (!uid) {
+    if (!currentUserId) {
       setLoading(false);
       return;
     }
-
     try {
       setLoading(true);
-      const data = await getUserProfile(uid);
+      const data = await getUserProfile(currentUserId);
       if (data) {
         setProfile(data as UserProfile);
       }
     } catch (error) {
-      console.error('Erro ao carregar perfil:', error);
+      console.error("Erro ao carregar perfil:", error);
     } finally {
       setLoading(false);
     }
-  }, [uid]);
+  }, [currentUserId]);
 
   useEffect(() => {
     loadProfile();
@@ -65,58 +66,90 @@ export default function ProfileScreen({ navigation, route }: Props) {
     return <LoadingSpinner message="Carregando perfil..." />;
   }
 
-  const displayName = profile?.displayName || 'Sem nome';
-  const isCurrentUser = uid === currentUserId;
+  const displayName = profile?.displayName?.trim() || authName || "Sem Nome";
+  const photo = profile?.photoURL || authPhoto || null;
+  const username = profile?.username?.trim() ? `@${profile.username}` : "@username";
+  const phone = profile?.phone?.trim() || "Adicionar Celular";
+  const birthday = profile?.birthday?.trim() || "Adicionar Aniversário";
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['left', 'right']}>
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 200 }]}> 
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      edges={["left", "right"]}
+    >
+      <View style={[styles.topBar, { paddingTop: insets.top + 16 }]}>
+        <TouchableOpacity style={styles.topBarButton}>
+          <MaterialIcons name="qr-code-scanner" size={24} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.topBarButton} onPress={() => {}}>
+          <MaterialIcons name="more-vert" size={24} color={colors.textPrimary} />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}>
         <View style={styles.profileHeader}>
-          <Avatar uri={profile?.photoURL || null} name={displayName} size={90} online={isCurrentUser ? true : online} />
+          <Avatar
+            uri={photo}
+            name={displayName}
+            size={90}
+            online={false}
+          />
           <Text style={[styles.name, { color: colors.textPrimary }]}>{displayName}</Text>
-          <Text style={[styles.status, { color: colors.textSecondary }]}>{isCurrentUser ? 'online' : statusText || 'visto recentemente'}</Text>
+          <Text style={[styles.status, { color: colors.textSecondary }]}>online</Text>
         </View>
 
-        {isCurrentUser && (
-          <View style={styles.actionButtonsRow}>
-            <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.surface }]} onPress={() => navigation.navigate('EditProfile')}>
-              <MaterialIcons name="add-a-photo" size={22} color={colors.textPrimary} />
-              <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>Definir Foto</Text>
-            </TouchableOpacity>
+        <View style={styles.actionButtonsRow}>
+          <TouchableOpacity 
+            style={[styles.actionButton, { backgroundColor: colors.surface }]} 
+            onPress={() => navigation.navigate("EditProfile")}
+          >
+            <MaterialIcons name="add-a-photo" size={22} color={colors.textPrimary} />
+            <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>Definir Foto</Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.surface }]} onPress={() => navigation.navigate('EditProfile')}>
-              <MaterialIcons name="edit" size={22} color={colors.textPrimary} />
-              <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>Editar Informacoes</Text>
-            </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: colors.surface }]}
+            onPress={() => navigation.navigate("EditProfile")}
+          >
+            <MaterialIcons name="edit" size={22} color={colors.textPrimary} />
+            <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>Editar Informações</Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.surface }]} onPress={() => navigation.navigate('Settings')}>
-              <MaterialIcons name="settings" size={22} color={colors.textPrimary} />
-              <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>Configuracoes</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: colors.surface }]}
+            onPress={() => navigation.navigate("Settings")}
+          >
+            <MaterialIcons name="settings" size={22} color={colors.textPrimary} />
+            <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>Configurações</Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={[styles.infoCard, { backgroundColor: colors.surface }]}>
           <View style={styles.infoBlock}>
-            <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{profile?.phone || '+55 (XX) XXXXX-XXXX'}</Text>
+            <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{phone}</Text>
             <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Celular</Text>
           </View>
 
           <View style={styles.infoBlock}>
-            <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{profile?.username ? `@${profile.username}` : '@username'}</Text>
-            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Nome de Usuario</Text>
+            <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{username}</Text>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Nome de Usuário</Text>
           </View>
 
-          <View style={[styles.infoBlock, { marginBottom: 0 }]}> 
-            <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{profile?.birthday || '--/--/----'}</Text>
-            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Aniversario</Text>
+          <View
+            style={[
+              styles.infoBlock,
+              { borderBottomWidth: 0, paddingBottom: 0, marginBottom: 0 },
+            ]}
+          >
+            <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{birthday}</Text>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Aniversário</Text>
           </View>
         </View>
 
         <View style={styles.tabsContainer}>
           <View style={[styles.tabsBackground, { backgroundColor: colors.surface }]}>
-            <TouchableOpacity style={[styles.tab, styles.tabActive, { backgroundColor: isDark ? '#2A2A35' : '#dce9ff' }]}>
-              <Text style={[styles.tabTextActive, { color: colors.tabBarActive }]}>Posts</Text>
+            <TouchableOpacity style={[styles.tab, { backgroundColor: isDark ? "#2A2A35" : "#E5E5EA" }]}>
+              <Text style={[styles.tabTextActive, { color: colors.primary }]}>Posts</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.tab}>
               <Text style={[styles.tabTextInactive, { color: colors.textSecondary }]}>Posts Arquivados</Text>
@@ -127,15 +160,20 @@ export default function ProfileScreen({ navigation, route }: Props) {
         <View style={styles.emptyState}>
           <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>Nenhum post ainda...</Text>
           <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-            {profile?.bio || 'Preencha sua bio em Editar Informacoes para completar o perfil.'}
+            Publique fotos e vídeos para mostrar na sua página de perfil
           </Text>
         </View>
       </ScrollView>
 
-      <View style={[styles.fabContainer, { bottom: insets.bottom + 82 }]}> 
-        <TouchableOpacity style={[styles.fab, { backgroundColor: colors.primary }]} activeOpacity={0.8} onPress={() => navigation.navigate('EditProfile')}>
-          <Ionicons name="camera" size={20} color="#FFF" style={styles.fabIcon} />
-          <Text style={styles.fabText}>Adicionar ao perfil</Text>
+      <View style={[styles.fabContainer, { bottom: insets.bottom + 82 }]}>
+        <TouchableOpacity style={[styles.fab, { backgroundColor: colors.primary }]} activeOpacity={0.8}>
+          <Ionicons
+            name="camera"
+            size={20}
+            color="#FFF"
+            style={styles.fabIcon}
+          />
+          <Text style={styles.fabText}>Adicione um post</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -149,14 +187,26 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 100,
   },
+  topBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  topBarButton: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   profileHeader: {
-    alignItems: 'center',
-    marginTop: 16,
+    alignItems: "center",
+    marginTop: 10,
     marginBottom: 24,
   },
   name: {
     fontSize: 22,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginTop: 12,
   },
   status: {
@@ -164,8 +214,8 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   actionButtonsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     marginBottom: 24,
     gap: 12,
@@ -174,13 +224,14 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 12,
     paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   actionButtonText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: "500",
     marginTop: 8,
+    textAlign: "center",
   },
   infoCard: {
     borderRadius: 12,
@@ -199,11 +250,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   tabsContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 32,
   },
   tabsBackground: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderRadius: 20,
     padding: 4,
   },
@@ -212,46 +263,43 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 16,
   },
-  tabActive: {
-    backgroundColor: '#2A2A35',
-  },
   tabTextActive: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   tabTextInactive: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   emptyState: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingHorizontal: 32,
     marginTop: 40,
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 14,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 20,
   },
   fabContainer: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     right: 0,
-    alignItems: 'center',
+    alignItems: "center",
     paddingBottom: 24,
   },
   fab: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingVertical: 14,
     paddingHorizontal: 24,
     borderRadius: 24,
-    alignItems: 'center',
-    shadowColor: '#000',
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -264,9 +312,8 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   fabText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
 });
-

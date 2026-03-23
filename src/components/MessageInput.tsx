@@ -62,10 +62,10 @@ const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>((props, r
   const typingTimeoutRef = React.useRef<any>(null);
   const textRef = React.useRef('');
   const inputRef = React.useRef<TextInput>(null);
-  const keyboardKeeperRef = React.useRef<TextInput>(null);
   const inputFocusedRef = React.useRef(false);
   const shouldKeepKeyboardRef = React.useRef(false);
   const recordingStartedByGestureRef = React.useRef(false);
+  const recordingStartTimeRef = React.useRef(0);
   const actionTranslateX = React.useRef(new Animated.Value(0)).current;
   const actionTranslateY = React.useRef(new Animated.Value(0)).current;
 
@@ -110,23 +110,7 @@ const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>((props, r
     }
   }, [actionTranslateX, actionTranslateY, recording]);
 
-  useEffect(() => {
-    if (!recording || !shouldKeepKeyboardRef.current) {
-      return;
-    }
 
-    keyboardKeeperRef.current?.focus();
-
-    const t1 = setTimeout(() => keyboardKeeperRef.current?.focus(), 10);
-    const t2 = setTimeout(() => keyboardKeeperRef.current?.focus(), 80);
-    const t3 = setTimeout(() => keyboardKeeperRef.current?.focus(), 180);
-
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-    };
-  }, [recording]);
 
   useImperativeHandle(
     ref,
@@ -179,6 +163,7 @@ const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>((props, r
         onPanResponderGrant: () => {
           if (!canStartRecording) return;
           recordingStartedByGestureRef.current = true;
+          recordingStartTimeRef.current = Date.now();
           setRecordingCancelling(false);
           setRecordingLocked(false);
           onStartRecording?.();
@@ -203,6 +188,7 @@ const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>((props, r
 
           const shouldCancel = Math.abs(Math.min(0, gestureState.dx)) > CANCEL_THRESHOLD;
           const shouldLock = Math.abs(Math.min(0, gestureState.dy)) > LOCK_THRESHOLD;
+          const isTap = Date.now() - recordingStartTimeRef.current < 300;
 
           recordingStartedByGestureRef.current = false;
           actionTranslateX.setValue(0);
@@ -214,7 +200,7 @@ const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>((props, r
             return;
           }
 
-          if (shouldLock) {
+          if (shouldLock || isTap) {
             setRecordingLocked(true);
             return;
           }
@@ -236,20 +222,8 @@ const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>((props, r
   return (
     <View>
       <View style={styles.container}>
-        <TextInput
-          ref={keyboardKeeperRef}
-          value=""
-          onChangeText={() => undefined}
-          style={styles.keyboardKeeper}
-          editable={recording}
-          caretHidden
-          autoCorrect={false}
-          autoCapitalize="none"
-          multiline={false}
-        />
         <View style={[styles.inputWrap, { backgroundColor: colors.inputBackground }]}>
           <View
-            pointerEvents={recording ? 'none' : 'auto'}
             style={[styles.inputContent, recording ? styles.inputContentHidden : null]}
           >
             <TouchableOpacity
@@ -460,14 +434,6 @@ const styles = StyleSheet.create({
     height: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  keyboardKeeper: {
-    position: 'absolute',
-    width: 1,
-    height: 1,
-    opacity: 0,
-    left: -1000,
-    top: -1000,
   },
   inputContentHidden: {
     opacity: 0.02,

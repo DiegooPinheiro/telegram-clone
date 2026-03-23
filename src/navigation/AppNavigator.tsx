@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { TouchableOpacity, Modal, Pressable, View, Text, StyleSheet, Alert } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +12,7 @@ import { useSettings } from '../context/SettingsContext';
 import ChatListScreen from '../screens/ChatListScreen';
 import ChatScreen from '../screens/ChatScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import ContactProfileScreen from '../screens/ContactProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import ContactsScreen from '../screens/ContactsScreen';
 import NewChatScreen from '../screens/NewChatScreen';
@@ -54,7 +56,10 @@ export default function AppNavigator() {
         <Stack.Screen
           name="MainTabs"
           component={TabNavigator}
-          options={({ route }) => ({
+          options={({ route }) => {
+            const routeName = getFocusedRouteNameFromRoute(route) ?? 'ChatList';
+            return {
+              headerShown: routeName !== 'Profile' && routeName !== 'Contacts',
             title: 'Telegram Clone',
             headerLeft: () => null,
             headerRight: () => (
@@ -73,9 +78,11 @@ export default function AppNavigator() {
                 </TouchableOpacity>
               </View>
             ),
-          })}
+            };
+          }}
         />
         <Stack.Screen name="Chat" component={ChatScreen} options={{ title: '' }} />
+        <Stack.Screen name="ContactProfile" component={ContactProfileScreen} options={{ headerShown: false }} />
         <Stack.Screen name="NewChat" component={NewChatScreen} options={{ title: 'Nova Conversa' }} />
         <Stack.Screen name="NewGroup" component={NewGroupScreen} options={{ title: 'Novo Grupo' }} />
         <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Editar Perfil' }} />
