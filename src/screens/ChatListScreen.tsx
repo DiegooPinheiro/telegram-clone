@@ -277,8 +277,8 @@ const extractParticipantId = (value: string | ChatApiUser | undefined): string |
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 16,
     paddingTop: 10,
+    backgroundColor: '#0e1621',
   },
   headerRow: {
     flexDirection: 'row',
@@ -286,6 +286,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 16,
     marginTop: 4,
+    paddingHorizontal: 16,
   },
   headerTitle: {
     fontSize: 22,
@@ -299,6 +300,7 @@ const styles = StyleSheet.create({
   },
   searchWrap: {
     marginBottom: 16,
+    paddingHorizontal: 16,
   },
   searchBar: {
     flexDirection: 'row',
@@ -331,24 +333,24 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
-    borderWidth: 1,
+    marginBottom: 8,
+    borderWidth: 1.5,
   },
   fabPrimary: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.35,
-    shadowRadius: 7,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
   },
   separator: {
     height: StyleSheet.hairlineWidth,
-    marginLeft: 80,
+    marginLeft: 88,
   },
   emptyContainer: {
     flex: 1,

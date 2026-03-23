@@ -155,7 +155,7 @@ export default function ChatScreen({ navigation, route }: Props) {
                 {name}
               </Text>
               <Text style={[styles.headerStatus, { color: colors.textSecondary }]} numberOfLines={1}>
-                {otherTyping ? 'digitando...' : (statusText || 'via Chat API')}
+                {otherTyping ? 'digitando...' : (loading ? 'carregando...' : (statusText || 'via Chat API'))}
               </Text>
             </View>
           </TouchableOpacity>
@@ -192,7 +192,7 @@ export default function ChatScreen({ navigation, route }: Props) {
       headerTintColor: colors.textPrimary,
       headerShadowVisible: false,
     });
-  }, [navigation, name, colors.background, colors.textPrimary, colors.textSecondary, avatar, online, otherTyping, statusText, selectionMode, selectedMessageIds.length]);
+  }, [navigation, name, colors.background, colors.textPrimary, colors.textSecondary, avatar, online, otherTyping, statusText, selectionMode, selectedMessageIds.length, loading]);
 
   useEffect(() => {
     if (!selectionMode) {
@@ -1070,9 +1070,7 @@ export default function ChatScreen({ navigation, route }: Props) {
     }
   }, [deleteForBoth, selectedMessageIds]);
 
-  if (loading) {
-    return <LoadingSpinner message="Carregando mensagens..." />;
-  }
+
 
   const searchLift = emojiOpen && emojiSearchFocused && keyboardHeight > 0 ? EMOJI_SEARCH_LIFT : 0;
   const reservedBottomHeight = keyboardHeight > 0
@@ -1511,7 +1509,7 @@ const trimAudioFileName = (value: string) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0b10',
+    backgroundColor: '#0e1621',
   },
   list: {
     flex: 1,
@@ -1521,7 +1519,7 @@ const styles = StyleSheet.create({
   },
   chatWallpaper: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#090b12',
+    backgroundColor: '#0e1621',
   },
   headerTitleWrap: {
     flexDirection: 'row',

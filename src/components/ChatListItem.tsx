@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Avatar from './Avatar';
 import { spacing } from '../theme/spacing';
 import { formatChatDate } from '../utils/formatDate';
+import useTheme from '../hooks/useTheme';
 
 interface ChatListItemProps {
   id: string;
@@ -19,8 +20,6 @@ interface ChatListItemProps {
   onLongPress?: () => void;
   selected?: boolean;
 }
-
-import useTheme from '../hooks/useTheme';
 
 export default function ChatListItem({
   name,
@@ -44,51 +43,44 @@ export default function ChatListItem({
       onLongPress={onLongPress}
       activeOpacity={0.6}
     >
-      <Avatar uri={avatar} name={name} size={46} online={online} />
+      <Avatar uri={avatar} name={name} size={58} online={online} />
 
       <View style={styles.content}>
-        <View style={styles.textColumn}>
-          <View style={styles.header}>
+        <View style={styles.mainInfo}>
+          <View style={styles.topRow}>
             <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>
               {name}
             </Text>
+            <View style={styles.timeContainer}>
+              {isOutgoing && (
+                <Ionicons
+                  name={outgoingRead ? "checkmark-done" : "checkmark"}
+                  size={16}
+                  color={outgoingRead ? (isDark ? '#40a7e3' : colors.primary) : colors.textSecondary}
+                  style={styles.checkIcon}
+                />
+              )}
+              <Text
+                style={[
+                  styles.time,
+                  { color: unreadCount > 0 ? colors.primary : colors.textSecondary },
+                ]}
+              >
+                {formatChatDate(timestamp)}
+              </Text>
+            </View>
           </View>
 
-          <View style={styles.footer}>
-            <Text style={[styles.message, { color: colors.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
+          <View style={styles.bottomRow}>
+            <Text style={[styles.message, { color: colors.textSecondary }]} numberOfLines={1}>
               {lastMessage}
             </Text>
+            {unreadCount > 0 && (
+              <View style={[styles.badge, { backgroundColor: isDark ? '#4F7CFF' : colors.primary }]}>
+                <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+              </View>
+            )}
           </View>
-        </View>
-
-        <View style={styles.metaColumn}>
-          <View style={styles.timeRow}>
-            {isOutgoing ? (
-              <Ionicons
-                name="checkmark-done"
-                size={14}
-                color={outgoingRead ? (isDark ? '#7cb7ff' : colors.primary) : colors.textSecondary}
-                style={styles.timeCheck}
-              />
-            ) : null}
-            <Text
-              style={[
-                styles.time,
-                { color: unreadCount > 0 ? colors.primary : colors.textSecondary },
-              ]}
-              numberOfLines={1}
-            >
-              {formatChatDate(timestamp)}
-            </Text>
-          </View>
-
-          {unreadCount > 0 ? (
-            <View style={[styles.badge, { backgroundColor: isDark ? '#4b6bff' : colors.primary }]}>
-              <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
-            </View>
-          ) : (
-            <View style={styles.badgeSpacer} />
-          )}
         </View>
       </View>
     </TouchableOpacity>
@@ -99,70 +91,62 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
   content: {
     flex: 1,
-    marginLeft: spacing.md,
+    marginLeft: 14,
+    height: 60,
+    justifyContent: 'center',
+  },
+  mainInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  topRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  bottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  textColumn: {
-    flex: 1,
-    paddingRight: 10,
-  },
-  header: {
-    justifyContent: 'center',
-    marginBottom: 1,
-  },
   name: {
-    fontSize: 16,
-    fontWeight: '500',
-    paddingRight: 4,
+    fontSize: 17,
+    fontWeight: 'bold',
+    flex: 1,
+    marginRight: 8,
+  },
+  timeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   time: {
     fontSize: 13,
   },
-  metaColumn: {
-    width: 58,
-    alignItems: 'flex-end',
-    marginLeft: spacing.sm,
-    justifyContent: 'flex-start',
-    alignSelf: 'stretch',
-  },
-  timeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: 20,
-  },
-  timeCheck: {
+  checkIcon: {
     marginRight: 2,
   },
-  footer: {
-    justifyContent: 'center',
-  },
   message: {
-    fontSize: 14,
-    paddingRight: 2,
-    lineHeight: 18,
+    fontSize: 15,
+    flex: 1,
+    marginRight: 8,
   },
   badge: {
-    borderRadius: 12,
+    borderRadius: 11,
     minWidth: 22,
     height: 22,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 6,
-    marginTop: 6,
   },
   badgeText: {
     color: '#fff',
     fontSize: 12,
-    fontWeight: '600',
-  },
-  badgeSpacer: {
-    height: 22,
-    marginTop: 6,
+    fontWeight: 'bold',
   },
 });

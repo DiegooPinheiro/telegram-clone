@@ -50,6 +50,7 @@ export default function AppNavigator() {
         screenOptions={{
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.textPrimary,
+          contentStyle: { backgroundColor: colors.background },
           headerTitleStyle: { fontWeight: '600' },
         }}
       >
@@ -81,7 +82,7 @@ export default function AppNavigator() {
             };
           }}
         />
-        <Stack.Screen name="Chat" component={ChatScreen} options={{ title: '' }} />
+        <Stack.Screen name="Chat" component={ChatScreen} options={{ title: '', animation: 'slide_from_right' }} />
         <Stack.Screen name="ContactProfile" component={ContactProfileScreen} options={{ headerShown: false }} />
         <Stack.Screen name="NewChat" component={NewChatScreen} options={{ title: 'Nova Conversa' }} />
         <Stack.Screen name="NewGroup" component={NewGroupScreen} options={{ title: 'Novo Grupo' }} />
