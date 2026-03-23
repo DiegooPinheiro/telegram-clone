@@ -183,7 +183,7 @@ export default function MessageBubble({
         selectionMode ? styles.rowSelectionMode : null,
       ]}
     >
-      {selectionMode && !isMine ? (
+      {selectionMode ? (
         <View style={styles.selectionRailLeft}>
           <Animated.View
             style={[
@@ -373,22 +373,7 @@ export default function MessageBubble({
           ]} />
         </View>
       </View>
-      {selectionMode && isMine ? (
-        <View style={styles.selectionRailRight}>
-          <Animated.View
-            style={[
-              styles.selectionCircle,
-              selected ? styles.selectionCircleActive : null,
-              {
-                opacity: selectionOpacity,
-                transform: [{ scale: selectionScale }],
-              },
-            ]}
-          >
-            {selected ? <MaterialCommunityIcons name="check" size={16} color="#fff" /> : null}
-          </Animated.View>
-        </View>
-      ) : null}
+
     </TouchableOpacity>
   );
 }
@@ -640,9 +625,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   selectionRailRight: {
-    width: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 0,
   },
   selectionCircle: {
     width: 24,
@@ -655,7 +638,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.08)',
   },
   selectionCircleActive: {
-    borderColor: '#43A047',
-    backgroundColor: '#43A047',
+    borderColor: '#4caf50',
+    backgroundColor: '#4caf50',
   },
 });

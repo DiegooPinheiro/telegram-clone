@@ -19,6 +19,7 @@ import useTheme from '../hooks/useTheme';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { UserProfile } from '../types/user';
 import CustomAlert from '../components/CustomAlert';
+import { Pressable, Modal } from 'react-native';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
 
@@ -28,6 +29,7 @@ export default function SettingsScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [localMenuVisible, setLocalMenuVisible] = useState(false);
 
   const [alertConfig, setAlertConfig] = useState<{
     visible: boolean;
@@ -113,7 +115,7 @@ export default function SettingsScreen({ navigation }: Props) {
         <TouchableOpacity style={styles.topBarButton}>
           <Ionicons name="search-outline" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.topBarButton}>
+        <TouchableOpacity style={styles.topBarButton} onPress={() => setLocalMenuVisible(true)}>
           <Ionicons name="ellipsis-vertical" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
@@ -198,6 +200,33 @@ export default function SettingsScreen({ navigation }: Props) {
         confirmLabel={alertConfig.confirmLabel}
         isDestructive={alertConfig.isDestructive}
       />
+
+      <Modal transparent visible={localMenuVisible} animationType="fade" onRequestClose={() => setLocalMenuVisible(false)}>
+        <Pressable style={styles.menuBackdrop} onPress={() => setLocalMenuVisible(false)}>
+          <View
+            style={[
+              styles.menuCard,
+              {
+                top: insets.top + 6,
+                backgroundColor: colors.surface,
+                borderColor: colors.separator,
+              },
+            ]}
+          >
+            <TouchableOpacity
+              style={styles.menuItem}
+              activeOpacity={0.75}
+              onPress={() => {
+                setLocalMenuVisible(false);
+                handleLogout();
+              }}
+            >
+              <Ionicons name="exit-outline" size={22} color={colors.textPrimary} />
+              <Text style={[styles.menuText, { color: colors.textPrimary }]}>Sair</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -344,5 +373,27 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     backgroundColor: '#1C1C1D',
+  },
+  menuBackdrop: {
+    flex: 1,
+  },
+  menuCard: {
+    position: 'absolute',
+    right: 14,
+    width: 180,
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingHorizontal: 16,
+    minHeight: 54,
+  },
+  menuText: {
+    fontSize: 17,
+    fontWeight: '500',
   },
 });

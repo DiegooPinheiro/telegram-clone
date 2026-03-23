@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useEffect, useState } from 'react';
+import React, { useRef, useCallback, useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -60,6 +60,11 @@ type LocalChatMessage = ChatApiMessage & {
   localStatus?: LocalMessageStatus;
   localOnly?: boolean;
 };
+type ChatItem = LocalChatMessage | {
+  _id: string;
+  type: 'date-separator';
+  dateText: string;
+};
 type ViewerImage = {
   uri: string;
   timestamp: number;
@@ -75,7 +80,7 @@ type ActiveAudio = {
 
 export default function ChatScreen({ navigation, route }: Props) {
   const EMOJI_SEARCH_LIFT = 176;
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { conversationId: initialConversationId, userId: receiverId, name, avatar, username } = route.params;
 
   const flatListRef = useRef<FlatList>(null);
@@ -164,17 +169,21 @@ export default function ChatScreen({ navigation, route }: Props) {
       headerRight: () => (
         selectionMode ? (
           <View style={styles.selectionActions}>
-            <TouchableOpacity activeOpacity={0.75} onPress={() => Alert.alert('Editar', 'Em breve.')}>
-              <Ionicons name="create-outline" size={23} color={colors.textPrimary} />
+            {selectedMessageIds.length === 1 && 
+             messages.find(m => m._id === selectedMessageIds[0])?.senderId && 
+             extractUserId(messages.find(m => m._id === selectedMessageIds[0])?.senderId) === myUserId && (
+              <TouchableOpacity activeOpacity={0.75} onPress={() => Alert.alert('Editar', 'Em breve.')} style={styles.selectionActionBtn}>
+                <Ionicons name="pencil-outline" size={22} color={colors.textPrimary} />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity activeOpacity={0.75} onPress={() => Alert.alert('Copiar', 'Em breve.')} style={styles.selectionActionBtn}>
+              <Ionicons name="copy-outline" size={22} color={colors.textPrimary} />
             </TouchableOpacity>
-            <TouchableOpacity activeOpacity={0.75} onPress={() => Alert.alert('Copiar', 'Em breve.')}>
-              <Ionicons name="copy-outline" size={23} color={colors.textPrimary} />
-            </TouchableOpacity>
-            <TouchableOpacity activeOpacity={0.75} onPress={() => Alert.alert('Encaminhar', 'Em breve.')}>
+            <TouchableOpacity activeOpacity={0.75} onPress={() => Alert.alert('Encaminhar', 'Em breve.')} style={styles.selectionActionBtn}>
               <Ionicons name="arrow-redo-outline" size={23} color={colors.textPrimary} />
             </TouchableOpacity>
-            <TouchableOpacity activeOpacity={0.75} onPress={() => setDeleteModalVisible(true)}>
-              <Ionicons name="trash-outline" size={23} color={colors.textPrimary} />
+            <TouchableOpacity activeOpacity={0.75} onPress={() => setDeleteModalVisible(true)} style={styles.selectionActionBtn}>
+              <Ionicons name="trash-outline" size={22} color={colors.textPrimary} />
             </TouchableOpacity>
           </View>
         ) : (
@@ -464,6 +473,49 @@ export default function ChatScreen({ navigation, route }: Props) {
       }
     };
   }, [conversationId, receiverId]);
+
+  const processedMessages = useMemo(() => {
+    if (!messages || messages.length === 0) return [];
+
+    const result: ChatItem[] = [];
+    let lastDate: string | null = null;
+
+    if (messages.length > 0) {
+      const firstMsgDate = new Date(messages[0].createdAt);
+      const formattedFirstDate = firstMsgDate.toLocaleDateString('pt-BR', {
+        day: 'numeric',
+        month: 'long',
+      });
+
+      result.push({
+        _id: 'date-sep-initial',
+        type: 'date-separator',
+        dateText: formattedFirstDate,
+      });
+      
+      lastDate = formattedFirstDate;
+    }
+
+    messages.forEach((msg) => {
+      const msgDate = new Date(msg.createdAt).toLocaleDateString('pt-BR', {
+        day: 'numeric',
+        month: 'long',
+      });
+
+      if (msgDate !== lastDate) {
+        result.push({
+          _id: `date-sep-${msgDate}-${msg._id}`,
+          type: 'date-separator',
+          dateText: msgDate,
+        });
+        lastDate = msgDate;
+      }
+
+      result.push(msg);
+    });
+
+    return result;
+  }, [messages, name]);
 
   const ensureConversationId = useCallback(async () => {
     if (conversationId) {
@@ -963,56 +1015,67 @@ export default function ChatScreen({ navigation, route }: Props) {
   }, [handleUploadAndSend]);
 
   const renderMessage = useCallback(
-    ({ item }: { item: LocalChatMessage }) => {
-      const senderId = extractUserId(item.senderId);
+    ({ item }: { item: ChatItem }) => {
+      if ('type' in item && item.type === 'date-separator') {
+        return (
+          <View style={styles.dateSeparatorContainer}>
+            <View style={[styles.dateSeparatorPill, { backgroundColor: isDark ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.08)' }]}>
+              <Text style={[styles.dateSeparatorText, { color: colors.textPrimary }]}>{item.dateText}</Text>
+            </View>
+          </View>
+        );
+      }
+
+      const msg = item as LocalChatMessage;
+      const senderId = extractUserId(msg.senderId);
       const isMine = !!myUserId && !!senderId && senderId === myUserId;
 
-      const senderName = !isMine ? extractUserName(item.senderId) || name : undefined;
-      const text = item.text ? String(item.text) : '';
-      const timestamp = Math.floor(new Date(item.createdAt).getTime() / 1000);
+      const senderName = !isMine ? extractUserName(msg.senderId) || name : undefined;
+      const text = msg.text ? String(msg.text) : '';
+      const timestamp = Math.floor(new Date(msg.createdAt).getTime() / 1000);
       const status: LocalMessageStatus | undefined = isMine
-        ? (item.read ? 'read' : item.localStatus || 'delivered')
+        ? (msg.read ? 'read' : msg.localStatus || 'delivered')
         : undefined;
 
-      const selected = selectedMessageIds.includes(item._id);
+      const selected = selectedMessageIds.includes(msg._id);
 
       return (
         <MessageBubble
-          id={item._id}
+          id={msg._id}
           message={text}
-          mediaUrl={item.mediaUrl}
-          mediaType={item.mediaType}
+          mediaUrl={msg.mediaUrl}
+          mediaType={msg.mediaType}
           timestamp={timestamp}
           isMine={isMine}
           senderName={senderName}
           status={status}
-          fileOpening={!!item.mediaUrl && openingFileUri === item.mediaUrl}
+          fileOpening={!!msg.mediaUrl && openingFileUri === msg.mediaUrl}
           selectionMode={selectionMode}
           selected={selected}
           onFilePress={handleOpenFile}
           onAudioPress={handleAudioPress}
-          isAudioPlaying={!!item.mediaUrl && activeAudio?.uri === item.mediaUrl && activeAudio.isPlaying}
+          isAudioPlaying={!!msg.mediaUrl && activeAudio?.uri === msg.mediaUrl && activeAudio.isPlaying}
           audioProgress={
-            !!item.mediaUrl && activeAudio?.uri === item.mediaUrl && activeAudio.durationMillis > 0
+            !!msg.mediaUrl && activeAudio?.uri === msg.mediaUrl && activeAudio.durationMillis > 0
               ? activeAudio.positionMillis / activeAudio.durationMillis
               : 0
           }
           audioPositionLabel={
-            !!item.mediaUrl && activeAudio?.uri === item.mediaUrl
+            !!msg.mediaUrl && activeAudio?.uri === msg.mediaUrl
               ? formatAudioTime(activeAudio.positionMillis)
               : '0:00'
           }
           audioDurationLabel={
-            !!item.mediaUrl && activeAudio?.uri === item.mediaUrl && activeAudio.durationMillis > 0
+            !!msg.mediaUrl && activeAudio?.uri === msg.mediaUrl && activeAudio.durationMillis > 0
               ? formatAudioTime(activeAudio.durationMillis)
               : '0:00'
           }
           onImagePress={({ uri, timestamp: imageTimestamp, senderName: imageSenderName }) => {
             if (selectionMode) {
               setSelectedMessageIds((prev) =>
-                prev.includes(item._id)
-                  ? prev.filter((id) => id !== item._id)
-                  : [...prev, item._id]
+                prev.includes(msg._id)
+                  ? prev.filter((id) => id !== msg._id)
+                  : [...prev, msg._id]
               );
               return;
             }
@@ -1025,21 +1088,21 @@ export default function ChatScreen({ navigation, route }: Props) {
           }}
           onLongPress={() => {
             setSelectedMessageIds((prev) =>
-              prev.includes(item._id) ? prev : [item._id]
+              prev.includes(msg._id) ? prev : [msg._id]
             );
           }}
           onPress={() => {
             if (!selectionMode) return;
             setSelectedMessageIds((prev) =>
-              prev.includes(item._id)
-                ? prev.filter((id) => id !== item._id)
-                : [...prev, item._id]
+              prev.includes(msg._id)
+                ? prev.filter((id) => id !== msg._id)
+                : [...prev, msg._id]
             );
           }}
         />
       );
     },
-    [activeAudio, handleAudioPress, handleOpenFile, myUserId, name, openingFileUri, selectedMessageIds, selectionMode]
+    [activeAudio, handleAudioPress, handleOpenFile, myUserId, name, openingFileUri, selectedMessageIds, selectionMode, isDark, colors]
   );
 
   const handleConfirmDeleteMessages = useCallback(async () => {
@@ -1205,7 +1268,7 @@ export default function ChatScreen({ navigation, route }: Props) {
 
           <FlatList
             ref={flatListRef}
-            data={messages}
+            data={processedMessages}
             renderItem={renderMessage}
             keyExtractor={(item) => item._id}
             style={styles.list}
@@ -1533,25 +1596,20 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     width: 58,
+    width: 58,
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   selectionActions: {
     flexDirection: 'row',
-    width: 156,
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 16,
+    marginRight: 4,
+  },
+  selectionActionBtn: {
+    padding: 4,
   },
   selectionTitle: {
-    fontSize: 22,
-    fontWeight: '500',
-  },
-  headerName: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  headerStatus: {
     color: '#9ea1aa',
     fontSize: 13,
     marginTop: 1,
@@ -1773,5 +1831,18 @@ const styles = StyleSheet.create({
   viewerImage: {
     width: '100%',
     height: '100%',
+  },
+  dateSeparatorContainer: {
+    alignItems: 'center',
+    marginVertical: 12,
+  },
+  dateSeparatorPill: {
+    paddingVertical: 3,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+  },
+  dateSeparatorText: {
+    fontSize: 13,
+    fontWeight: '500',
   },
 });

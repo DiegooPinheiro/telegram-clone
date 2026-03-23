@@ -5,12 +5,16 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  Pressable,
+  Modal,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
 import { getUserProfile, getUserProfileByUsername } from '../services/authService';
+import { chatListUsers } from '../services/chatApi';
+import type { ChatApiUser } from '../types/chatApi';
 import useOnlineStatus from '../hooks/useOnlineStatus';
 import Avatar from '../components/Avatar';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -24,7 +28,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ContactProfile'>;
 export default function ContactProfileScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
-  const { setMenuVisible } = useSettings();
+  const { setMenuVisible: setGlobalMenuVisible } = useSettings();
+  const [localMenuVisible, setLocalMenuVisible] = useState(false);
   
   const routeUid = route.params?.uid || null;
   const routeUsername = route.params?.username || '';
@@ -32,6 +37,7 @@ export default function ContactProfileScreen({ navigation, route }: Props) {
   const routeAvatar = route.params?.avatar || null;
   
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [chatUser, setChatUser] = useState<ChatApiUser | null>(null);
   const [loading, setLoading] = useState(true);
   const { statusText } = useOnlineStatus(profile?.uid || routeUid || '');
 
@@ -41,16 +47,35 @@ export default function ContactProfileScreen({ navigation, route }: Props) {
     });
   }, [navigation]);
 
-  const loadProfile = useCallback(async () => {
+  const loadProfile = useCallback(async (isInitial = false) => {
     try {
-      setLoading(true);
-      const data = routeUid
+      if (isInitial) setLoading(true);
+      
+      let profileData: UserProfile | null = null;
+      
+      const firestoreData = routeUid
         ? await getUserProfile(routeUid)
         : routeUsername
           ? await getUserProfileByUsername(routeUsername)
           : null;
+      
+      if (firestoreData) {
+        profileData = firestoreData as UserProfile;
+        setProfile(profileData);
+      }
 
-      setProfile(data ? (data as UserProfile) : null);
+      // Sincronizar com Chat API para obter o _id correto
+      const searchTerms = profileData?.email || profileData?.username || routeUsername;
+      if (searchTerms) {
+        const chatUsers = await chatListUsers(searchTerms);
+        // Tentar encontrar o melhor match
+        const found = chatUsers.find(u => 
+          u.username === profileData?.username || 
+          u.nome === profileData?.displayName ||
+          u.username === routeUsername
+        );
+        setChatUser(found || chatUsers[0] || null);
+      }
     } catch (error) {
       console.error('Erro ao carregar perfil do contato:', error);
     } finally {
@@ -59,18 +84,14 @@ export default function ContactProfileScreen({ navigation, route }: Props) {
   }, [routeUid, routeUsername]);
 
   useEffect(() => {
-    loadProfile();
+    loadProfile(true);
   }, [loadProfile]);
 
   useFocusEffect(
     useCallback(() => {
-      loadProfile();
+      loadProfile(false);
     }, [loadProfile])
   );
-
-  if (loading) {
-    return <LoadingSpinner message="Carregando perfil..." />;
-  }
 
   const displayName =
     profile?.displayName?.trim() ||
@@ -80,6 +101,10 @@ export default function ContactProfileScreen({ navigation, route }: Props) {
   const profilePhoto = profile?.photoURL || routeAvatar || null;
   const phoneText = profile?.phone?.trim() || 'Não informado';
   const bioText = profile?.bio?.trim() || 'Nenhuma biografia disponível.';
+
+  if (!profile && loading) {
+    return <LoadingSpinner message="Carregando perfil..." />;
+  }
 
   return (
     <SafeAreaView 
@@ -92,7 +117,7 @@ export default function ContactProfileScreen({ navigation, route }: Props) {
         >
           <Ionicons name="arrow-back" size={26} color={colors.textPrimary} />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => setMenuVisible(true)}>
+        <TouchableOpacity onPress={() => setLocalMenuVisible(true)}>
           <Ionicons name="ellipsis-vertical" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
@@ -105,7 +130,22 @@ export default function ContactProfileScreen({ navigation, route }: Props) {
         </View>
 
         <View style={styles.contactActionsRow}>
-          <TouchableOpacity style={[styles.contactActionButton, { backgroundColor: colors.surface }]}>
+          <TouchableOpacity 
+            style={[styles.contactActionButton, { backgroundColor: colors.surface }]}
+            onPress={() => {
+              const targetChatId = chatUser?._id;
+              if (targetChatId) {
+                navigation.navigate('Chat', {
+                  userId: targetChatId,
+                  name: displayName,
+                  avatar: profilePhoto,
+                  username: profile?.username || routeUsername,
+                });
+              } else {
+                console.log('[ContactProfile] Chat ID não encontrado para o usuário.');
+              }
+            }}
+          >
             <Ionicons name="chatbubble" size={22} color={colors.textPrimary} />
             <Text style={[styles.contactActionText, { color: colors.textPrimary }]}>Mensagem</Text>
           </TouchableOpacity>
@@ -159,6 +199,69 @@ export default function ContactProfileScreen({ navigation, route }: Props) {
           </View>
         </View>
       </ScrollView>
+
+      <Modal transparent visible={localMenuVisible} animationType="fade" onRequestClose={() => setLocalMenuVisible(false)}>
+        <Pressable style={styles.menuBackdrop} onPress={() => setLocalMenuVisible(false)}>
+          <View
+            style={[
+              styles.menuCard,
+              {
+                top: insets.top + 6,
+                backgroundColor: colors.surface,
+                borderColor: colors.separator,
+              },
+            ]}
+          >
+            <TouchableOpacity style={styles.menuItem} onPress={() => setLocalMenuVisible(false)}>
+              <Ionicons name="timer-outline" size={22} color={colors.textPrimary} />
+              <View style={styles.menuItemTextRow}>
+                <Text style={[styles.menuText, { color: colors.textPrimary }]}>Autoexcluir</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem} onPress={() => setLocalMenuVisible(false)}>
+              <Ionicons name="share-social-outline" size={22} color={colors.textPrimary} />
+              <Text style={[styles.menuText, { color: colors.textPrimary }]}>Compartilhar contato</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem} onPress={() => setLocalMenuVisible(false)}>
+              <Ionicons name="ban-outline" size={22} color={colors.textPrimary} />
+              <Text style={[styles.menuText, { color: colors.textPrimary }]}>Bloquear usuário</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem} onPress={() => setLocalMenuVisible(false)}>
+              <Ionicons name="pencil-outline" size={22} color={colors.textPrimary} />
+              <Text style={[styles.menuText, { color: colors.textPrimary }]}>Editar Contato</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem} onPress={() => setLocalMenuVisible(false)}>
+              <Ionicons name="trash-outline" size={22} color={colors.textPrimary} />
+              <Text style={[styles.menuText, { color: colors.textPrimary }]}>Apagar Contato</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem} onPress={() => setLocalMenuVisible(false)}>
+              <Ionicons name="gift-outline" size={22} color={colors.textPrimary} />
+              <Text style={[styles.menuText, { color: colors.textPrimary }]}>Enviar um Presente</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem} onPress={() => setLocalMenuVisible(false)}>
+              <Ionicons name="lock-closed-outline" size={22} color={colors.textPrimary} />
+              <Text style={[styles.menuText, { color: colors.textPrimary }]}>Iniciar Chat Secreto</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem} onPress={() => setLocalMenuVisible(false)}>
+              <Ionicons name="eye-off-outline" size={22} color={colors.textPrimary} />
+              <Text style={[styles.menuText, { color: colors.textPrimary }]}>Desativar Compartilhamento</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem} onPress={() => setLocalMenuVisible(false)}>
+              <Ionicons name="add-circle-outline" size={22} color={colors.textPrimary} />
+              <Text style={[styles.menuText, { color: colors.textPrimary }]}>Adicionar à Tela Inicial</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -274,5 +377,34 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     lineHeight: 20,
+  },
+  menuBackdrop: {
+    flex: 1,
+  },
+  menuCard: {
+    position: 'absolute',
+    right: 14,
+    width: 280,
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+    paddingVertical: 4,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingHorizontal: 16,
+    minHeight: 48,
+  },
+  menuItemTextRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  menuText: {
+    fontSize: 15.5,
+    fontWeight: '500',
   },
 });

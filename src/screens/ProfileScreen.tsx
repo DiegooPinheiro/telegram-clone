@@ -7,6 +7,7 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { Pressable, Modal } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useFocusEffect } from '@react-navigation/native';
 import { RootStackParamList } from "../navigation/types";
@@ -25,7 +26,8 @@ export default function ProfileScreen({ navigation }: Props) {
   const { uid: currentUserId, displayName: authName, photoURL: authPhoto } = useAuth();
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
-  const { setMenuVisible } = useSettings();
+  const { setMenuVisible: setGlobalMenuVisible } = useSettings();
+  const [localMenuVisible, setLocalMenuVisible] = useState(false);
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -84,7 +86,7 @@ export default function ProfileScreen({ navigation }: Props) {
         <TouchableOpacity style={styles.topBarButton}>
           <Ionicons name="qr-code-outline" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.topBarButton} onPress={() => setMenuVisible(true)}>
+        <TouchableOpacity style={styles.topBarButton} onPress={() => setLocalMenuVisible(true)}>
           <Ionicons name="ellipsis-vertical" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
@@ -174,6 +176,48 @@ export default function ProfileScreen({ navigation }: Props) {
           <Text style={styles.fabText}>Adicione um post</Text>
         </TouchableOpacity>
       </View>
+
+      <Modal transparent visible={localMenuVisible} animationType="fade" onRequestClose={() => setLocalMenuVisible(false)}>
+        <Pressable style={styles.menuBackdrop} onPress={() => setLocalMenuVisible(false)}>
+          <View
+            style={[
+              styles.menuCard,
+              {
+                top: insets.top + 6,
+                backgroundColor: colors.surface,
+                borderColor: colors.separator,
+              },
+            ]}
+          >
+            <TouchableOpacity
+              style={[styles.menuItem, styles.menuItemBorder, { borderBottomColor: colors.separator }]}
+              activeOpacity={0.75}
+              onPress={() => setLocalMenuVisible(false)}
+            >
+              <Ionicons name="color-palette-outline" size={22} color={colors.textPrimary} />
+              <Text style={[styles.menuText, { color: colors.textPrimary }]}>Trocar cor do perfil</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.menuItem, styles.menuItemBorder, { borderBottomColor: colors.separator }]}
+              activeOpacity={0.75}
+              onPress={() => setLocalMenuVisible(false)}
+            >
+              <Ionicons name="at-outline" size={22} color={colors.textPrimary} />
+              <Text style={[styles.menuText, { color: colors.textPrimary }]}>Trocar nome de usuário</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              activeOpacity={0.75}
+              onPress={() => setLocalMenuVisible(false)}
+            >
+              <Ionicons name="link-outline" size={22} color={colors.textPrimary} />
+              <Text style={[styles.menuText, { color: colors.textPrimary }]}>Copiar link do perfil</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -316,5 +360,30 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "500",
+  },
+  menuBackdrop: {
+    flex: 1,
+  },
+  menuCard: {
+    position: 'absolute',
+    right: 14,
+    width: 250,
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingHorizontal: 16,
+    minHeight: 54,
+  },
+  menuItemBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  menuText: {
+    fontSize: 16,
+    fontWeight: '500',
   },
 });
