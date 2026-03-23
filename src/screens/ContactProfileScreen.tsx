@@ -81,13 +81,9 @@ export default function ContactProfileScreen({ navigation, route }: Props) {
   const phoneText = profile?.phone?.trim() || 'Não informado';
   const bioText = profile?.bio?.trim() || 'Nenhuma biografia disponível.';
 
-  const backgroundColor = isDark ? "#000000" : colors.background;
-  const surfaceColor = isDark ? "#1C1C1D" : colors.surface;
-  const secondaryText = isDark ? "#9ea1aa" : colors.textSecondary;
-
   return (
     <SafeAreaView 
-      style={[styles.container, { backgroundColor }]} 
+      style={[styles.container, { backgroundColor: colors.background }]} 
       edges={['top', 'left', 'right']}
     >
       <View style={styles.header}>
@@ -105,59 +101,59 @@ export default function ContactProfileScreen({ navigation, route }: Props) {
         <View style={styles.profileHeader}>
           <Avatar uri={profilePhoto} name={displayName} size={90} online={false} />
           <Text style={[styles.name, { color: colors.textPrimary }]}>{displayName}</Text>
-          <Text style={[styles.status, { color: secondaryText }]}>{statusText || 'visto recentemente'}</Text>
+          <Text style={[styles.status, { color: colors.textSecondary }]}>{statusText || 'visto recentemente'}</Text>
         </View>
 
         <View style={styles.contactActionsRow}>
-          <TouchableOpacity style={[styles.contactActionButton, { backgroundColor: surfaceColor }]}>
+          <TouchableOpacity style={[styles.contactActionButton, { backgroundColor: colors.surface }]}>
             <Ionicons name="chatbubble" size={22} color={colors.textPrimary} />
             <Text style={[styles.contactActionText, { color: colors.textPrimary }]}>Mensagem</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.contactActionButton, { backgroundColor: surfaceColor }]}>
+          <TouchableOpacity style={[styles.contactActionButton, { backgroundColor: colors.surface }]}>
             <Ionicons name="notifications-off" size={22} color={colors.textPrimary} />
             <Text style={[styles.contactActionText, { color: colors.textPrimary }]}>Ativar som</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.contactActionButton, { backgroundColor: surfaceColor }]}>
+          <TouchableOpacity style={[styles.contactActionButton, { backgroundColor: colors.surface }]}>
             <Ionicons name="call" size={22} color={colors.textPrimary} />
             <Text style={[styles.contactActionText, { color: colors.textPrimary }]}>Ligar</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.contactActionButton, { backgroundColor: surfaceColor }]}>
+          <TouchableOpacity style={[styles.contactActionButton, { backgroundColor: colors.surface }]}>
             <Ionicons name="videocam" size={22} color={colors.textPrimary} />
             <Text style={[styles.contactActionText, { color: colors.textPrimary }]}>Vídeo</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={[styles.infoCard, { backgroundColor: surfaceColor }]}>
+        <View style={[styles.infoCard, { backgroundColor: colors.surface }]}>
           <View style={styles.infoBlock}>
             <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{phoneText}</Text>
-            <Text style={[styles.infoLabel, { color: secondaryText }]}>Celular</Text>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Celular</Text>
           </View>
           <View style={[styles.divider, { backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)" }]} />
           <View style={[styles.infoBlock, { marginBottom: 0 }]}>
             <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{bioText}</Text>
-            <Text style={[styles.infoLabel, { color: secondaryText }]}>Biografia</Text>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Biografia</Text>
           </View>
         </View>
 
         <View style={styles.tabsContainer}>
-          <View style={[styles.tabsBackground, { backgroundColor: surfaceColor }]}>
-            <TouchableOpacity style={[styles.tab, isDark && styles.tabActive, !isDark && { backgroundColor: '#E5E5EA' }]}>
+          <View style={[styles.tabsBackground, { backgroundColor: colors.surface }]}>
+            <TouchableOpacity style={[styles.tab, { backgroundColor: isDark ? "#33435C" : "#E5E5EA" }]}>
               <Text style={[styles.tabTextActive, { color: isDark ? "#8aa4ff" : colors.primary }]}>Arquivos</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.tab}>
-              <Text style={[styles.tabTextInactive, { color: secondaryText }]}>Músicas</Text>
+              <Text style={[styles.tabTextInactive, { color: colors.textSecondary }]}>Músicas</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.tab}>
-              <Text style={[styles.tabTextInactive, { color: secondaryText }]}>Voz</Text>
+              <Text style={[styles.tabTextInactive, { color: colors.textSecondary }]}>Voz</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         <View style={styles.fileList}>
-          <View style={[styles.emptyFilesCard, { backgroundColor: surfaceColor }]}>
-            <Ionicons name="document-outline" size={30} color={secondaryText} />
+          <View style={[styles.emptyFilesCard, { backgroundColor: colors.surface }]}>
+            <Ionicons name="document-outline" size={30} color={colors.textSecondary} />
             <Text style={[styles.emptyFilesTitle, { color: colors.textPrimary }]}>Nenhum arquivo compartilhado</Text>
-            <Text style={[styles.emptyFilesText, { color: secondaryText }]}>
+            <Text style={[styles.emptyFilesText, { color: colors.textSecondary }]}>
               Os arquivos enviados nas conversas aparecerão aqui.
             </Text>
           </View>
