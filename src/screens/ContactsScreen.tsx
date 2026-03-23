@@ -9,6 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/types';
@@ -26,6 +27,8 @@ type ContactSection = {
   data: ChatApiUser[];
 };
 
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export default function ContactsScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -38,11 +41,18 @@ export default function ContactsScreen({ navigation }: Props) {
     setLoading(true);
     setNoSession(false);
     try {
-      const session = await getChatSession();
+      let session = await getChatSession();
+      let attempts = 0;
+
+      while (!session?.userId && attempts < 5) {
+        attempts += 1;
+        await wait(450);
+        session = await getChatSession();
+      }
+
       if (!session?.userId) {
-        console.warn('[ContactsScreen] Sessão não encontrada, aguardando...');
+        console.warn('[ContactsScreen] Sessão não encontrada após tentativas de sincronização.');
         setNoSession(true);
-        setLoading(false);
         return;
       }
       const fetched = await chatListUsers();
@@ -58,6 +68,13 @@ export default function ContactsScreen({ navigation }: Props) {
   useEffect(() => {
     loadUsers();
   }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadUsers();
+      return () => {};
+    }, [])
+  );
 
   const filteredUsers = useMemo(() => {
     const normalized = search.trim().toLowerCase();

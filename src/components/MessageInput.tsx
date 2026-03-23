@@ -198,7 +198,7 @@ const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>((props, r
     <View>
       <View style={styles.container}>
         <View style={[styles.inputWrap, { backgroundColor: colors.inputBackground }]}>
-          <View style={recording ? styles.inputContentHidden : null}>
+          <View style={[styles.inputContent, recording ? styles.inputContentHidden : null]}>
             <TouchableOpacity
               activeOpacity={0.7}
               style={styles.leadingButton}
@@ -389,10 +389,14 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     backgroundColor: '#1a201bff',
     position: 'relative',
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingLeft: 6,
     paddingRight: 6,
+  },
+  inputContent: {
+    flex: 1,
+    height: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   inputContentHidden: {
     opacity: 0,
