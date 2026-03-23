@@ -27,6 +27,7 @@ export type ChatApiMessage = {
   mediaUrl?: string;
   mediaType?: string;
   read?: boolean;
+  edited?: boolean;
   createdAt: string;
   updatedAt: string;
 };

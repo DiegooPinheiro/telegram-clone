@@ -30,6 +30,8 @@ interface MessageInputProps {
 
 export type MessageInputHandle = {
   appendText: (value: string) => void;
+  setText: (value: string) => void;
+  clearText: () => void;
   focus: () => void;
   blur: () => void;
 };
@@ -118,6 +120,13 @@ const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>((props, r
       appendText: (value: string) => {
         if (disabled) return;
         handleChangeText(`${textRef.current}${value}`);
+      },
+      setText: (value: string) => {
+        if (disabled) return;
+        handleChangeText(value);
+      },
+      clearText: () => {
+        handleChangeText('');
       },
       focus: () => inputRef.current?.focus(),
       blur: () => inputRef.current?.blur(),

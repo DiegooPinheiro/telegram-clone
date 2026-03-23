@@ -39,12 +39,14 @@ import {
   chatDeleteConversation,
   chatDeleteManyMessages,
   chatGetMessages,
+  chatUpdateMessage,
   chatUploadMedia,
 } from '../services/chatApi';
 import { getChatSession } from '../services/chatSession';
 import {
   markMessagesReadSocket,
   onMessagesDeleted,
+  onMessageUpdated,
   onMessagesRead,
   onReceiveMessage,
   onTypingEvent,
@@ -120,9 +122,20 @@ export default function ChatScreen({ navigation, route }: Props) {
   const [deletingMessages, setDeletingMessages] = useState(false);
   const [recordingVoice, setRecordingVoice] = useState(false);
   const [recordingDurationMs, setRecordingDurationMs] = useState(0);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingMessagePreview, setEditingMessagePreview] = useState('');
 
   const { statusText, online } = useOnlineStatusByEmail(username || '', !!username);
   const selectionMode = selectedMessageIds.length > 0;
+  const selectedEditableMessage =
+    selectedMessageIds.length === 1
+      ? messages.find((m) => m._id === selectedMessageIds[0])
+      : null;
+  const canEditSelectedMessage =
+    !!selectedEditableMessage &&
+    extractUserId(selectedEditableMessage.senderId) === myUserId &&
+    !selectedEditableMessage.mediaUrl &&
+    !!selectedEditableMessage.text?.trim();
 
   useEffect(() => {
     setConversationId(initialConversationId ?? null);
@@ -169,10 +182,8 @@ export default function ChatScreen({ navigation, route }: Props) {
       headerRight: () => (
         selectionMode ? (
           <View style={styles.selectionActions}>
-            {selectedMessageIds.length === 1 && 
-             messages.find(m => m._id === selectedMessageIds[0])?.senderId && 
-             extractUserId(messages.find(m => m._id === selectedMessageIds[0])?.senderId) === myUserId && (
-              <TouchableOpacity activeOpacity={0.75} onPress={() => Alert.alert('Editar', 'Em breve.')} style={styles.selectionActionBtn}>
+            {canEditSelectedMessage && (
+              <TouchableOpacity activeOpacity={0.75} onPress={handleStartEditingMessage} style={styles.selectionActionBtn}>
                 <Ionicons name="pencil-outline" size={22} color={colors.textPrimary} />
               </TouchableOpacity>
             )}
@@ -201,7 +212,7 @@ export default function ChatScreen({ navigation, route }: Props) {
       headerTintColor: colors.textPrimary,
       headerShadowVisible: false,
     });
-  }, [navigation, name, colors.background, colors.textPrimary, colors.textSecondary, avatar, online, otherTyping, statusText, selectionMode, selectedMessageIds.length, loading]);
+  }, [navigation, name, colors.background, colors.textPrimary, colors.textSecondary, avatar, online, otherTyping, statusText, selectionMode, selectedMessageIds.length, loading, canEditSelectedMessage]);
 
   useEffect(() => {
     if (!selectionMode) {
@@ -442,6 +453,37 @@ export default function ChatScreen({ navigation, route }: Props) {
   }, [conversationId]);
 
   useEffect(() => {
+    const unsubscribe = onMessageUpdated((payload: any) => {
+      if (!payload || payload.conversationId !== conversationId || !payload.message?._id) {
+        return;
+      }
+
+      const updatedId = String(payload.message._id);
+      setMessages((prev) =>
+        prev.map((message) =>
+          String(message._id) === updatedId
+            ? {
+                ...message,
+                ...payload.message,
+                localOnly: false,
+              }
+            : message
+        )
+      );
+
+      if (editingMessageId === updatedId) {
+        setEditingMessageId(null);
+        setEditingMessagePreview('');
+        messageInputRef.current?.clearText?.();
+      }
+    });
+
+    return () => {
+      unsubscribe?.();
+    };
+  }, [conversationId, editingMessageId]);
+
+  useEffect(() => {
     const unsubscribe = onTypingEvent((event, payload: any) => {
       const convId = payload?.conversationId || payload?.conversation?._id;
       if (!convId || convId !== conversationId) return;
@@ -528,10 +570,54 @@ export default function ChatScreen({ navigation, route }: Props) {
     return conversation._id;
   }, [conversationId, navigation, receiverId]);
 
+  const handleStartEditingMessage = useCallback(() => {
+    if (!selectedEditableMessage?.text?.trim()) {
+      return;
+    }
+
+    setEditingMessageId(String(selectedEditableMessage._id));
+    setEditingMessagePreview(selectedEditableMessage.text.trim());
+    setSelectedMessageIds([]);
+    setDeleteModalVisible(false);
+    messageInputRef.current?.setText?.(selectedEditableMessage.text.trim());
+    messageInputRef.current?.focus?.();
+  }, [selectedEditableMessage]);
+
+  const handleCancelEditingMessage = useCallback(() => {
+    setEditingMessageId(null);
+    setEditingMessagePreview('');
+    messageInputRef.current?.clearText?.();
+  }, []);
+
   const handleSend = useCallback(
     async (text: string) => {
       if (!myUserId) {
         Alert.alert('Erro', 'Sessão do chat ausente. Faça login novamente.');
+        return;
+      }
+
+      if (editingMessageId) {
+        try {
+          const response = await chatUpdateMessage(editingMessageId, { text });
+          const updatedMessage = response.updatedMessage;
+
+          setMessages((prev) =>
+            prev.map((message) =>
+              String(message._id) === String(editingMessageId)
+                ? {
+                    ...message,
+                    ...updatedMessage,
+                    localOnly: false,
+                  }
+                : message
+            )
+          );
+
+          handleCancelEditingMessage();
+        } catch (error: any) {
+          console.error('Erro ao editar mensagem:', error);
+          Alert.alert('Erro', error?.message || 'NÃ£o foi possÃ­vel editar a mensagem.');
+        }
         return;
       }
 
@@ -583,7 +669,7 @@ export default function ChatScreen({ navigation, route }: Props) {
         }, 220);
       }
     },
-    [ensureConversationId, myUserId, receiverId]
+    [editingMessageId, ensureConversationId, handleCancelEditingMessage, myUserId, receiverId]
   );
 
   const handleUploadAndSend = useCallback(
@@ -1185,6 +1271,20 @@ export default function ChatScreen({ navigation, route }: Props) {
             }
           />
 
+          {editingMessageId ? (
+            <View style={[styles.editingBar, { backgroundColor: colors.inputBackground, borderTopColor: colors.separator }]}>
+              <View style={styles.editingBarTextWrap}>
+                <Text style={[styles.editingBarTitle, { color: colors.primary }]}>Editando mensagem</Text>
+                <Text style={[styles.editingBarPreview, { color: colors.textSecondary }]} numberOfLines={1}>
+                  {editingMessagePreview}
+                </Text>
+              </View>
+              <TouchableOpacity activeOpacity={0.75} onPress={handleCancelEditingMessage}>
+                <Ionicons name="close" size={22} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
           <MessageInput
             ref={messageInputRef}
             onSend={handleSend}
@@ -1283,6 +1383,20 @@ export default function ChatScreen({ navigation, route }: Props) {
               </View>
             }
           />
+
+          {editingMessageId ? (
+            <View style={[styles.editingBar, { backgroundColor: colors.inputBackground, borderTopColor: colors.separator }]}>
+              <View style={styles.editingBarTextWrap}>
+                <Text style={[styles.editingBarTitle, { color: colors.primary }]}>Editando mensagem</Text>
+                <Text style={[styles.editingBarPreview, { color: colors.textSecondary }]} numberOfLines={1}>
+                  {editingMessagePreview}
+                </Text>
+              </View>
+              <TouchableOpacity activeOpacity={0.75} onPress={handleCancelEditingMessage}>
+                <Ionicons name="close" size={22} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          ) : null}
 
           <MessageInput
             ref={messageInputRef}
@@ -1596,9 +1710,16 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     width: 58,
-    width: 58,
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  headerName: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  headerStatus: {
+    fontSize: 13,
+    marginTop: 1,
   },
   selectionActions: {
     flexDirection: 'row',
@@ -1655,6 +1776,26 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 15,
     fontWeight: '600',
+  },
+  editingBar: {
+    minHeight: 52,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  editingBarTextWrap: {
+    flex: 1,
+  },
+  editingBarTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  editingBarPreview: {
+    fontSize: 14,
+    marginTop: 2,
   },
   sheetOverlay: {
     flex: 1,

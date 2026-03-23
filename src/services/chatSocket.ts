@@ -19,6 +19,13 @@ type MessagesDeletedPayload = {
   lastMessage?: any;
 };
 type MessagesDeletedHandler = (payload: MessagesDeletedPayload | any) => void;
+type MessageUpdatedPayload = {
+  conversationId: string;
+  message: ChatApiMessage;
+  updatedBy: string;
+  lastMessage?: any;
+};
+type MessageUpdatedHandler = (payload: MessageUpdatedPayload | any) => void;
 type TypingEvent =
   | 'typing'
   | 'stop_typing'
@@ -34,6 +41,7 @@ let currentUserId: string | null = null;
 const receiveHandlers = new Set<ReceiveMessageHandler>();
 const messagesReadHandlers = new Set<MessagesReadHandler>();
 const messagesDeletedHandlers = new Set<MessagesDeletedHandler>();
+const messageUpdatedHandlers = new Set<MessageUpdatedHandler>();
 const typingHandlers = new Set<TypingHandler>();
 const typingWrappers = new Map<
   TypingHandler,
@@ -119,6 +127,10 @@ export const connectChatSocket = async (userId: string) => {
     socket.on('messages_deleted', handler);
   }
 
+  for (const handler of messageUpdatedHandlers) {
+    socket.on('message_updated', handler);
+  }
+
   for (const handler of typingHandlers) {
     ensureTypingListeners(handler);
   }
@@ -165,6 +177,16 @@ export const onMessagesDeleted = (handler: MessagesDeletedHandler) => {
   return () => {
     messagesDeletedHandlers.delete(handler);
     socket?.off('messages_deleted', handler);
+  };
+};
+
+export const onMessageUpdated = (handler: MessageUpdatedHandler) => {
+  messageUpdatedHandlers.add(handler);
+  socket?.on('message_updated', handler);
+
+  return () => {
+    messageUpdatedHandlers.delete(handler);
+    socket?.off('message_updated', handler);
   };
 };
 

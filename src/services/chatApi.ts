@@ -153,6 +153,19 @@ export const chatDeleteManyMessages = async (payload: {
   );
 };
 
+export const chatUpdateMessage = async (
+  messageId: string,
+  payload: { text: string }
+): Promise<{ updatedMessage: ChatApiMessage; lastMessage?: any; message?: string }> => {
+  return requestJson(
+    `/api/messages/${messageId}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }
+  );
+};
+
 export const chatUploadMedia = async (file: {
   uri: string;
   name: string;
