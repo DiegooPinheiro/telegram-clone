@@ -13,6 +13,8 @@ import MessageToast from './src/components/MessageToast';
 import { SettingsProvider, useSettings } from './src/context/SettingsContext';
 import { connectChatSocket, disconnectChatSocket, onReceiveMessage } from './src/services/chatSocket';
 import { getChatSession } from './src/services/chatSession';
+import { chatRegisterPushToken } from './src/services/chatApi';
+import { registerForPushNotificationsAsync, setupPushNotificationListeners } from './src/services/pushNotificationService';
 import { startPresenceTracking } from './src/services/presenceService';
 import { dark, light } from './src/theme/colors';
 
@@ -23,6 +25,12 @@ function MainApp() {
 
   useEffect(() => {
     setupNotifications();
+    
+    // Set up Expo push notification tap listeners
+    const removePushListener = setupPushNotificationListeners(navigationRef);
+    return () => {
+      removePushListener();
+    };
   }, []);
 
   useEffect(() => {
@@ -83,6 +91,15 @@ function MainApp() {
         }
         setChatReady(true);
         connectChatSocket(session.userId);
+
+        // Register for push notifications once authenticated
+        registerForPushNotificationsAsync()
+          .then((token) => {
+            if (token) {
+              chatRegisterPushToken(token).catch(err => console.warn('Push Token Registration failed:', err));
+            }
+          })
+          .catch(err => console.warn('Push Token Generation failed:', err));
       } catch (error) {
         console.error('[ChatAPI] Erro ao inicializar sessão:', error);
         setChatReady(true);

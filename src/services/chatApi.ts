@@ -134,6 +134,13 @@ export const chatGetMessages = async (conversationId: string): Promise<ChatApiMe
   return requestJson<ChatApiMessage[]>(`/api/messages/${conversationId}`, { method: 'GET' });
 };
 
+export const chatRegisterPushToken = async (token: string): Promise<void> => {
+  await requestJson<{ message: string }>('api/users/push-token', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  });
+};
+
 export const chatSendMessageRest = async (payload: {
   conversationId: string;
   text?: string;
