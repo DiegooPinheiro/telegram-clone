@@ -20,13 +20,30 @@ const toAbsoluteUrl = (baseUrl: string, url: string) => {
   return `${normalizeBaseUrl(baseUrl)}/${url}`;
 };
 
+// Token cache — reuse token for 55 min (tokens expire in 60 min)
+let _cachedToken: string | null = null;
+let _tokenExpiresAt: number = 0;
+
 const getFirebaseIdToken = async () => {
   const user = auth.currentUser;
   if (!user) {
     throw new Error('Sessão do Firebase ausente. Faça login novamente.');
   }
 
-  return user.getIdToken();
+  const now = Date.now();
+  if (_cachedToken && now < _tokenExpiresAt) {
+    return _cachedToken;
+  }
+
+  const token = await user.getIdToken(false);
+  _cachedToken = token;
+  _tokenExpiresAt = now + 55 * 60 * 1000; // 55 minutes
+  return token;
+};
+
+export const invalidateCachedToken = () => {
+  _cachedToken = null;
+  _tokenExpiresAt = 0;
 };
 
 const requestJson = async <T>(

@@ -46,6 +46,8 @@ import {
   chatUploadMedia,
 } from '../services/chatApi';
 import { getChatSession } from '../services/chatSession';
+import { getCachedMessages, setCachedMessages } from '../services/messageCache';
+import { cloudinaryUpload } from '../services/cloudinaryService';
 import {
   markMessagesReadSocket,
   onMessagesDeleted,
@@ -310,7 +312,6 @@ export default function ChatScreen({ navigation, route }: Props) {
     let active = true;
 
     const load = async () => {
-      setLoading(true);
       try {
         const session = await getChatSession();
         if (!session?.userId) {
@@ -321,36 +322,37 @@ export default function ChatScreen({ navigation, route }: Props) {
           return;
         }
 
-        if (active) {
-          setMyUserId(session.userId);
-        }
+        if (active) setMyUserId(session.userId);
 
         if (!conversationId) {
-          if (active) {
-            setMessages([]);
-          }
+          if (active) setMessages([]);
           return;
+        }
+
+        // Show cached messages instantly while fresh ones load
+        const cached = getCachedMessages(conversationId);
+        if (cached && cached.length > 0 && active) {
+          setMessages(cached as LocalChatMessage[]);
+          setLoading(false);
         }
 
         const fetched = await chatGetMessages(conversationId);
         if (active) {
-          setMessages(
-            fetched.map((message) => ({
-              ...message,
-              localStatus: message.read ? 'read' : 'delivered',
-            }))
-          );
+          const mapped = fetched.map((message) => ({
+            ...message,
+            localStatus: message.read ? 'read' : 'delivered',
+          })) as LocalChatMessage[];
+          setMessages(mapped);
+          setCachedMessages(conversationId, mapped);
+          setLoading(false);
         }
       } catch (error: any) {
         console.error('Erro ao carregar mensagens:', error);
-        Alert.alert('Erro', error?.message || 'Não foi possível carregar mensagens.');
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
+        if (active) setLoading(false);
       }
     };
 
+    setLoading(true);
     load();
 
     return () => {
@@ -709,7 +711,7 @@ export default function ChatScreen({ navigation, route }: Props) {
       const clientMessageId = `client-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       try {
         const resolvedConversationId = await ensureConversationId();
-        const uploaded = await chatUploadMedia(file);
+        const uploaded = await cloudinaryUpload(file);
         const displayName = uploaded.fileName || file.name;
         const text = uploaded.mediaType === 'image' ? undefined : displayName;
 

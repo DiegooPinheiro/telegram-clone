@@ -27,60 +27,77 @@ export default function ChatListScreen({ navigation }: Props) {
   const [myUserId, setMyUserId] = useState<string | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
   const [menuConversation, setMenuConversation] = useState<ChatApiConversation | null>(null);
+  const hasFetchedRef = React.useRef(false);
+  const myUserIdRef = React.useRef<string | null>(null);
 
-  const loadConversations = useCallback(async () => {
-    setLoading(true);
+  const loadConversations = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const session = await getChatSession();
       if (!session?.userId) {
         setMyUserId(null);
+        myUserIdRef.current = null;
         setConversations([]);
         return;
       }
 
       setMyUserId(session.userId);
+      myUserIdRef.current = session.userId;
       const fetched = await chatGetConversations(session.userId);
       setConversations(fetched);
     } catch (error: any) {
       console.error('Erro ao carregar conversas:', error);
-      Alert.alert('Erro', error?.message || 'Não foi possível carregar suas conversas.');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    loadConversations();
-  }, [loadConversations]);
-
+  // Load once on mount / first focus — avoid double load
   useFocusEffect(
     useCallback(() => {
-      loadConversations();
+      if (!hasFetchedRef.current) {
+        hasFetchedRef.current = true;
+        loadConversations();
+      } else {
+        // Silent refresh when returning to the screen
+        loadConversations(true);
+      }
       return () => {};
     }, [loadConversations])
   );
 
+  // Socket: update conversation list locally without re-fetching
   useEffect(() => {
-    const unsubscribe = onReceiveMessage(() => {
-      loadConversations();
+    const unsubReceive = onReceiveMessage((msg: any) => {
+      setConversations((prev) => {
+        const convId = typeof msg?.conversationId === 'object' ? msg.conversationId?._id : msg?.conversationId;
+        if (!convId) {
+          loadConversations(true);
+          return prev;
+        }
+        const idx = prev.findIndex((c) => c._id === convId);
+        if (idx === -1) {
+          loadConversations(true);
+          return prev;
+        }
+        const updated = {
+          ...prev[idx],
+          lastMessage: msg,
+          updatedAt: msg.createdAt || new Date().toISOString(),
+          unreadCount: (prev[idx].unreadCount || 0) + (typeof msg?.senderId === 'string' && msg.senderId !== myUserIdRef.current ? 1 : 0),
+        };
+        const next = [updated, ...prev.filter((_, i) => i !== idx)];
+        return next;
+      });
     });
+
+    const unsubDeleted = onMessagesDeleted(() => loadConversations(true));
+    const unsubUpdated = onMessageUpdated(() => loadConversations(true));
 
     return () => {
-      unsubscribe?.();
-    };
-  }, [loadConversations]);
-
-  useEffect(() => {
-    const unsubscribeDeleted = onMessagesDeleted(() => {
-      loadConversations();
-    });
-    const unsubscribeUpdated = onMessageUpdated(() => {
-      loadConversations();
-    });
-
-    return () => {
-      unsubscribeDeleted?.();
-      unsubscribeUpdated?.();
+      unsubReceive?.();
+      unsubDeleted?.();
+      unsubUpdated?.();
     };
   }, [loadConversations]);
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -36,20 +36,15 @@ export default function ContactsScreen({ navigation }: Props) {
   const [users, setUsers] = useState<ChatApiUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [noSession, setNoSession] = useState(false);
+  const hasFetchedRef = useRef(false);
 
-  const loadUsers = async () => {
-    setLoading(true);
-    setNoSession(false);
+  const loadUsers = useCallback(async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
+      setNoSession(false);
+    }
     try {
-      let session = await getChatSession();
-      let attempts = 0;
-
-      while (!session?.userId && attempts < 5) {
-        attempts += 1;
-        await wait(450);
-        session = await getChatSession();
-      }
-
+      const session = await getChatSession();
       if (!session?.userId) {
         setNoSession(true);
         return;
@@ -58,21 +53,21 @@ export default function ContactsScreen({ navigation }: Props) {
       setUsers(fetched);
     } catch (error: any) {
       console.error('Erro ao buscar contatos:', error);
-      Alert.alert('Erro', error?.message || 'Não foi possível buscar contatos.');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadUsers();
   }, []);
 
   useFocusEffect(
-    React.useCallback(() => {
-      loadUsers();
+    useCallback(() => {
+      if (!hasFetchedRef.current) {
+        hasFetchedRef.current = true;
+        loadUsers();
+      } else {
+        loadUsers(true);
+      }
       return () => {};
-    }, [])
+    }, [loadUsers])
   );
 
   const filteredUsers = useMemo(() => {
@@ -119,7 +114,7 @@ export default function ContactsScreen({ navigation }: Props) {
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
           {loading ? 'Carregando...' : 'Contatos'}
         </Text>
-        <TouchableOpacity style={styles.headerAction} onPress={loadUsers}>
+        <TouchableOpacity style={styles.headerAction} onPress={() => loadUsers()}>
           <MaterialCommunityIcons name="playlist-check" size={26} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
@@ -130,7 +125,7 @@ export default function ContactsScreen({ navigation }: Props) {
             Sessão não encontrada. Faça login novamente.
           </Text>
           <TouchableOpacity
-            onPress={loadUsers}
+            onPress={() => loadUsers()}
             style={{ backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 24 }}
           >
             <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>Tentar novamente</Text>

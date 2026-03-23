@@ -12,11 +12,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { spacing } from '../theme/spacing';
+import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 import useAuth from '../hooks/useAuth';
 import { getUserProfile, updateUserProfile } from '../services/authService';
 import Avatar from '../components/Avatar';
 import useTheme from '../hooks/useTheme';
 import { UserProfile } from '../types/user';
+import { cloudinaryUpload } from '../services/cloudinaryService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EditProfile'>;
 
@@ -32,6 +35,7 @@ export default function EditProfileScreen({ navigation }: Props) {
   const [birthday, setBirthday] = useState('');
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -93,25 +97,59 @@ export default function EditProfileScreen({ navigation }: Props) {
     }
   };
 
-  const isBusy = loading || loadingProfile;
+  const handlePickPhoto = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      const fileAsset = result.assets[0];
+      const file = {
+        uri: fileAsset.uri,
+        name: fileAsset.fileName || `profile_${Date.now()}.jpg`,
+        type: fileAsset.mimeType || 'image/jpeg',
+      };
+
+      setIsUploadingPhoto(true);
+      const uploaded = await cloudinaryUpload(file);
+      setPhotoUrlInput(uploaded.mediaUrl);
+    } catch (error: any) {
+      console.error('Erro ao enviar foto para o Cloudinary:', error);
+      Alert.alert('Erro', error?.message || 'Nao foi possivel atualizar a foto de perfil.');
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
+  const isBusy = loading || loadingProfile || isUploadingPhoto;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={[styles.header, { borderBottomColor: themeColors.separator }]}> 
-          <Avatar uri={photoUrlInput || null} name={name || 'U'} size={80} />
-          <Text style={[styles.helperText, { color: themeColors.textSecondary }]}>Cole uma URL de imagem para a foto</Text>
+          <TouchableOpacity activeOpacity={0.8} onPress={handlePickPhoto} disabled={isBusy} style={styles.avatarContainer}>
+            <Avatar uri={photoUrlInput || null} name={name || 'U'} size={90} />
+            <View style={[styles.uploadBadge, { backgroundColor: themeColors.primary }]}>
+              {isUploadingPhoto ? (
+                <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#fff', borderTopColor: 'transparent' }} />
+              ) : (
+                <Ionicons name="camera" size={16} color="#fff" />
+              )}
+            </View>
+          </TouchableOpacity>
+          <Text style={[styles.helperText, { color: themeColors.primary, fontWeight: '500' }]} onPress={handlePickPhoto}>
+            {isUploadingPhoto ? 'Enviando foto...' : 'Alterar Foto de Perfil'}
+          </Text>
         </View>
 
         <View style={styles.form}>
-          <Field
-            label="URL da Foto"
-            value={photoUrlInput}
-            onChangeText={setPhotoUrlInput}
-            placeholder="https://..."
-            themeColors={themeColors}
-            autoCapitalize="none"
-          />
 
           <Field
             label="Nome"
@@ -221,8 +259,23 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xl,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
+  avatarContainer: {
+    position: 'relative',
+  },
+  uploadBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#000', // Override based on theme if needed, but absolute is fine for now
+  },
   helperText: {
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
     fontSize: 13,
   },
   form: {
