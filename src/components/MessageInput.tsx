@@ -62,6 +62,9 @@ const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>((props, r
   const typingTimeoutRef = React.useRef<any>(null);
   const textRef = React.useRef('');
   const inputRef = React.useRef<TextInput>(null);
+  const keyboardKeeperRef = React.useRef<TextInput>(null);
+  const inputFocusedRef = React.useRef(false);
+  const shouldKeepKeyboardRef = React.useRef(false);
   const recordingStartedByGestureRef = React.useRef(false);
   const actionTranslateX = React.useRef(new Animated.Value(0)).current;
   const actionTranslateY = React.useRef(new Animated.Value(0)).current;
@@ -73,6 +76,10 @@ const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>((props, r
   };
 
   const handleChangeText = (val: string) => {
+    if (recording) {
+      return;
+    }
+
     setText(val);
 
     if (val.trim().length > 0) {
@@ -99,8 +106,27 @@ const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>((props, r
       recordingStartedByGestureRef.current = false;
       actionTranslateX.setValue(0);
       actionTranslateY.setValue(0);
+      shouldKeepKeyboardRef.current = false;
     }
   }, [actionTranslateX, actionTranslateY, recording]);
+
+  useEffect(() => {
+    if (!recording || !shouldKeepKeyboardRef.current) {
+      return;
+    }
+
+    keyboardKeeperRef.current?.focus();
+
+    const t1 = setTimeout(() => keyboardKeeperRef.current?.focus(), 10);
+    const t2 = setTimeout(() => keyboardKeeperRef.current?.focus(), 80);
+    const t3 = setTimeout(() => keyboardKeeperRef.current?.focus(), 180);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [recording]);
 
   useImperativeHandle(
     ref,
@@ -133,6 +159,18 @@ const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>((props, r
   const recordingLabel = formatRecordingTime(recordingDurationMs);
   const showRecordingGestureUi = recording && !recordingLocked;
 
+  const preserveInputFocusIfNeeded = () => {
+    if (!inputFocusedRef.current) {
+      return;
+    }
+
+    shouldKeepKeyboardRef.current = true;
+
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+  };
+
   const panResponder = useMemo(
     () =>
       PanResponder.create({
@@ -144,6 +182,7 @@ const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>((props, r
           setRecordingCancelling(false);
           setRecordingLocked(false);
           onStartRecording?.();
+          preserveInputFocusIfNeeded();
         },
         onPanResponderMove: (_, gestureState) => {
           if (!recordingStartedByGestureRef.current) return;
@@ -197,8 +236,22 @@ const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>((props, r
   return (
     <View>
       <View style={styles.container}>
+        <TextInput
+          ref={keyboardKeeperRef}
+          value=""
+          onChangeText={() => undefined}
+          style={styles.keyboardKeeper}
+          editable={recording}
+          caretHidden
+          autoCorrect={false}
+          autoCapitalize="none"
+          multiline={false}
+        />
         <View style={[styles.inputWrap, { backgroundColor: colors.inputBackground }]}>
-          <View style={[styles.inputContent, recording ? styles.inputContentHidden : null]}>
+          <View
+            pointerEvents={recording ? 'none' : 'auto'}
+            style={[styles.inputContent, recording ? styles.inputContentHidden : null]}
+          >
             <TouchableOpacity
               activeOpacity={0.7}
               style={styles.leadingButton}
@@ -229,8 +282,17 @@ const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>((props, r
               placeholderTextColor={colors.textSecondary}
               multiline
               maxLength={4096}
-              editable={!disabled && !recording}
-              onFocus={() => setEmojiOpen(false)}
+              editable={!disabled}
+              onFocus={() => {
+                inputFocusedRef.current = true;
+                setEmojiOpen(false);
+              }}
+              onBlur={() => {
+                inputFocusedRef.current = false;
+                if (!recording) {
+                  shouldKeepKeyboardRef.current = false;
+                }
+              }}
             />
             <TouchableOpacity
               activeOpacity={0.7}
@@ -243,7 +305,7 @@ const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>((props, r
           </View>
 
           {recording ? (
-            <View style={styles.recordingWrap} pointerEvents="box-none">
+            <View style={styles.recordingWrap}>
               <View style={styles.recordingIndicator}>
                 <View style={styles.recordingDot} />
                 <Text style={[styles.recordingTime, { color: colors.textPrimary }]}>{recordingLabel}</Text>
@@ -358,6 +420,7 @@ const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>((props, r
                 if (canStartRecording) {
                   onStartRecording?.();
                   setRecordingLocked(true);
+                  preserveInputFocusIfNeeded();
                 }
               }}
               activeOpacity={0.8}
@@ -398,8 +461,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  inputContentHidden: {
+  keyboardKeeper: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
     opacity: 0,
+    left: -1000,
+    top: -1000,
+  },
+  inputContentHidden: {
+    opacity: 0.02,
   },
   recordingWrap: {
     position: 'absolute',
@@ -410,14 +481,16 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: 10,
+    paddingLeft: 12,
     paddingRight: 6,
+    borderRadius: 24,
+    backgroundColor: 'rgba(13, 15, 20, 0.18)',
   },
   recordingIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 10,
-    minWidth: 68,
+    marginRight: 12,
+    minWidth: 78,
   },
   recordingDot: {
     width: 10,
@@ -427,7 +500,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   recordingTime: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
   },
   recordingHint: {
@@ -448,12 +521,14 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   recordingLockHint: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   leadingButton: {
     paddingVertical: 4,
