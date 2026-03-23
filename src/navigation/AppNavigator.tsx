@@ -142,18 +142,6 @@ export default function AppNavigator() {
               <Ionicons name="bookmark-outline" size={22} color={colors.textPrimary} />
               <Text style={[styles.menuText, { color: colors.textPrimary }]}>Mensagens Salvas</Text>
             </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.menuItem}
-              activeOpacity={0.75}
-              onPress={() => {
-                setMenuVisible(false);
-                Alert.alert('Carteira', 'Esta opcao sera adicionada em breve.');
-              }}
-            >
-              <Ionicons name="wallet-outline" size={22} color={colors.textPrimary} />
-              <Text style={[styles.menuText, { color: colors.textPrimary }]}>Carteira</Text>
-            </TouchableOpacity>
           </View>
         </Pressable>
       </Modal>

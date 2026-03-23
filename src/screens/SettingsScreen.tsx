@@ -131,24 +131,10 @@ export default function SettingsScreen({ navigation }: Props) {
             onPress={() => navigation.navigate('DataStorage')}
           />
           <SettingRow
-            iconName="folder"
-            iconBgColor="#007AFF"
-            label="Pastas de Chat"
-            subtitle="Organizar chats em pastas"
-            onPress={() => {}}
-          />
-          <SettingRow
             iconName="laptop-outline"
             iconBgColor="#64D2FF"
             label="Dispositivos"
             subtitle="Gerenciar dispositivos conectados"
-            onPress={() => {}}
-          />
-          <SettingRow
-            iconName="battery-half"
-            iconBgColor="#FF9500"
-            label="Economia de Energia"
-            subtitle="Reduz uso de energia quando a carga esta baixa"
             onPress={() => {}}
           />
           <SettingRow
@@ -162,10 +148,7 @@ export default function SettingsScreen({ navigation }: Props) {
         </View>
 
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
-          <SettingRow iconName="star" iconBgColor="#AF52DE" label="Telegram Premium" onPress={() => {}} />
-          <SettingRow iconName="star" iconBgColor="#FF9500" label="Estrelas do Telegram" rightBadge="1" onPress={() => {}} />
-          <SettingRow iconName="wallet" iconBgColor="#007AFF" label="Carteira" onPress={() => {}} />
-          <SettingRow iconType="MaterialCommunityIcons" iconName="storefront" iconBgColor="#FF3B30" label="Telegram Business" onPress={() => {}} />
+
           <SettingRow iconName="exit-outline" iconBgColor="#FF3B30" label="Sair da Conta" onPress={handleLogout} isLast />
         </View>
       </ScrollView>
