@@ -40,9 +40,9 @@ function TabNavigator() {
 
 export default function AppNavigator() {
   const { isDark, colors } = useTheme();
-  const { toggleTheme } = useSettings();
+  const { toggleTheme, menuVisible, setMenuVisible } = useSettings();
   const insets = useSafeAreaInsets();
-  const [menuVisible, setMenuVisible] = useState(false);
+
 
   return (
     <>

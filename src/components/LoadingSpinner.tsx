@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
-import { colors } from '../theme/colors';
+import useTheme from '../hooks/useTheme';
 
 interface LoadingSpinnerProps {
   message?: string;
@@ -13,15 +13,17 @@ export default function LoadingSpinner({
   size = 'large',
   fullScreen = true,
 }: LoadingSpinnerProps) {
+  const { colors } = useTheme();
+
   const content = (
     <>
       <ActivityIndicator size={size} color={colors.primary} />
-      {message && <Text style={styles.message}>{message}</Text>}
+      {message && <Text style={[styles.message, { color: colors.textSecondary }]}>{message}</Text>}
     </>
   );
 
   if (fullScreen) {
-    return <View style={styles.fullScreen}>{content}</View>;
+    return <View style={[styles.fullScreen, { backgroundColor: colors.background }]}>{content}</View>;
   }
 
   return <View style={styles.inline}>{content}</View>;
@@ -32,7 +34,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.background,
   },
   inline: {
     justifyContent: 'center',
@@ -42,6 +43,5 @@ const styles = StyleSheet.create({
   message: {
     marginTop: 12,
     fontSize: 15,
-    color: colors.textSecondary,
   },
 });

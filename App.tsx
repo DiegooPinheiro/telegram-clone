@@ -1,5 +1,5 @@
-import 'react-native-gesture-handler';
 import React, { useEffect, useState } from 'react';
+import { View } from 'react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
@@ -126,12 +126,14 @@ function MainApp() {
   };
 
   return (
-    <SafeAreaProvider>
-      <NavigationContainer ref={navigationRef} theme={navTheme}>
-        {isAuthenticated ? <AppNavigator /> : <AuthNavigator />}
-      </NavigationContainer>
-      <Toast config={toastConfig} />
-    </SafeAreaProvider>
+    <View style={{ flex: 1, backgroundColor: navTheme.colors.background }}>
+      <SafeAreaProvider>
+        <NavigationContainer ref={navigationRef} theme={navTheme}>
+          {isAuthenticated ? <AppNavigator /> : <AuthNavigator />}
+        </NavigationContainer>
+        <Toast config={toastConfig} />
+      </SafeAreaProvider>
+    </View>
   );
 }
 

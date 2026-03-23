@@ -17,6 +17,7 @@ import { UserProfile } from "../types/user";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import useAuth from "../hooks/useAuth";
 import useTheme from "../hooks/useTheme";
+import { useSettings } from "../context/SettingsContext";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Profile">;
 
@@ -24,6 +25,7 @@ export default function ProfileScreen({ navigation }: Props) {
   const { uid: currentUserId, displayName: authName, photoURL: authPhoto } = useAuth();
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
+  const { setMenuVisible } = useSettings();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -72,9 +74,12 @@ export default function ProfileScreen({ navigation }: Props) {
   const phone = profile?.phone?.trim() || "Adicionar Celular";
   const birthday = profile?.birthday?.trim() || "Adicionar Aniversário";
 
+  const surfaceColor = isDark ? "#1C1C1D" : colors.surface;
+  const backgroundColor = isDark ? "#000000" : colors.background;
+
   return (
     <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={[styles.container, { backgroundColor }]}
       edges={["top", "left", "right"]}
     >
       <View style={styles.topBar}>
@@ -82,7 +87,7 @@ export default function ProfileScreen({ navigation }: Props) {
         <TouchableOpacity style={styles.topBarButton}>
           <Ionicons name="qr-code-outline" size={26} color={colors.textPrimary} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.topBarButton} onPress={() => {}}>
+        <TouchableOpacity style={styles.topBarButton} onPress={() => setMenuVisible(true)}>
           <Ionicons name="ellipsis-vertical" size={26} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
@@ -101,7 +106,7 @@ export default function ProfileScreen({ navigation }: Props) {
 
         <View style={styles.actionButtonsRow}>
           <TouchableOpacity 
-            style={[styles.actionButton, { backgroundColor: colors.surface }]} 
+            style={[styles.actionButton, { backgroundColor: surfaceColor }]} 
             onPress={() => navigation.navigate("EditProfile")}
           >
             <MaterialIcons name="add-a-photo" size={22} color={colors.textPrimary} />
@@ -109,7 +114,7 @@ export default function ProfileScreen({ navigation }: Props) {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: colors.surface }]}
+            style={[styles.actionButton, { backgroundColor: surfaceColor }]}
             onPress={() => navigation.navigate("EditProfile")}
           >
             <MaterialIcons name="edit" size={22} color={colors.textPrimary} />
@@ -117,7 +122,7 @@ export default function ProfileScreen({ navigation }: Props) {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: colors.surface }]}
+            style={[styles.actionButton, { backgroundColor: surfaceColor }]}
             onPress={() => navigation.navigate("Settings")}
           >
             <MaterialIcons name="settings" size={22} color={colors.textPrimary} />
@@ -125,7 +130,7 @@ export default function ProfileScreen({ navigation }: Props) {
           </TouchableOpacity>
         </View>
 
-        <View style={[styles.infoCard, { backgroundColor: colors.surface }]}>
+        <View style={[styles.infoCard, { backgroundColor: surfaceColor }]}>
           <View style={styles.infoBlock}>
             <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{phone}</Text>
             <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Celular</Text>
@@ -136,21 +141,16 @@ export default function ProfileScreen({ navigation }: Props) {
             <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Nome de Usuário</Text>
           </View>
 
-          <View
-            style={[
-              styles.infoBlock,
-              { borderBottomWidth: 0, paddingBottom: 0, marginBottom: 0 },
-            ]}
-          >
+          <View style={[styles.infoBlock, { marginBottom: 0 }]}>
             <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{birthday}</Text>
             <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Aniversário</Text>
           </View>
         </View>
 
         <View style={styles.tabsContainer}>
-          <View style={[styles.tabsBackground, { backgroundColor: colors.surface }]}>
-            <TouchableOpacity style={[styles.tab, { backgroundColor: isDark ? "#2A2A35" : "#E5E5EA" }]}>
-              <Text style={[styles.tabTextActive, { color: colors.primary }]}>Posts</Text>
+          <View style={[styles.tabsBackground, { backgroundColor: surfaceColor }]}>
+            <TouchableOpacity style={[styles.tab, { backgroundColor: isDark ? "#33435C" : "#E5E5EA" }]}>
+              <Text style={[styles.tabTextActive, { color: isDark ? "#8aa4ff" : colors.primary }]}>Posts</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.tab}>
               <Text style={[styles.tabTextInactive, { color: colors.textSecondary }]}>Posts Arquivados</Text>
@@ -184,8 +184,6 @@ export default function ProfileScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 10,
   },
   scrollContent: {
     paddingBottom: 100,
@@ -193,15 +191,14 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
-    marginTop: 4,
+    height: 56,
+    paddingHorizontal: 16,
   },
   topBarButton: {
     width: 36,
     height: 36,
-    alignItems: "flex-end",
+    alignItems: "center",
     justifyContent: "center",
-    marginLeft: 16,
   },
   profileHeader: {
     alignItems: "center",
@@ -221,6 +218,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 24,
+    paddingHorizontal: 16,
     gap: 12,
   },
   actionButton: {
@@ -238,6 +236,7 @@ const styles = StyleSheet.create({
   },
   infoCard: {
     borderRadius: 12,
+    marginHorizontal: 16,
     padding: 16,
     marginBottom: 24,
   },

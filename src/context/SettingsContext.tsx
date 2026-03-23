@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Appearance } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type Theme = 'light' | 'dark';
@@ -9,13 +10,16 @@ interface SettingsContextType {
   language: Language;
   toggleTheme: () => void;
   setLanguage: (lang: Language) => void;
+  menuVisible: boolean;
+  setMenuVisible: (visible: boolean) => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('light');
+  const [theme, setTheme] = useState<Theme>(Appearance.getColorScheme() === 'dark' ? 'dark' : 'light');
   const [language, setLanguageState] = useState<Language>('pt');
+  const [menuVisible, setMenuVisible] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -44,7 +48,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <SettingsContext.Provider value={{ theme, language, toggleTheme, setLanguage }}>
+    <SettingsContext.Provider value={{ theme, language, toggleTheme, setLanguage, menuVisible, setMenuVisible }}>
       {children}
     </SettingsContext.Provider>
   );

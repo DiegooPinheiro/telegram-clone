@@ -16,15 +16,21 @@ import Avatar from '../components/Avatar';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { UserProfile } from '../types/user';
 import { Ionicons } from '@expo/vector-icons';
+import useTheme from '../hooks/useTheme';
+import { useSettings } from '../context/SettingsContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ContactProfile'>;
 
 export default function ContactProfileScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
+  const { setMenuVisible } = useSettings();
+  
   const routeUid = route.params?.uid || null;
   const routeUsername = route.params?.username || '';
   const routeName = route.params?.name || '';
   const routeAvatar = route.params?.avatar || null;
+  
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const { statusText } = useOnlineStatus(profile?.uid || routeUid || '');
@@ -75,77 +81,83 @@ export default function ContactProfileScreen({ navigation, route }: Props) {
   const phoneText = profile?.phone?.trim() || 'Não informado';
   const bioText = profile?.bio?.trim() || 'Nenhuma biografia disponível.';
 
+  const backgroundColor = isDark ? "#000000" : colors.background;
+  const surfaceColor = isDark ? "#1C1C1D" : colors.surface;
+  const secondaryText = isDark ? "#9ea1aa" : colors.textSecondary;
+
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView 
+      style={[styles.container, { backgroundColor }]} 
+      edges={['top', 'left', 'right']}
+    >
       <View style={styles.header}>
         <TouchableOpacity
-          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={26} color="#FFFFFF" />
+          <Ionicons name="arrow-back" size={26} color={colors.textPrimary} />
         </TouchableOpacity>
-        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}>
-          <Ionicons name="ellipsis-vertical" size={24} color="#FFFFFF" />
+        <TouchableOpacity onPress={() => setMenuVisible(true)}>
+          <Ionicons name="ellipsis-vertical" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}>
         <View style={styles.profileHeader}>
           <Avatar uri={profilePhoto} name={displayName} size={90} online={false} />
-          <Text style={styles.name}>{displayName}</Text>
-          <Text style={styles.status}>{statusText || 'visto recentemente'}</Text>
+          <Text style={[styles.name, { color: colors.textPrimary }]}>{displayName}</Text>
+          <Text style={[styles.status, { color: secondaryText }]}>{statusText || 'visto recentemente'}</Text>
         </View>
 
         <View style={styles.contactActionsRow}>
-          <TouchableOpacity style={styles.contactActionButton}>
-            <Ionicons name="chatbubble" size={22} color="#FFFFFF" />
-            <Text style={styles.contactActionText}>Mensagem</Text>
+          <TouchableOpacity style={[styles.contactActionButton, { backgroundColor: surfaceColor }]}>
+            <Ionicons name="chatbubble" size={22} color={colors.textPrimary} />
+            <Text style={[styles.contactActionText, { color: colors.textPrimary }]}>Mensagem</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.contactActionButton}>
-            <Ionicons name="notifications-off" size={22} color="#FFFFFF" />
-            <Text style={styles.contactActionText}>Ativar som</Text>
+          <TouchableOpacity style={[styles.contactActionButton, { backgroundColor: surfaceColor }]}>
+            <Ionicons name="notifications-off" size={22} color={colors.textPrimary} />
+            <Text style={[styles.contactActionText, { color: colors.textPrimary }]}>Ativar som</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.contactActionButton}>
-            <Ionicons name="call" size={22} color="#FFFFFF" />
-            <Text style={styles.contactActionText}>Ligar</Text>
+          <TouchableOpacity style={[styles.contactActionButton, { backgroundColor: surfaceColor }]}>
+            <Ionicons name="call" size={22} color={colors.textPrimary} />
+            <Text style={[styles.contactActionText, { color: colors.textPrimary }]}>Ligar</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.contactActionButton}>
-            <Ionicons name="videocam" size={22} color="#FFFFFF" />
-            <Text style={styles.contactActionText}>Vídeo</Text>
+          <TouchableOpacity style={[styles.contactActionButton, { backgroundColor: surfaceColor }]}>
+            <Ionicons name="videocam" size={22} color={colors.textPrimary} />
+            <Text style={[styles.contactActionText, { color: colors.textPrimary }]}>Vídeo</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.infoCard}>
+        <View style={[styles.infoCard, { backgroundColor: surfaceColor }]}>
           <View style={styles.infoBlock}>
-            <Text style={styles.infoValue}>{phoneText}</Text>
-            <Text style={styles.infoLabel}>Celular</Text>
+            <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{phoneText}</Text>
+            <Text style={[styles.infoLabel, { color: secondaryText }]}>Celular</Text>
           </View>
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)" }]} />
           <View style={[styles.infoBlock, { marginBottom: 0 }]}>
-            <Text style={styles.infoValue}>{bioText}</Text>
-            <Text style={styles.infoLabel}>Biografia</Text>
+            <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{bioText}</Text>
+            <Text style={[styles.infoLabel, { color: secondaryText }]}>Biografia</Text>
           </View>
         </View>
 
         <View style={styles.tabsContainer}>
-          <View style={styles.tabsBackground}>
-            <TouchableOpacity style={[styles.tab, styles.tabActive]}>
-              <Text style={styles.tabTextActive}>Arquivos</Text>
+          <View style={[styles.tabsBackground, { backgroundColor: surfaceColor }]}>
+            <TouchableOpacity style={[styles.tab, isDark && styles.tabActive, !isDark && { backgroundColor: '#E5E5EA' }]}>
+              <Text style={[styles.tabTextActive, { color: isDark ? "#8aa4ff" : colors.primary }]}>Arquivos</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.tab}>
-              <Text style={styles.tabTextInactive}>Músicas</Text>
+              <Text style={[styles.tabTextInactive, { color: secondaryText }]}>Músicas</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.tab}>
-              <Text style={styles.tabTextInactive}>Voz</Text>
+              <Text style={[styles.tabTextInactive, { color: secondaryText }]}>Voz</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         <View style={styles.fileList}>
-          <View style={styles.emptyFilesCard}>
-            <Ionicons name="document-outline" size={30} color="#8b9099" />
-            <Text style={styles.emptyFilesTitle}>Nenhum arquivo compartilhado</Text>
-            <Text style={styles.emptyFilesText}>
+          <View style={[styles.emptyFilesCard, { backgroundColor: surfaceColor }]}>
+            <Ionicons name="document-outline" size={30} color={secondaryText} />
+            <Text style={[styles.emptyFilesTitle, { color: colors.textPrimary }]}>Nenhum arquivo compartilhado</Text>
+            <Text style={[styles.emptyFilesText, { color: secondaryText }]}>
               Os arquivos enviados nas conversas aparecerão aqui.
             </Text>
           </View>
@@ -158,7 +170,6 @@ export default function ContactProfileScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
   },
   header: {
     flexDirection: 'row',
@@ -178,12 +189,10 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#FFFFFF',
     marginTop: 14,
   },
   status: {
     fontSize: 14,
-    color: '#9ea1aa',
     marginTop: 4,
   },
   contactActionsRow: {
@@ -195,20 +204,17 @@ const styles = StyleSheet.create({
   },
   contactActionButton: {
     flex: 1,
-    backgroundColor: '#1C1C1D',
     borderRadius: 14,
     paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   contactActionText: {
-    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '500',
     marginTop: 8,
   },
   infoCard: {
-    backgroundColor: '#1C1C1D',
     borderRadius: 12,
     marginHorizontal: 16,
     paddingLeft: 16,
@@ -220,15 +226,12 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   infoValue: {
-    color: '#FFFFFF',
     fontSize: 16,
     marginBottom: 2,
   },
   infoLabel: {
-    color: '#9ea1aa',
     fontSize: 14,
   },
   tabsContainer: {
@@ -237,7 +240,6 @@ const styles = StyleSheet.create({
   },
   tabsBackground: {
     flexDirection: 'row',
-    backgroundColor: '#1C1C1D',
     borderRadius: 24,
     padding: 3,
   },
@@ -250,12 +252,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#33435C',
   },
   tabTextActive: {
-    color: '#8aa4ff',
     fontSize: 15,
     fontWeight: '500',
   },
   tabTextInactive: {
-    color: '#9ea1aa',
     fontSize: 15,
     fontWeight: '500',
   },
@@ -263,20 +263,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   emptyFilesCard: {
-    backgroundColor: '#1C1C1D',
     borderRadius: 16,
     paddingVertical: 28,
     paddingHorizontal: 20,
     alignItems: 'center',
   },
   emptyFilesTitle: {
-    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
     marginTop: 12,
   },
   emptyFilesText: {
-    color: '#9ea1aa',
     fontSize: 14,
     textAlign: 'center',
     marginTop: 8,

@@ -12,12 +12,14 @@ import useTheme from '../hooks/useTheme';
 import { chatDeleteConversation, chatGetConversations } from '../services/chatApi';
 import { getChatSession } from '../services/chatSession';
 import { onReceiveMessage } from '../services/chatSocket';
+import { useSettings } from '../context/SettingsContext';
 import type { ChatApiConversation, ChatApiUser } from '../types/chatApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ChatList'>;
 
 export default function ChatListScreen({ navigation }: Props) {
   const { colors: themeColors } = useTheme();
+  const { setMenuVisible: setGlobalMenuVisible } = useSettings();
   const insets = useSafeAreaInsets();
   const [conversations, setConversations] = useState<ChatApiConversation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -166,7 +168,7 @@ export default function ChatListScreen({ navigation }: Props) {
         <Text style={[styles.headerTitle, { color: themeColors.textPrimary }]}>
           {loading ? 'Carregando...' : 'Telegram Clone'}
         </Text>
-        <TouchableOpacity style={styles.headerAction} onPress={() => {}}>
+        <TouchableOpacity style={styles.headerAction} onPress={() => setGlobalMenuVisible(true)}>
           <Ionicons name="ellipsis-vertical" size={26} color={themeColors.textPrimary} />
         </TouchableOpacity>
       </View>
