@@ -212,10 +212,23 @@ export const updateUserProfile = async (
   await updateDoc(doc(db, 'users', uid), data);
 
   const user = auth.currentUser;
-  if (user && (data.displayName || data.photoURL)) {
+  if (user && (data.displayName || data.photoURL !== undefined)) {
     await updateProfile(user, {
-      displayName: data.displayName || user.displayName,
-      photoURL: data.photoURL || user.photoURL,
+      displayName: data.displayName || user.displayName || undefined,
+      photoURL: data.photoURL !== undefined ? data.photoURL : (user.photoURL || null),
+    });
+  }
+
+  // Push the profile updates to the Node.js API (MongoDB) so other users can see them
+  if (user) {
+    const freshDoc = await getDoc(doc(db, 'users', uid));
+    const freshData = freshDoc.data() || {};
+    
+    await chatSyncFirebaseUser({
+      email: (user.email || '').trim().toLowerCase(),
+      displayName: data.displayName || user.displayName || 'Usuário',
+      photoURL: data.photoURL !== undefined ? data.photoURL : (user.photoURL || undefined),
+      phone: data.phone !== undefined ? data.phone : (freshData.phone || undefined),
     });
   }
 };

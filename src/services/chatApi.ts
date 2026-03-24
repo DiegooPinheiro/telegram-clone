@@ -24,6 +24,7 @@ const toAbsoluteUrl = (baseUrl: string, url: string) => {
 // Token cache — reuse token for 55 min (tokens expire in 60 min)
 let _cachedToken: string | null = null;
 let _tokenExpiresAt: number = 0;
+let _cachedTokenUid: string | null = null;
 
 const getFirebaseIdToken = async () => {
   const user = auth.currentUser;
@@ -32,12 +33,14 @@ const getFirebaseIdToken = async () => {
   }
 
   const now = Date.now();
-  if (_cachedToken && now < _tokenExpiresAt) {
+  // Check if token is valid AND belongs to the CURRENT user
+  if (_cachedToken && _cachedTokenUid === user.uid && now < _tokenExpiresAt) {
     return _cachedToken;
   }
 
   const token = await user.getIdToken(false);
   _cachedToken = token;
+  _cachedTokenUid = user.uid;
   _tokenExpiresAt = now + 55 * 60 * 1000; // 55 minutes
   return token;
 };
@@ -45,6 +48,7 @@ const getFirebaseIdToken = async () => {
 export const invalidateCachedToken = () => {
   _cachedToken = null;
   _tokenExpiresAt = 0;
+  _cachedTokenUid = null;
 };
 
 const requestJson = async <T>(
