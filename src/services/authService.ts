@@ -64,7 +64,7 @@ export const signUp = async (email: string, password: string, displayName: strin
     email: user.email,
     displayName,
     photoURL: null,
-    status: 'Hey there! I am using Telegram Clone',
+    status: 'Hey there! I am using Vibe',
     username: '',
     phone: '',
     bio: '',

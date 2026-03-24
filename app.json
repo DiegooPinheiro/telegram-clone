@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "telegram-clone",
+    "name": "Vibe",
     "slug": "telegram-clone",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -16,13 +16,11 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.diegoopinheiro.telegramclone"
+      "package": "com.diegoopinheiro.vibe"
     },
     "web": {
       "favicon": "./assets/favicon.png"

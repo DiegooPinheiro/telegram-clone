@@ -12,6 +12,7 @@ import useTheme from '../hooks/useTheme';
 import { chatDeleteConversation, chatGetConversations } from '../services/chatApi';
 import { getChatSession } from '../services/chatSession';
 import { onMessagesDeleted, onMessageUpdated, onReceiveMessage } from '../services/chatSocket';
+import { CACHE_KEYS, loadCache, saveCache } from '../services/persistentCache';
 import { useSettings } from '../context/SettingsContext';
 import type { ChatApiConversation, ChatApiUser } from '../types/chatApi';
 
@@ -31,7 +32,6 @@ export default function ChatListScreen({ navigation }: Props) {
   const myUserIdRef = React.useRef<string | null>(null);
 
   const loadConversations = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
     try {
       const session = await getChatSession();
       if (!session?.userId) {
@@ -43,8 +43,28 @@ export default function ChatListScreen({ navigation }: Props) {
 
       setMyUserId(session.userId);
       myUserIdRef.current = session.userId;
+      const cacheKey = `${CACHE_KEYS.CONVERSATIONS}_${session.userId}`;
+
+      if (!silent) {
+        // Hydrate from cache instantly
+        const cachedStr = await loadCache<ChatApiConversation[]>(cacheKey);
+        if (cachedStr && cachedStr.length > 0) {
+          setConversations(cachedStr);
+          // Only show loading if cache is empty
+        } else {
+          setLoading(true);
+        }
+      }
+
+      // Fetch fresh data in the background
       const fetched = await chatGetConversations(session.userId);
-      setConversations(fetched);
+      setConversations((prev) => {
+        // If data is exact same length and first item matches, maybe skip?
+        // Actually, just set it and overwrite cache
+        return fetched;
+      });
+      await saveCache(cacheKey, fetched);
+
     } catch (error: any) {
       console.error('Erro ao carregar conversas:', error);
     } finally {
@@ -197,7 +217,7 @@ export default function ChatListScreen({ navigation }: Props) {
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]} edges={['top', 'left', 'right']}>
       <View style={styles.headerRow}>
         <Text style={[styles.headerTitle, { color: themeColors.textPrimary }]}>
-          {loading ? 'Carregando...' : 'Telegram Clone'}
+          {loading ? 'Carregando...' : 'Vibe'}
         </Text>
         <TouchableOpacity style={styles.headerAction} onPress={() => setGlobalMenuVisible(true)}>
           <Ionicons name="ellipsis-vertical" size={22} color={themeColors.textPrimary} />

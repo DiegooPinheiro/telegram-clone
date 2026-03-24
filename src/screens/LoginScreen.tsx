@@ -23,6 +23,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 export default function LoginScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
@@ -46,7 +47,7 @@ export default function LoginScreen({ navigation }: Props) {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
         <View style={styles.header}>
           <Ionicons name="chatbubble-ellipses" size={62} color={colors.primary} style={styles.logo} />
-          <Text style={styles.title}>Telegram Clone</Text>
+          <Text style={styles.title}>Vibe</Text>
           <Text style={styles.subtitle}>Faca login para continuar</Text>
         </View>
 
@@ -62,14 +63,19 @@ export default function LoginScreen({ navigation }: Props) {
             autoCorrect={false}
           />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Senha"
-            placeholderTextColor={colors.textSecondary}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
+          <View style={[styles.input, styles.passwordContainer]}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Senha"
+              placeholderTextColor={colors.textSecondary}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+              <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={22} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
 
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
@@ -129,6 +135,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     fontSize: 16,
     color: colors.textPrimary,
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 0,
+  },
+  passwordInput: {
+    flex: 1,
+    height: '100%',
+    paddingLeft: spacing.lg,
+    fontSize: 16,
+    color: colors.textPrimary,
+  },
+  eyeIcon: {
+    paddingHorizontal: spacing.md,
+    height: '100%',
+    justifyContent: 'center',
   },
   button: {
     height: 52,

@@ -47,9 +47,18 @@ export const cloudinaryUpload = async (file: {
   type: string;
 }): Promise<CloudinaryUploadResult> => {
   const form = new FormData();
-  // @ts-expect-error React Native FormData file
-  form.append('file', file);
+  
+  // ALWAY append text fields BEFORE the file object in React Native
   form.append('upload_preset', UPLOAD_PRESET);
+  
+  // @ts-expect-error React Native FormData file
+  form.append('file', {
+    uri: file.uri.startsWith('file://') || file.uri.startsWith('content://') || file.uri.startsWith('http') 
+      ? file.uri 
+      : `file://${file.uri}`,
+    name: file.name,
+    type: file.type,
+  });
 
   const response = await fetch(UPLOAD_URL, {
     method: 'POST',

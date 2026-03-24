@@ -1,6 +1,6 @@
-# 📱 Telegram Clone (Expo + Firebase + Custom Chat API)
+# 📱 Vibe (Expo + Firebase + Custom Chat API)
 
-Um clone moderno e funcional do Telegram, construído com **React Native (Expo)**. Este projeto utiliza uma arquitetura híbrida de alto desempenho, combinando o poder do **Firebase** para autenticação e perfis com uma **API de Chat Customizada** em Node.js para mensagens em tempo real via WebSockets.
+Um aplicativo de mensagens moderno e funcional, construído com **React Native (Expo)**. Este projeto utiliza uma arquitetura híbrida de alto desempenho, combinando o poder do **Firebase** para autenticação e perfis com uma **API de Chat Customizada** em Node.js para mensagens em tempo real via WebSockets.
 
 ---
 

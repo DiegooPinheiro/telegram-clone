@@ -62,7 +62,7 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
       </DrawerContentScrollView>
 
       <View style={[styles.footer, { borderTopColor: colors.separator }]}>
-        <Text style={[styles.version, { color: colors.textSecondary }]}>Telegram Clone v1.0.0</Text>
+        <Text style={[styles.version, { color: colors.textSecondary }]}>Vibe v1.0.0</Text>
       </View>
     </View>
   );

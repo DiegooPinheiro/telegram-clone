@@ -18,6 +18,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import useTheme from '../hooks/useTheme';
 import { chatListUsers } from '../services/chatApi';
 import { getChatSession } from '../services/chatSession';
+import { CACHE_KEYS, loadCache, saveCache } from '../services/persistentCache';
 import type { ChatApiUser } from '../types/chatApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Contacts'>;
@@ -39,18 +40,28 @@ export default function ContactsScreen({ navigation }: Props) {
   const hasFetchedRef = useRef(false);
 
   const loadUsers = useCallback(async (silent = false) => {
-    if (!silent) {
-      setLoading(true);
-      setNoSession(false);
-    }
     try {
+      if (!silent) {
+        const cachedStr = await loadCache<ChatApiUser[]>(CACHE_KEYS.CONTACTS);
+        if (cachedStr && cachedStr.length > 0) {
+          setUsers(cachedStr);
+          setNoSession(false);
+          // Don't show loading spinner if we have cached data
+        } else {
+          setLoading(true);
+          setNoSession(false);
+        }
+      }
+
       const session = await getChatSession();
       if (!session?.userId) {
         setNoSession(true);
         return;
       }
+      
       const fetched = await chatListUsers();
       setUsers(fetched);
+      await saveCache(CACHE_KEYS.CONTACTS, fetched);
     } catch (error: any) {
       console.error('Erro ao buscar contatos:', error);
     } finally {

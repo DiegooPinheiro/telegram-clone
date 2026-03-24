@@ -61,7 +61,7 @@ export default function AppNavigator() {
             const routeName = getFocusedRouteNameFromRoute(route) ?? 'ChatList';
             return {
               headerShown: false,
-            title: 'Telegram Clone',
+            title: 'Vibe',
             headerLeft: () => null,
             headerRight: () => (
               <View style={styles.headerActions}>
