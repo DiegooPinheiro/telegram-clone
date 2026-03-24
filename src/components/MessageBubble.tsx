@@ -159,6 +159,15 @@ export default function MessageBubble({
       height: Math.round(height),
     };
   }, [imageSize]);
+  const bubbleBg = useMemo(() => {
+    if (selected) {
+      return isMine ? (isDark ? '#6f8ec8' : '#dce7ff') : (isDark ? '#2a3950' : '#edf3ff');
+    }
+    if (mediaUrl && !showText && isAudio) {
+      return isMine ? '#69a9de' : '#5f96d2';
+    }
+    return isMine ? colors.bubbleMine : colors.bubbleTheirs;
+  }, [selected, isMine, isDark, mediaUrl, showText, isAudio, colors]);
   const fileName = useMemo(() => fileNameFromMessage(message, mediaUrl), [mediaUrl, message]);
   const fileExtension = useMemo(() => {
     const parts = fileName.split('.');
@@ -209,22 +218,16 @@ export default function MessageBubble({
           style={[
             styles.container,
             isMine ? styles.mine : styles.theirs,
+            mediaUrl && styles.containerMedia,
             {
-              backgroundColor: isMine ? colors.bubbleMine : colors.bubbleTheirs,
+              backgroundColor: bubbleBg,
               shadowOpacity: isDark ? 0.22 : 0.1,
               shadowRadius: isDark ? 4 : 2,
             },
-            selected
-              ? {
-                  backgroundColor: isMine
-                    ? (isDark ? '#6f8ec8' : '#dce7ff')
-                    : (isDark ? '#2a3950' : '#edf3ff'),
-                }
-              : null,
           ]}
         >
         {!isMine && senderName && (
-          <Text style={[styles.senderName, { color: colors.primary }]}>{senderName}</Text>
+          <Text style={[styles.senderName, { color: colors.primary, paddingHorizontal: mediaUrl ? 12 : 0, paddingTop: mediaUrl ? 8 : 0 }]}>{senderName}</Text>
         )}
 
         {mediaUrl ? (
@@ -235,9 +238,9 @@ export default function MessageBubble({
                 if (!mediaUrl) return;
                 onImagePress?.({ uri: mediaUrl, timestamp, senderName });
               }}
-              style={[styles.imageWrap, imageFrame]}
+              style={[styles.imageWrap, imageFrame, { marginBottom: showText ? 0 : 0 }]}
             >
-              <Image source={{ uri: mediaUrl }} style={[styles.image, imageFrame]} resizeMode="contain" />
+              <Image source={{ uri: mediaUrl }} style={[styles.image, imageFrame]} resizeMode="cover" />
             </TouchableOpacity>
           ) : isAudio ? (
             <TouchableOpacity
@@ -250,7 +253,7 @@ export default function MessageBubble({
                 if (!mediaUrl) return;
                 onAudioPress?.({ uri: mediaUrl, fileName, mediaType });
               }}
-              style={[styles.audioRow, { backgroundColor: isMine ? '#69a9de' : '#5f96d2' }]}
+              style={[styles.audioRow, { backgroundColor: bubbleBg }]}
               disabled={fileOpening}
             >
               <View style={styles.audioThumb}>
@@ -276,7 +279,7 @@ export default function MessageBubble({
               <MaterialCommunityIcons
                 name="dots-vertical"
                 size={20}
-                color="rgba(255,255,255,0.92)"
+                color={showText ? metaColor : '#ffffff'}
                 style={styles.audioMenuIcon}
               />
             </TouchableOpacity>
@@ -335,8 +338,7 @@ export default function MessageBubble({
             style={[
               styles.messageText,
               isMine ? styles.messageTextMine : null,
-              isMine ? styles.messageTextWithMetaMine : null,
-              !isMine ? styles.messageTextWithMetaTheirs : null,
+              mediaUrl ? styles.messageTextWithMedia : (isMine ? styles.messageTextWithMetaMine : styles.messageTextWithMetaTheirs),
               { color: colors.textPrimary },
             ]}
           >
@@ -344,11 +346,17 @@ export default function MessageBubble({
           </Text>
         ) : null}
 
-        <View style={[styles.metaRow, isMine ? styles.metaRowMine : styles.metaRowTheirs]}>
+        <View 
+          style={[
+            styles.metaRow, 
+            isMine ? styles.metaRowMine : styles.metaRowTheirs,
+            (mediaUrl && !showText) && styles.metaRowOnMedia
+          ]}
+        >
           <Text
             style={[
               styles.timestamp,
-              { color: metaColor },
+              { color: (mediaUrl && !showText) ? '#ffffff' : metaColor },
             ]}
           >
             {time}
@@ -357,25 +365,15 @@ export default function MessageBubble({
             <MaterialCommunityIcons
               name={statusIconName}
               size={14}
-              color={statusColor}
+              color={(mediaUrl && !showText) ? '#ffffff' : statusColor}
               style={styles.statusIcon}
             />
           ) : null}
         </View>
 
-          {/* Tail (Beak) using a more integrated approach */}
-          <View style={[
-            styles.tail,
-            isMine ? styles.tailMine : styles.tailTheirs,
-            {
-              borderBottomColor: selected
-                ? (isMine
-                  ? (isDark ? '#6f8ec8' : '#dce7ff')
-                  : (isDark ? '#2a3950' : '#edf3ff'))
-                : (isMine ? colors.bubbleMine : colors.bubbleTheirs),
-            }
-          ]} />
         </View>
+
+
       </View>
 
     </TouchableOpacity>
@@ -458,6 +456,13 @@ const styles = StyleSheet.create({
   theirs: {
     borderBottomLeftRadius: 5,
   },
+  containerMedia: {
+    paddingHorizontal: 0,
+    paddingTop: 0,
+    paddingBottom: 0,
+    overflow: 'hidden',
+    minWidth: 120,
+  },
   messageContent: {
     // No specific layout needed, let the Text handle it
   },
@@ -485,6 +490,21 @@ const styles = StyleSheet.create({
   statusIcon: {
     marginLeft: 3,
   },
+  messageTextWithMedia: {
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 10,
+    fontSize: 16,
+    lineHeight: 20,
+  },
+  metaRowOnMedia: {
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    right: 8,
+    bottom: 8,
+  },
   metaRow: {
     position: 'absolute',
     right: 12,
@@ -505,23 +525,17 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   imageWrap: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 4,
-    alignSelf: 'flex-start',
+    alignSelf: 'stretch',
     backgroundColor: 'rgba(0,0,0,0.05)',
   },
   image: {
-    width: 240,
-    height: 240,
+    width: '100%',
   },
   fileRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
     paddingHorizontal: 12,
-    borderRadius: 16,
-    marginBottom: 4,
     minWidth: 220,
     maxWidth: 290,
   },
@@ -555,11 +569,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minWidth: 230,
     maxWidth: 300,
-    borderRadius: 18,
     paddingVertical: 10,
     paddingLeft: 10,
     paddingRight: 8,
-    marginBottom: 4,
   },
   audioThumb: {
     width: 44,
@@ -600,29 +612,7 @@ const styles = StyleSheet.create({
   audioMenuIcon: {
     marginLeft: 8,
   },
-  tail: {
-    position: 'absolute',
-    bottom: 0,
-    width: 0,
-    height: 0,
-    backgroundColor: 'transparent',
-    borderStyle: 'solid',
-    borderLeftWidth: 6,
-    borderRightWidth: 6,
-    borderBottomWidth: 10,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-  },
-  tailMine: {
-    right: -5,
-    bottom: 2,
-    transform: [{ rotate: '126deg' }],
-  },
-  tailTheirs: {
-    left: -5,
-    bottom: 2,
-    transform: [{ rotate: '234deg' }],
-  },
+
   selectionRailLeft: {
     width: 28,
     alignItems: 'center',
