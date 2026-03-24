@@ -8,8 +8,8 @@
  */
 import * as FileSystem from 'expo-file-system/legacy';
 
-const CLOUD_NAME = 'DNPfzerwn';
-const UPLOAD_PRESET = 'qfgbchxk';
+const CLOUD_NAME = 'DNP1zezwn';
+const UPLOAD_PRESET = 'qfgbqhxk';
 const UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`;
 
 export type CloudinaryUploadResult = {
@@ -47,22 +47,21 @@ export const cloudinaryUpload = async (file: {
   name: string;
   type: string;
 }): Promise<CloudinaryUploadResult> => {
-  // Read file as Base64 to bypass Android FormData stream bugs
   const base64 = await FileSystem.readAsStringAsync(file.uri, {
     encoding: FileSystem.EncodingType.Base64,
   });
   
   const dataUri = `data:${file.type};base64,${base64}`;
 
+  // Cloudinary REST API requires FormData, not JSON. But sending the file as a
+  // Base64 string inside FormData avoids Android's binary file streaming bugs.
+  const form = new FormData();
+  form.append('upload_preset', UPLOAD_PRESET);
+  form.append('file', dataUri);
+
   const response = await fetch(UPLOAD_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      file: dataUri,
-      upload_preset: UPLOAD_PRESET,
-    }),
+    body: form,
   });
 
   if (!response.ok) {
