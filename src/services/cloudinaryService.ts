@@ -6,6 +6,7 @@
  * Cloud Name:    DNPfzerwn
  * Upload Preset: qfgbchxk  (unsigned)
  */
+import * as FileSystem from 'expo-file-system/legacy';
 
 const CLOUD_NAME = 'DNPfzerwn';
 const UPLOAD_PRESET = 'qfgbchxk';
@@ -46,27 +47,27 @@ export const cloudinaryUpload = async (file: {
   name: string;
   type: string;
 }): Promise<CloudinaryUploadResult> => {
-  const form = new FormData();
-  
-  // ALWAY append text fields BEFORE the file object in React Native
-  form.append('upload_preset', UPLOAD_PRESET);
-  
-  // @ts-expect-error React Native FormData file
-  form.append('file', {
-    uri: file.uri.startsWith('file://') || file.uri.startsWith('content://') || file.uri.startsWith('http') 
-      ? file.uri 
-      : `file://${file.uri}`,
-    name: file.name,
-    type: file.type,
+  // Read file as Base64 to bypass Android FormData stream bugs
+  const base64 = await FileSystem.readAsStringAsync(file.uri, {
+    encoding: FileSystem.EncodingType.Base64,
   });
+  
+  const dataUri = `data:${file.type};base64,${base64}`;
 
   const response = await fetch(UPLOAD_URL, {
     method: 'POST',
-    body: form,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      file: dataUri,
+      upload_preset: UPLOAD_PRESET,
+    }),
   });
 
   if (!response.ok) {
     const err = await response.text();
+    console.error('Cloudinary Raw Error:', err);
     throw new Error(`Cloudinary upload failed: ${response.status} ${err}`);
   }
 
