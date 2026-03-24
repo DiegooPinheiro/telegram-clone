@@ -325,7 +325,10 @@ export default function ChatScreen({ navigation, route }: Props) {
         if (active) setMyUserId(session.userId);
 
         if (!conversationId) {
-          if (active) setMessages([]);
+          if (active) {
+            setMessages([]);
+            setLoading(false);
+          }
           return;
         }
 
@@ -338,10 +341,13 @@ export default function ChatScreen({ navigation, route }: Props) {
 
         const fetched = await chatGetMessages(conversationId);
         if (active) {
-          const mapped = fetched.map((message) => ({
-            ...message,
-            localStatus: message.read ? 'read' : 'delivered',
-          })) as LocalChatMessage[];
+          const mapped = fetched.map((message) => {
+            const isMine = extractUserId(message.senderId) === session.userId;
+            return {
+              ...message,
+              localStatus: message.read ? 'read' : (message.localStatus ? message.localStatus : (isMine ? 'sent' : 'delivered')),
+            };
+          }) as LocalChatMessage[];
           setMessages(mapped);
           setCachedMessages(conversationId, mapped);
           setLoading(false);
@@ -366,6 +372,7 @@ export default function ChatScreen({ navigation, route }: Props) {
         return;
       }
 
+            const isMine = !!myUserId && extractUserId(message.senderId) === myUserId;
       const normalized: LocalChatMessage = {
         ...message,
         // socket pode enviar senderId como string (sem populate)
@@ -373,7 +380,7 @@ export default function ChatScreen({ navigation, route }: Props) {
         clientMessageId: message.clientMessageId || null,
         createdAt: message.createdAt || new Date().toISOString(),
         updatedAt: message.updatedAt || message.createdAt || new Date().toISOString(),
-        localStatus: message.read ? 'read' : 'delivered',
+        localStatus: message.read ? 'read' : (message.localStatus ? message.localStatus : (isMine ? 'sent' : 'delivered')),
       };
 
       const normalizedSenderId = extractUserId(normalized.senderId);
@@ -412,7 +419,7 @@ export default function ChatScreen({ navigation, route }: Props) {
           const next = [...prev];
           next[optimisticIndex] = {
             ...normalized,
-            localStatus: normalized.read ? 'read' : 'delivered',
+            localStatus: normalized.read ? 'read' : (normalized.localStatus ? normalized.localStatus : 'sent'),
             localOnly: false,
           };
           return next;
@@ -1285,11 +1292,17 @@ export default function ChatScreen({ navigation, route }: Props) {
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <View style={styles.datePill}>
-                  <Text style={[styles.datePillText, { color: colors.textOnPrimary }]}>Sem mensagens ainda</Text>
+              !loading && messages.length === 0 ? (
+                <View style={styles.emptyContainerCenter}>
+                  <View style={[styles.emptyChatCard, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+                    <Text style={[styles.emptyChatTitle, { color: colors.textPrimary }]}>Ainda não há mensagens aqui...</Text>
+                    <Text style={[styles.emptyChatSubtitle, { color: colors.textSecondary }]}>
+                      Envie uma mensagem ou toque no aceno abaixo.
+                    </Text>
+                    <Text style={styles.emptyChatSticker}>👋🐻</Text>
+                  </View>
                 </View>
-              </View>
+              ) : null
             }
           />
 
@@ -1608,26 +1621,37 @@ export default function ChatScreen({ navigation, route }: Props) {
       <Modal transparent visible={headerMenuVisible} animationType="fade" onRequestClose={() => setHeaderMenuVisible(false)}>
         <Pressable style={styles.menuBackdrop} onPress={() => setHeaderMenuVisible(false)}>
           <View style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.separator }]}>
-            <TouchableOpacity
-              style={[styles.menuItem, styles.menuItemBorder, { borderBottomColor: colors.separator }]}
-              activeOpacity={0.75}
-              onPress={() => {
-                setHeaderMenuVisible(false);
-                handleDeleteConversation();
-              }}
-            >
-              <Ionicons name="trash-outline" size={22} color={colors.textPrimary} />
-              <Text style={[styles.menuText, { color: colors.textPrimary }]}>Excluir conversa</Text>
+            
+            <TouchableOpacity style={styles.menuItem} activeOpacity={0.7} onPress={() => { setHeaderMenuVisible(false); Alert.alert('Ativar som', 'Em breve.'); }}>
+              <Ionicons name="volume-mute-outline" size={24} color={colors.textPrimary} />
+              <Text style={[styles.menuText, { color: colors.textPrimary }]}>Ativar som</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.menuItem}
-              activeOpacity={0.75}
-              onPress={() => setHeaderMenuVisible(false)}
-            >
-              <Ionicons name="close-outline" size={22} color={colors.textSecondary} />
-              <Text style={[styles.menuText, { color: colors.textSecondary }]}>Cancelar</Text>
+            <TouchableOpacity style={styles.menuItem} activeOpacity={0.7} onPress={() => { setHeaderMenuVisible(false); Alert.alert('Videochamada', 'Em breve.'); }}>
+              <Ionicons name="videocam-outline" size={24} color={colors.textPrimary} />
+              <Text style={[styles.menuText, { color: colors.textPrimary }]}>Videochamada</Text>
             </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem} activeOpacity={0.7} onPress={() => { setHeaderMenuVisible(false); Alert.alert('Buscar', 'Em breve.'); }}>
+              <Ionicons name="search-outline" size={24} color={colors.textPrimary} />
+              <Text style={[styles.menuText, { color: colors.textPrimary }]}>Buscar</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem} activeOpacity={0.7} onPress={() => { setHeaderMenuVisible(false); Alert.alert('Papel de Parede', 'Em breve.'); }}>
+              <Ionicons name="image-outline" size={24} color={colors.textPrimary} />
+              <Text style={[styles.menuText, { color: colors.textPrimary }]}>Trocar Papel de Parede</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem} activeOpacity={0.7} onPress={() => { setHeaderMenuVisible(false); Alert.alert('Limpar Histórico', 'Em breve.'); }}>
+              <Ionicons name="brush-outline" size={24} color={colors.textPrimary} />
+              <Text style={[styles.menuText, { color: colors.textPrimary }]}>Limpar Histórico</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem} activeOpacity={0.7} onPress={() => { setHeaderMenuVisible(false); handleDeleteConversation(); }}>
+              <Ionicons name="trash-outline" size={24} color="#ff3b30" />
+              <Text style={[styles.menuText, { color: '#ff3b30' }]}>Apagar Chat</Text>
+            </TouchableOpacity>
+
           </View>
         </Pressable>
       </Modal>
@@ -1803,6 +1827,76 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     alignItems: 'center',
     paddingBottom: 16,
+  },
+  emptyContainerCenter: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: '65%',
+  },
+  emptyChatCard: {
+    width: '85%',
+    maxWidth: 320,
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  emptyChatTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyChatSubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  emptyChatSticker: {
+    fontSize: 72,
+    textAlign: 'center',
+  },
+  emptyContainerCenter: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: '65%',
+  },
+  emptyChatCard: {
+    width: '85%',
+    maxWidth: 320,
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  emptyChatTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyChatSubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  emptyChatSticker: {
+    fontSize: 72,
+    textAlign: 'center',
   },
   datePill: {
     backgroundColor: 'rgba(80, 83, 92, 0.65)',
