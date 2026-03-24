@@ -45,6 +45,8 @@ function MainApp() {
 
     stopPresence = startPresenceTracking();
 
+    let currentUserId: string | null = null;
+
     unsubscribe = onReceiveMessage((message: any) => {
       const currentRoute = navigationRef.isReady() ? navigationRef.getCurrentRoute() : null;
       if (currentRoute?.name === 'Chat') {
@@ -60,6 +62,8 @@ function MainApp() {
       const username = sender?.username || undefined;
       const senderId = (sender?._id ? String(sender._id) : null) || (typeof message?.senderId === 'string' ? message.senderId : null) || '';
       const body = message?.text ? String(message.text) : '📎 Arquivo de mídia';
+
+      if (currentUserId && senderId === currentUserId) return;
 
       showMessageNotification(senderName, body, {
         senderName,
@@ -81,6 +85,7 @@ function MainApp() {
     const initChatSocket = async (retries = 5) => {
       try {
         const session = await getChatSession();
+        currentUserId = session?.userId || null;
         if (!session?.userId) {
           if (retries > 0) {
             setTimeout(() => initChatSocket(retries - 1), 600);

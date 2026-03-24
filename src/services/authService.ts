@@ -20,7 +20,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from '../config/firebaseConfig';
 import { UserProfile } from '../types/user';
-import { chatSyncFirebaseUser } from './chatApi';
+import { chatSyncFirebaseUser, chatRegisterPushToken } from './chatApi';
 import { clearChatSession, setChatSession } from './chatSession';
 import { connectChatSocket, disconnectChatSocket } from './chatSocket';
 
@@ -81,9 +81,10 @@ export const signUp = async (email: string, password: string, displayName: strin
   try {
     await syncChatUserFromFirebase(email);
   } catch (error: any) {
-    await clearChatSession();
-    disconnectChatSocket();
-    await firebaseSignOut(auth);
+    await chatRegisterPushToken('LOGGED_OUT_TOKEN').catch(() => {});
+  await clearChatSession();
+  disconnectChatSocket();
+  await firebaseSignOut(auth);
 
     const msg = error?.message ? String(error.message) : 'Falha ao sincronizar na Chat API.';
     throw new Error(`Falha ao conectar no Chat API: ${msg}`);
@@ -133,6 +134,7 @@ export const signOut = async () => {
     });
   }
 
+  await chatRegisterPushToken('LOGGED_OUT_TOKEN').catch(() => {});
   await clearChatSession();
   disconnectChatSocket();
   await firebaseSignOut(auth);
