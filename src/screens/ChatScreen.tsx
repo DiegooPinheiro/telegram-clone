@@ -62,7 +62,7 @@ import {
 import type { ChatApiMessage, ChatApiUser } from '../types/chatApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;
-type LocalMessageStatus = 'sending' | 'sent' | 'delivered' | 'read';
+type LocalMessageStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'error';
 type LocalChatMessage = ChatApiMessage & {
   localStatus?: LocalMessageStatus;
   localOnly?: boolean;
@@ -1288,7 +1288,11 @@ export default function ChatScreen({ navigation, route }: Props) {
             renderItem={renderMessage}
             keyExtractor={(item) => item._id}
             style={styles.list}
-            contentContainerStyle={[styles.messagesList, { paddingBottom: spacing.md + insets.bottom }]}
+            contentContainerStyle={[
+              styles.messagesList,
+              { paddingBottom: spacing.md + insets.bottom },
+              messages.length === 0 && { justifyContent: 'center' }
+            ]}
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
@@ -1424,15 +1428,25 @@ export default function ChatScreen({ navigation, route }: Props) {
             renderItem={renderMessage}
             keyExtractor={(item) => item._id}
             style={styles.list}
-            contentContainerStyle={[styles.messagesList, { paddingBottom: spacing.md + insets.bottom }]}
+            contentContainerStyle={[
+              styles.messagesList,
+              { paddingBottom: spacing.md + insets.bottom },
+              messages.length === 0 && { justifyContent: 'center' }
+            ]}
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
             showsVerticalScrollIndicator={false}
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <View style={styles.datePill}>
-                  <Text style={[styles.datePillText, { color: colors.textOnPrimary }]}>Sem mensagens ainda</Text>
+                        ListEmptyComponent={
+              !loading && messages.length === 0 ? (
+                <View style={styles.emptyContainerCenter}>
+                  <View style={[styles.emptyChatCard, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+                    <Text style={[styles.emptyChatTitle, { color: colors.textPrimary }]}>Ainda não há mensagens aqui...</Text>
+                    <Text style={[styles.emptyChatSubtitle, { color: colors.textSecondary }]}>
+                      Envie uma mensagem ou toque no aceno abaixo.
+                    </Text>
+                    <Text style={styles.emptyChatSticker}>👋🐻</Text>
+                  </View>
                 </View>
-              </View>
+              ) : null
             }
           />
 
@@ -1832,42 +1846,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: '65%',
-  },
-  emptyChatCard: {
-    width: '85%',
-    maxWidth: 320,
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  emptyChatTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  emptyChatSubtitle: {
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 16,
-  },
-  emptyChatSticker: {
-    fontSize: 72,
-    textAlign: 'center',
-  },
-  emptyContainerCenter: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: '65%',
   },
   emptyChatCard: {
     width: '85%',

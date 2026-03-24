@@ -1,4 +1,4 @@
-﻿export type ChatApiUser = {
+export type ChatApiUser = {
   _id: string;
   username: string;
   nome: string;
@@ -28,6 +28,8 @@ export type ChatApiMessage = {
   mediaType?: string;
   read?: boolean;
   edited?: boolean;
+  localStatus?: 'sent' | 'delivered' | 'read' | 'error';
+  localOnly?: boolean;
   createdAt: string;
   updatedAt: string;
 };

@@ -11,7 +11,7 @@ interface MessageBubbleProps {
   timestamp: number;
   isMine: boolean;
   senderName?: string;
-  status?: 'sending' | 'sent' | 'delivered' | 'read';
+  status?: 'sending' | 'sent' | 'delivered' | 'read' | 'error';
   selectionMode?: boolean;
   selected?: boolean;
   onPress?: () => void;
@@ -101,15 +101,19 @@ export default function MessageBubble({
     : (isDark ? '#7f91a4' : colors.textTimestamp);
   const statusColor = status === 'read'
     ? (isDark ? '#8ec3f5' : '#4fa3f7')
-    : isMine
-      ? (isDark ? '#9db7d3' : 'rgba(93, 108, 77, 0.88)')
-      : colors.primary;
+    : status === 'error'
+      ? '#ff3b30'
+      : isMine
+        ? (isDark ? '#9db7d3' : 'rgba(93, 108, 77, 0.88)')
+        : colors.primary;
   const statusIconName =
     status === 'sending'
       ? 'clock-outline'
-      : status === 'sent'
-        ? 'check'
-        : 'check-all';
+      : status === 'error'
+        ? 'alert-circle-outline'
+        : status === 'sent'
+          ? 'check'
+          : 'check-all';
   const selectionScale = selectAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [0.72, 1],
