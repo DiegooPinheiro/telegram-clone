@@ -31,10 +31,13 @@ const syncChatUserFromFirebase = async (fallbackEmail: string) => {
   }
 
   let displayName = (user.displayName || '').trim();
+  let phone: string | undefined = undefined;
 
-  if (!displayName) {
-    const snap = await getDoc(doc(db, 'users', user.uid));
-    displayName = (snap.exists() ? String((snap.data() as any)?.displayName || '') : '').trim();
+  const snap = await getDoc(doc(db, 'users', user.uid));
+  if (snap.exists()) {
+    const data = snap.data() as any;
+    if (!displayName) displayName = String(data?.displayName || '').trim();
+    phone = data?.phone || undefined;
   }
 
   if (!displayName) displayName = 'Usuário';
@@ -43,6 +46,7 @@ const syncChatUserFromFirebase = async (fallbackEmail: string) => {
     email: (user.email || fallbackEmail).trim().toLowerCase(),
     displayName,
     photoURL: user.photoURL || undefined,
+    phone,
   });
 
   await setChatSession({ userId: authRes._id });
@@ -53,7 +57,7 @@ const syncChatUserFromFirebase = async (fallbackEmail: string) => {
  * Registrar novo usuário com email e senha.
  * Cria o perfil no Firestore e sincroniza o usuário na Chat API.
  */
-export const signUp = async (email: string, password: string, displayName: string) => {
+export const signUp = async (email: string, password: string, displayName: string, phone: string = '') => {
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
   const user = userCredential.user;
 
@@ -66,7 +70,7 @@ export const signUp = async (email: string, password: string, displayName: strin
     photoURL: null,
     status: 'Hey there! I am using Vibe',
     username: '',
-    phone: '',
+    phone,
     bio: '',
     birthday: '',
     createdAt: new Date().toISOString(),

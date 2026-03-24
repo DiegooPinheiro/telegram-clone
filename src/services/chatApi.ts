@@ -10,6 +10,7 @@ type FirebaseExchangePayload = {
   email: string;
   displayName: string;
   photoURL?: string;
+  phone?: string;
 };
 
 const normalizeBaseUrl = (value: string) => value.replace(/\/+$/, '');
@@ -92,6 +93,7 @@ export type ChatAuthResponse = {
   username: string;
   nome: string;
   foto?: string;
+  phone?: string;
 };
 
 export const chatSyncFirebaseUser = async (
@@ -108,8 +110,19 @@ export const chatSyncFirebaseUser = async (
 };
 
 export const chatListUsers = async (q?: string): Promise<ChatApiUser[]> => {
-  const qp = q ? `?q=${encodeURIComponent(q)}` : '';
-  return requestJson<ChatApiUser[]>(`/api/users${qp}`, { method: 'GET' });
+  const query = q ? `?q=${encodeURIComponent(q)}` : '';
+  return requestJson<ChatApiUser[]>(`/api/users${query}`, { method: 'GET' }, { auth: true });
+};
+
+export const chatSyncContacts = async (phones: string[]): Promise<ChatApiUser[]> => {
+  return requestJson<ChatApiUser[]>(
+    '/api/users/sync-contacts',
+    {
+      method: 'POST',
+      body: JSON.stringify({ phones }),
+    },
+    { auth: true }
+  );
 };
 
 export const chatGetConversations = async (userId: string): Promise<ChatApiConversation[]> => {

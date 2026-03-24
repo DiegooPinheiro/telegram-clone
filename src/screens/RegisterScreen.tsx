@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -23,9 +23,26 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
 export default function RegisterScreen({ navigation }: Props) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const handlePhoneChange = (text: string) => {
+    let clean = text.replace(/\D/g, '');
+    if (clean.length > 11) clean = clean.substring(0, 11);
+    
+    let formatted = clean;
+    if (clean.length > 2) {
+      formatted = `(${clean.substring(0, 2)}) `;
+      if (clean.length > 7) {
+        formatted += `${clean.substring(2, 7)}-${clean.substring(7)}`;
+      } else {
+        formatted += clean.substring(2);
+      }
+    }
+    setPhone(formatted);
+  };
 
   const handleRegister = async () => {
     const nameError = validateDisplayName(name);
@@ -52,8 +69,9 @@ export default function RegisterScreen({ navigation }: Props) {
 
     setLoading(true);
     try {
-      // O serviço signUp agora cuida da criação no Firebase e CometChat de forma sincronizada
-      await signUp(email.trim(), password, name.trim());
+      // Remove a mascara antes de enviar para o backend
+      const rawPhone = phone.replace(/\D/g, '');
+      await signUp(email.trim(), password, name.trim(), rawPhone);
     } catch (error: any) {
       Alert.alert('Erro no cadastro', error.message || 'Tente novamente');
     } finally {
@@ -91,6 +109,16 @@ export default function RegisterScreen({ navigation }: Props) {
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
+          />
+
+          <TextInput
+            style={styles.input}
+            placeholder="Celular (Opcional)"
+            placeholderTextColor={colors.textSecondary}
+            value={phone}
+            onChangeText={handlePhoneChange}
+            keyboardType="phone-pad"
+            maxLength={15} // (99) 99999-9999
           />
 
           <TextInput

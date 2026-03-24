@@ -7,16 +7,18 @@ import {
   TouchableOpacity,
   SectionList,
   Alert,
+  Linking,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Contacts from 'expo-contacts';
 import { RootStackParamList } from '../navigation/types';
 import Avatar from '../components/Avatar';
 import LoadingSpinner from '../components/LoadingSpinner';
 import useTheme from '../hooks/useTheme';
-import { chatListUsers } from '../services/chatApi';
+import { chatListUsers, chatSyncContacts } from '../services/chatApi';
 import { getChatSession } from '../services/chatSession';
 import { CACHE_KEYS, loadCache, saveCache } from '../services/persistentCache';
 import type { ChatApiUser } from '../types/chatApi';
@@ -37,6 +39,7 @@ export default function ContactsScreen({ navigation }: Props) {
   const [users, setUsers] = useState<ChatApiUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [noSession, setNoSession] = useState(false);
+  const [contactsPermissionDenied, setContactsPermissionDenied] = useState(false);
   const hasFetchedRef = useRef(false);
 
   const loadUsers = useCallback(async (silent = false) => {
@@ -59,7 +62,37 @@ export default function ContactsScreen({ navigation }: Props) {
         return;
       }
       
-      const fetched = await chatListUsers();
+      let fetched: ChatApiUser[] = [];
+      const { status } = await Contacts.requestPermissionsAsync();
+
+      if (status === 'granted') {
+        setContactsPermissionDenied(false);
+        const { data } = await Contacts.getContactsAsync({
+          fields: [Contacts.Fields.PhoneNumbers],
+        });
+
+        const phones: string[] = [];
+        data.forEach((contact) => {
+          contact.phoneNumbers?.forEach((phone) => {
+            if (phone.number) {
+              const clean = phone.number.replace(/\D/g, '');
+              if (clean.length >= 8) phones.push(clean);
+            }
+          });
+        });
+
+        if (phones.length > 0) {
+          // Busca apenas os contatos da agenda que têm o Vibe
+          fetched = await chatSyncContacts(phones);
+        } else {
+          fetched = await chatListUsers();
+        }
+      } else {
+        // Se negar a permissão, lista vazia e bloqueada
+        setContactsPermissionDenied(true);
+        fetched = [];
+      }
+
       setUsers(fetched);
       await saveCache(CACHE_KEYS.CONTACTS, fetched);
     } catch (error: any) {
@@ -140,6 +173,22 @@ export default function ContactsScreen({ navigation }: Props) {
             style={{ backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 24 }}
           >
             <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>Tentar novamente</Text>
+          </TouchableOpacity>
+        </View>
+      ) : contactsPermissionDenied ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
+          <Ionicons name="people-circle-outline" size={80} color={colors.textSecondary} style={{ marginBottom: 16 }} />
+          <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: 'bold', textAlign: 'center', marginBottom: 8 }}>
+            Encontre seus Amigos
+          </Text>
+          <Text style={{ color: colors.textSecondary, fontSize: 15, textAlign: 'center', marginBottom: 24, lineHeight: 22 }}>
+            Para conversar com seus amigos no Vibe, você precisa permitir o acesso aos contatos da sua agenda.
+          </Text>
+          <TouchableOpacity
+            onPress={() => Linking.openSettings()}
+            style={{ backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 24 }}
+          >
+            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Permitir Acesso</Text>
           </TouchableOpacity>
         </View>
       ) : (
