@@ -1303,7 +1303,9 @@ export default function ChatScreen({ navigation, route }: Props) {
                     <Text style={[styles.emptyChatSubtitle, { color: colors.textSecondary }]}>
                       Envie uma mensagem ou toque no aceno abaixo.
                     </Text>
-                    <Text style={styles.emptyChatSticker}>👋🐻</Text>
+                    <TouchableOpacity activeOpacity={0.7} onPress={() => handleSend('👋')}>
+                      <Text style={styles.emptyChatSticker}>👋🐻</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
               ) : null
@@ -1443,7 +1445,9 @@ export default function ChatScreen({ navigation, route }: Props) {
                     <Text style={[styles.emptyChatSubtitle, { color: colors.textSecondary }]}>
                       Envie uma mensagem ou toque no aceno abaixo.
                     </Text>
-                    <Text style={styles.emptyChatSticker}>👋🐻</Text>
+                    <TouchableOpacity activeOpacity={0.7} onPress={() => handleSend('👋')}>
+                      <Text style={styles.emptyChatSticker}>👋🐻</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
               ) : null
