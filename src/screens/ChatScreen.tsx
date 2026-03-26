@@ -272,9 +272,8 @@ export default function ChatScreen({ navigation, route }: Props) {
             } catch (error: any) {
               console.error('Erro ao excluir conversa:', error);
               Alert.alert(
-                'Erro',
-                error?.message ||
-                  'Não foi possível excluir. Verifique se o backend possui rota DELETE /api/conversations/:id.'
+                'Falha ao excluir',
+                'Nao foi possivel excluir a conversa no momento. Tente novamente em instantes.'
               );
             }
           },
@@ -354,6 +353,7 @@ export default function ChatScreen({ navigation, route }: Props) {
         }
       } catch (error: any) {
         console.error('Erro ao carregar mensagens:', error);
+        Alert.alert('Erro de Conexao', 'Nao foi possivel carregar o historico de mensagens.');
         if (active) setLoading(false);
       }
     };
