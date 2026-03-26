@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { TouchableOpacity, Modal, Pressable, View, Text, StyleSheet, Alert } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
@@ -17,6 +17,7 @@ import SettingsScreen from '../screens/SettingsScreen';
 import ContactsScreen from '../screens/ContactsScreen';
 import NewChatScreen from '../screens/NewChatScreen';
 import NewGroupScreen from '../screens/NewGroupScreen';
+import GroupProfileScreen from '../screens/GroupProfileScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import PrivacyScreen from '../screens/PrivacyScreen';
@@ -86,6 +87,7 @@ export default function AppNavigator() {
         <Stack.Screen name="ContactProfile" component={ContactProfileScreen} options={{ headerShown: false }} />
         <Stack.Screen name="NewChat" component={NewChatScreen} options={{ title: 'Nova Conversa' }} />
         <Stack.Screen name="NewGroup" component={NewGroupScreen} options={{ title: 'Novo Grupo' }} />
+        <Stack.Screen name="GroupProfile" component={GroupProfileScreen} options={{ headerShown: false }} />
         <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Editar Perfil' }} />
         <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Notificacoes' }} />
         <Stack.Screen name="Privacy" component={PrivacyScreen} options={{ title: 'Privacidade' }} />

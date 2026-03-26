@@ -1,4 +1,4 @@
-export type RootStackParamList = {
+﻿export type RootStackParamList = {
   // Auth
   Login: undefined;
   Register: undefined;
@@ -38,4 +38,10 @@ export type RootStackParamList = {
   Privacy: undefined;
   DataStorage: undefined;
   Help: undefined;
+  GroupProfile: {
+    conversationId: string;
+    name: string;
+    avatar?: string | null;
+    membersCount?: number;
+  };
 };
