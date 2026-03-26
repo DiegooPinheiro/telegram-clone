@@ -4,12 +4,16 @@ Um aplicativo de mensagens moderno e funcional, construído com **React Native (
 
 ---
 
-## 🚀 Novidades da Versão 2.0
+## 🚀 Novidades da Versão 2.1 (Segurança & UX)
 
+- **Criptografia AES-256**: Todas as mensagens são criptografadas em repouso no banco de dados.
+- **Sanitização de Conteúdo**: Filtro automático contra scripts maliciosos (XSS) em todas as mensagens.
+- **Recuperação de Conta**: Nova funcionalidade "Esqueci minha senha" na tela de login via Firebase.
+- **Auditoria de Segurança**: Logs detalhados de ações importantes (deletar para todos, logins, edições).
+- **Mídia Segura**: Configuração do Cloudinary migrada 100% para variáveis de ambiente.
 - **Remoção do CometChat**: Migração completa para uma infraestrutura própria e independente.
-- **Sincronização de Agenda**: O app lê os contatos do seu celular e identifica automaticamente quem já tem o app instalado via Firestore.
-- **Notificações Estilo Telegram**: Novo sistema de *Toasts* in-app com foto do remetente, nome e prévia da mensagem, permitindo navegação direta para o chat.
-- **Resiliência de Sessão**: Correção de condições de corrida (race conditions) no login para garantir que o chat conecte instantaneamente ao abrir o app.
+- **Sincronização de Agenda**: Identificação automática de contatos que possuem o app.
+- **Notificações Estilo Telegram**: Sistema de *Toasts* in-app com navegação direta para o chat.
 
 ---
 
@@ -17,32 +21,15 @@ Um aplicativo de mensagens moderno e funcional, construído com **React Native (
 
 ### Frontend (Mobile)
 - **Expo / React Native**: Base do aplicativo.
-- **React Navigation**: Navegação por abas e pilhas (Stack & Tabs).
-- **Socket.IO Client**: Comunicação bidirecional e instantânea.
-- **Expo Contacts**: Integração com a agenda nativa do dispositivo.
-- **TypeScript**: Tipagem estática para maior segurança no desenvolvimento.
+- **Firebase SDK**: Autenticação e Firestore.
+- **Socket.IO Client**: Comunicação em tempo real.
+- **TypeScript**: Segurança e produtividade.
 
-### Backend & Serviços
-- **Firebase Auth**: Autenticação segura por E-mail/Senha.
-- **Firebase Firestore**: Armazenamento de perfis, bio, status online e busca rápida de UIDs por telefone.
-- **Custom Chat API (Node.js/Express)**: Gerenciamento de conversas, histórico de mensagens e tokens JWT.
-- **MongoDB**: Banco de dados persistente para as mensagens da Chat API.
-- **Socket.IO Server**: Engine de tempo real hospedada no Render.com.
-
----
-
-## 📁 Estrutura de Pastas (Principais)
-
-```bash
-src/
- ├── components/       # Componentes reutilizáveis (Avatar, MessageToast, ChatItem)
- ├── screens/          # Telas principais (Chats, Contatos, Configurações)
- ├── services/         # Integrações (chatApi, chatSocket, authService, contactSync)
- ├── config/           # Configurações de Firebase e Chat API
- ├── hooks/            # Hooks customizados (useTheme, useAuth)
- ├── navigation/       # Configuração de rotas e navigators
- └── types/            # Definições de tipos TypeScript
-```
+### Backend & Segurança
+- **Node.js / Express**: Custom Chat API.
+- **Firebase Admin**: Autenticação segura no servidor.
+- **MongoDB**: Armazenamento persistente com criptografia.
+- **Cloudinary**: Armazenamento de mídia (Imagens, Vídeos, Documentos).
 
 ---
 
@@ -54,37 +41,25 @@ npm install
 ```
 
 ### 2. Variáveis de Ambiente (.env)
-Crie um arquivo `.env` na raiz (baseado no `.env.example`) com as seguintes chaves:
+Baseado no `.env.example`, preencha as chaves:
 
-#### Firebase Config
-Obtenha estas chaves no Console do Firebase:
-- `EXPO_PUBLIC_FIREBASE_API_KEY`
-- `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN`
-- `EXPO_PUBLIC_FIREBASE_PROJECT_ID`
-- `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET`
-- `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
-- `EXPO_PUBLIC_FIREBASE_APP_ID`
+#### Firebase & Cloudinary
+- `EXPO_PUBLIC_FIREBASE_API_KEY`, `EXPO_PUBLIC_FIREBASE_PROJECT_ID`, etc.
+- `EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME`: Seu Cloud Name.
+- `EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET`: Seu Preset (unsigned).
 
-#### Chat API Config
-- `EXPO_PUBLIC_CHAT_API_URL`: URL do seu servidor backend (ex: `https://sua-api.onrender.com/api`)
+#### Chat API
+- `EXPO_PUBLIC_CHAT_API_URL`: URL do backend (ex: `https://sua-api.onrender.com/`).
 
 ---
 
-## 🔄 Fluxo de Funcionamento
+## 🔒 Segurança e Privacidade
 
-1. **Autenticação Dupla**: Ao fazer login no Firebase, o app autentica automaticamente na Chat API usando as mesmas credenciais, gerando um token JWT persistente.
-2. **Sincronização de Contatos**: O app solicita permissão para ler a agenda. Ele normaliza os números de telefone e consulta no Firestore quais usuários correspondem àqueles números, os adicionando à lista de contatos.
-3. **Tempo Real**: O Socket.io conecta assim que a sessão é validada. Se uma mensagem chega e o usuário não está no chat aberto, um **MessageToast** customizado aparece no topo.
-
----
-
-## ⚠️ Dúvidas Comuns e Troubleshooting
-
-- **"Sessão Ausente" ou Loading Infinito**: O app agora possui um mecanismo de *retry* que aguarda o token ser salvo no dispositivo antes de liberar a tela principal. Se persistir, tente sair e entrar novamente na conta.
-- **ERRO 404 na API**: Certifique-se de que a `EXPO_PUBLIC_CHAT_API_URL` contenha o sufixo `/api` caso o seu backend utilize este prefixo de rotas.
-- **Delay no Render**: Como o backend gratuito do Render "dorme", a primeira mensagem ou o primeiro login do dia pode demorar até 50 segundos para responder.
+- **Controle de Acesso**: Apenas participantes do chat podem ver ou apagar mensagens.
+- **Privilégios de Deleção**: Apenas o autor original pode deletar uma mensagem "para todos".
+- **Logs de Auditoria**: O backend registra tentativas de acesso não autorizado e ações críticas.
 
 ---
 
 ## 📄 Licença
-Projeto desenvolvido para fins educacionais e portfólio. Inspirado na interface oficial do Telegram.
+Inspirado na interface oficial do Telegram. Desenvolvido para fins de portfólio.
