@@ -2,15 +2,12 @@
  * Cloudinary direct upload service.
  * Uploads media files directly from the app to Cloudinary (persistent storage),
  * bypassing the ephemeral Render server filesystem.
- *
- * Cloud Name:    DNPfzerwn
- * Upload Preset: qfgbchxk  (unsigned)
  */
 import * as FileSystem from 'expo-file-system/legacy';
 
-const CLOUD_NAME = 'DNP1zezwn';
-const UPLOAD_PRESET = 'qfgbqhxk';
-const UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`;
+const CLOUD_NAME = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
+const UPLOAD_PRESET = process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+const UPLOAD_URL = process.env.EXPO_PUBLIC_CLOUDINARY_API_URL || `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`;
 
 export type CloudinaryUploadResult = {
   mediaUrl: string;
