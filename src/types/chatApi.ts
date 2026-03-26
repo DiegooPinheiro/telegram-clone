@@ -8,6 +8,10 @@ export type ChatApiUser = {
 export type ChatApiConversation = {
   _id: string;
   participants: ChatApiUser[];
+  isGroup?: boolean;
+  groupName?: string;
+  groupAvatar?: string;
+  groupAdmin?: string;
   unreadCount?: number;
   lastMessage?: {
     text?: string;

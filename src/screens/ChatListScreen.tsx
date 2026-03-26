@@ -126,6 +126,9 @@ export default function ChatListScreen({ navigation }: Props) {
     if (!normalized) return conversations;
 
     return conversations.filter((c) => {
+      if (c.isGroup && c.groupName) {
+        return c.groupName.toLowerCase().includes(normalized);
+      }
       const other = getOtherParticipant(c, myUserId);
       const name = other?.nome || other?.username || '';
       return name.toLowerCase().includes(normalized);
@@ -134,9 +137,11 @@ export default function ChatListScreen({ navigation }: Props) {
 
   const renderConversation = useCallback(
     ({ item }: { item: ChatApiConversation }) => {
-      const other = getOtherParticipant(item, myUserId);
-      const name = other?.nome || other?.username || 'Conversa';
-      const avatar = other?.foto || null;
+      const isGroup = !!item.isGroup;
+      const other = !isGroup ? getOtherParticipant(item, myUserId) : null;
+      
+      const name = isGroup ? (item.groupName || 'Grupo') : (other?.nome || other?.username || 'Conversa');
+      const avatar = isGroup ? (item.groupAvatar || null) : (other?.foto || null);
 
       const lastMessageText = item.lastMessage?.text ? String(item.lastMessage.text) : '';
       const lastMessageSenderId = extractParticipantId(item.lastMessage?.senderId);
@@ -158,17 +163,18 @@ export default function ChatListScreen({ navigation }: Props) {
           avatar={avatar}
           online={false}
           onPress={() => {
-            if (!other?._id) {
+            if (!isGroup && !other?._id) {
               Alert.alert('Erro', 'Participante inválido nesta conversa.');
               return;
             }
 
             navigation.navigate('Chat', {
               conversationId: item._id,
-              userId: other._id,
+              userId: other?._id,
               name,
               avatar,
-              username: other.username,
+              username: other?.username,
+              isGroup,
             });
           }}
           onLongPress={() => {
@@ -314,6 +320,7 @@ export default function ChatListScreen({ navigation }: Props) {
 }
 
 const getOtherParticipant = (conversation: ChatApiConversation, myUserId: string | null): ChatApiUser | null => {
+  if (conversation.isGroup) return null;
   if (!conversation.participants || conversation.participants.length === 0) return null;
   if (!myUserId) return conversation.participants[0];
 

@@ -143,6 +143,20 @@ export const chatCreateConversation = async (participantId: string): Promise<Cha
   );
 };
 
+export const chatCreateGroup = async (payload: {
+  participantIds: string[];
+  groupName: string;
+  groupAvatar?: string;
+}): Promise<ChatApiConversation> => {
+  return requestJson<ChatApiConversation>(
+    '/api/conversations/groups',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }
+  );
+};
+
 export const chatDeleteConversation = async (conversationId: string): Promise<{ message?: string } | any> => {
   return requestJson<{ message?: string }>(`/api/conversations/${conversationId}`, { method: 'DELETE' });
 };

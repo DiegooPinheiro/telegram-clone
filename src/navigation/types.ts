@@ -1,4 +1,4 @@
-﻿export type RootStackParamList = {
+export type RootStackParamList = {
   // Auth
   Login: undefined;
   Register: undefined;
@@ -16,10 +16,11 @@
   ChatList: undefined;
   Chat: {
     conversationId?: string;
-    userId: string;
+    userId?: string;
     name: string;
     avatar?: string | null;
     username?: string;
+    isGroup?: boolean;
   };
   Profile: { uid?: string };
   ContactProfile: {

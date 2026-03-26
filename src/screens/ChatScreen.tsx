@@ -89,7 +89,14 @@ type ActiveAudio = {
 export default function ChatScreen({ navigation, route }: Props) {
   const EMOJI_SEARCH_LIFT = 176;
   const { colors, isDark } = useTheme();
-  const { conversationId: initialConversationId, userId: receiverId, name, avatar, username } = route.params;
+  const { 
+    conversationId: initialConversationId, 
+    userId: receiverId, 
+    name, 
+    avatar, 
+    username,
+    isGroup: initialIsGroup 
+  } = route.params;
 
   const flatListRef = useRef<FlatList>(null);
   const messageInputRef = useRef<MessageInputHandle | null>(null);
@@ -593,7 +600,11 @@ export default function ChatScreen({ navigation, route }: Props) {
       return conversationId;
     }
 
-    const conversation = await chatCreateConversation(receiverId);
+    if (!receiverId) {
+      throw new Error('Impossível iniciar conversa sem um destinatário ou ID de grupo.');
+    }
+
+    const conversation = await chatCreateConversation(receiverId as string);
     setConversationId(conversation._id);
     navigation.setParams({ conversationId: conversation._id });
     return conversation._id;
@@ -684,7 +695,7 @@ export default function ChatScreen({ navigation, route }: Props) {
         sendMessageSocket({
           conversationId: resolvedConversationId,
           senderId: myUserId,
-          receiverId,
+          receiverId: receiverId || undefined,
           clientMessageId: optimisticMessage.clientMessageId || undefined,
           text,
         });
@@ -743,7 +754,7 @@ export default function ChatScreen({ navigation, route }: Props) {
         sendMessageSocket({
           conversationId: resolvedConversationId,
           senderId: myUserId,
-          receiverId,
+          receiverId: receiverId || undefined,
           clientMessageId,
           text,
           mediaUrl: uploaded.mediaUrl,
@@ -1168,7 +1179,9 @@ export default function ChatScreen({ navigation, route }: Props) {
       const senderId = extractUserId(msg.senderId);
       const isMine = !!myUserId && !!senderId && senderId === myUserId;
 
-      const senderName = !isMine ? extractUserName(msg.senderId) || name : undefined;
+      const senderName = !isMine 
+        ? (extractUserName(msg.senderId) || (initialIsGroup ? undefined : name)) 
+        : undefined;
       const text = msg.text ? String(msg.text) : '';
       const timestamp = Math.floor(new Date(msg.createdAt).getTime() / 1000);
       const status: LocalMessageStatus | undefined = isMine
@@ -1383,11 +1396,11 @@ export default function ChatScreen({ navigation, route }: Props) {
             onSendRecording={handleSendVoiceRecording}
             onTyping={() => {
               if (!myUserId || !conversationId) return;
-              sendTypingSocket({ conversationId, senderId: myUserId, receiverId });
+              sendTypingSocket({ conversationId, senderId: myUserId, receiverId: receiverId || undefined });
             }}
             onStopTyping={() => {
               if (!myUserId || !conversationId) return;
-              sendStopTypingSocket({ conversationId, senderId: myUserId, receiverId });
+              sendStopTypingSocket({ conversationId, senderId: myUserId, receiverId: receiverId || undefined });
             }}
             disabled={uploading}
             emojiOpen={emojiOpen}
@@ -1525,11 +1538,11 @@ export default function ChatScreen({ navigation, route }: Props) {
             onSendRecording={handleSendVoiceRecording}
             onTyping={() => {
               if (!myUserId || !conversationId) return;
-              sendTypingSocket({ conversationId, senderId: myUserId, receiverId });
+              sendTypingSocket({ conversationId, senderId: myUserId, receiverId: receiverId || undefined });
             }}
             onStopTyping={() => {
               if (!myUserId || !conversationId) return;
-              sendStopTypingSocket({ conversationId, senderId: myUserId, receiverId });
+              sendStopTypingSocket({ conversationId, senderId: myUserId, receiverId: receiverId || undefined });
             }}
             disabled={uploading}
             emojiOpen={emojiOpen}

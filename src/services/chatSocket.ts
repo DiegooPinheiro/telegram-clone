@@ -203,7 +203,7 @@ export const onTypingEvent = (handler: TypingHandler) => {
 export const sendMessageSocket = (payload: {
   conversationId: string;
   senderId: string;
-  receiverId: string;
+  receiverId?: string;
   clientMessageId?: string;
   text?: string;
   mediaUrl?: string;
@@ -221,14 +221,14 @@ export const markMessagesReadSocket = (conversationId: string) => {
   socket.emit('mark_messages_read', { conversationId });
 };
 
-export const sendTypingSocket = (payload: { conversationId: string; senderId: string; receiverId: string }) => {
+export const sendTypingSocket = (payload: { conversationId: string; senderId: string; receiverId?: string }) => {
   if (!socket) return;
   socket.emit('typing', { ...payload, typing: true });
   socket.emit('typing_status', { ...payload, typing: true });
   socket.emit('typingStatus', { ...payload, typing: true });
 };
 
-export const sendStopTypingSocket = (payload: { conversationId: string; senderId: string; receiverId: string }) => {
+export const sendStopTypingSocket = (payload: { conversationId: string; senderId: string; receiverId?: string }) => {
   if (!socket) return;
   socket.emit('stop_typing', { ...payload, typing: false });
   socket.emit('typing_status', { ...payload, typing: false });
