@@ -6,6 +6,7 @@ import {
   User,
   updateProfile,
   deleteUser,
+  sendPasswordResetEmail,
 } from 'firebase/auth';
 import {
   doc,
@@ -270,4 +271,12 @@ export const deleteUserAccount = async () => {
     }
     throw error;
   }
+};
+
+/**
+ * Enviar e-mail de redefinição de senha do Firebase.
+ */
+export const resetPassword = async (email: string) => {
+  if (!email || !email.trim()) throw new Error('E-mail é obrigatório para redefinir a senha.');
+  await sendPasswordResetEmail(auth, email.trim().toLowerCase());
 };

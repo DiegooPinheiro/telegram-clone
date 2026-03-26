@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/types';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
-import { signIn } from '../services/authService';
+import { signIn, resetPassword } from '../services/authService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
@@ -25,6 +25,20 @@ export default function LoginScreen({ navigation }: Props) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      Alert.alert('E-mail necessário', 'Por favor, digite seu e-mail no campo acima para receber as instrucões de redefinicao.');
+      return;
+    }
+
+    try {
+      await resetPassword(email);
+      Alert.alert('Sucesso', 'Um e-mail de redefinicao de senha foi enviado para: ' + email);
+    } catch (error: any) {
+      Alert.alert('Erro', error.message || 'Nao foi possivel enviar o e-mail de redefinicao.');
+    }
+  };
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -76,6 +90,10 @@ export default function LoginScreen({ navigation }: Props) {
               <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={22} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
+
+          <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotPasswordContainer}>
+            <Text style={styles.forgotPasswordText}>Esqueci minha senha</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
@@ -140,6 +158,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 0,
+  },
+  forgotPasswordContainer: {
+    alignSelf: 'flex-end',
+    marginTop: -spacing.xs,
+    marginBottom: spacing.xs,
+    padding: spacing.xs,
+  },
+  forgotPasswordText: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: '500',
   },
   passwordInput: {
     flex: 1,
