@@ -24,6 +24,8 @@ interface MessageBubbleProps {
   audioProgress?: number;
   audioPositionLabel?: string;
   audioDurationLabel?: string;
+  audioRate?: number;
+  onAudioRatePress?: () => void;
 }
 
 export default function MessageBubble({
@@ -47,6 +49,8 @@ export default function MessageBubble({
   audioProgress = 0,
   audioPositionLabel = '0:00',
   audioDurationLabel = '0:00',
+  audioRate = 1.0,
+  onAudioRatePress,
 }: MessageBubbleProps) {
   const { colors, isDark } = useTheme();
   const selectAnim = useRef(new Animated.Value(selected ? 1 : 0)).current;
@@ -265,12 +269,39 @@ export default function MessageBubble({
               </View>
 
               <View style={styles.audioBody}>
-                <Text style={styles.audioTitle} numberOfLines={1}>
-                  {trimAudioTitle(fileName)}
-                </Text>
-                <View style={styles.audioProgressTrack}>
-                  <View style={[styles.audioProgressFill, { width: `${Math.max(0, Math.min(100, audioProgress * 100))}%` }]} />
+                <View style={styles.audioMetaRow}>
+                  <Text style={styles.audioTitle} numberOfLines={1}>
+                    {trimAudioTitle(fileName)}
+                  </Text>
+                  {isAudioPlaying && (
+                    <TouchableOpacity 
+                      activeOpacity={0.7} 
+                      onPress={onAudioRatePress} 
+                      style={styles.ratePill}
+                    >
+                      <Text style={styles.rateText}>{audioRate}x</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
+
+                <View style={styles.audioWaveformContainer}>
+                  {Array.from({ length: 32 }).map((_, i) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.waveformBar,
+                        {
+                          height: 4 + (Math.abs(Math.sin((i + (id?.length || 0)) * 0.8)) * 14),
+                          backgroundColor:
+                            i / 32 < audioProgress 
+                              ? '#ffffff' 
+                              : 'rgba(255,255,255,0.35)',
+                        },
+                      ]}
+                    />
+                  ))}
+                </View>
+
                 <Text style={styles.audioTime}>
                   {audioPositionLabel} / {audioDurationLabel}
                 </Text>
@@ -588,25 +619,43 @@ const styles = StyleSheet.create({
   },
   audioTitle: {
     color: '#ffffff',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
+    flex: 1,
   },
-  audioProgressTrack: {
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.38)',
-    marginTop: 8,
-    overflow: 'hidden',
+  audioMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
   },
-  audioProgressFill: {
-    height: '100%',
-    borderRadius: 2,
-    backgroundColor: '#ffffff',
+  ratePill: {
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 10,
+    marginLeft: 6,
+  },
+  rateText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  audioWaveformContainer: {
+    height: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 1.5,
+    marginVertical: 4,
+  },
+  waveformBar: {
+    width: 2.2,
+    borderRadius: 1,
   },
   audioTime: {
-    marginTop: 6,
+    marginTop: 2,
     color: 'rgba(255,255,255,0.92)',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
   },
   audioMenuIcon: {

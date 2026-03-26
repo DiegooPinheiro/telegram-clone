@@ -83,6 +83,7 @@ type ActiveAudio = {
   isPlaying: boolean;
   positionMillis: number;
   durationMillis: number;
+  rate: number;
 };
 
 export default function ChatScreen({ navigation, route }: Props) {
@@ -1031,12 +1032,19 @@ export default function ChatScreen({ navigation, route }: Props) {
 
         audioSoundRef.current = sound;
         const loadedStatus = status as AVPlaybackStatusSuccess;
+        
+        // Aplica a velocidade atual se for diferente de 1x
+        if (activeAudio?.rate && activeAudio.rate !== 1) {
+          await sound.setRateAsync(activeAudio.rate, true);
+        }
+
         setActiveAudio({
           uri,
           fileName,
           isPlaying: loadedStatus.isPlaying ?? true,
           positionMillis: loadedStatus.positionMillis || 0,
           durationMillis: loadedStatus.durationMillis || 0,
+          rate: activeAudio?.rate || 1.0,
         });
       } catch (error: any) {
         console.error('Erro ao reproduzir áudio:', error);
@@ -1062,6 +1070,22 @@ export default function ChatScreen({ navigation, route }: Props) {
       setActiveAudio(null);
     }
   }, []);
+
+  const handleToggleAudioRate = useCallback(async () => {
+    if (!audioSoundRef.current || !activeAudio) return;
+
+    let nextRate = 1.0;
+    if (activeAudio.rate === 1.0) nextRate = 1.5;
+    else if (activeAudio.rate === 1.5) nextRate = 2.0;
+    else nextRate = 1.0;
+
+    try {
+      await audioSoundRef.current.setRateAsync(nextRate, true);
+      setActiveAudio(prev => prev ? { ...prev, rate: nextRate } : null);
+    } catch (err) {
+      console.error('Erro ao mudar velocidade do áudio:', err);
+    }
+  }, [activeAudio]);
 
   const pickFromGallery = useCallback(async () => {
     setAttachOpen(false);
@@ -1184,6 +1208,8 @@ export default function ChatScreen({ navigation, route }: Props) {
               ? formatAudioTime(activeAudio.durationMillis)
               : '0:00'
           }
+          audioRate={!!msg.mediaUrl && activeAudio?.uri === msg.mediaUrl ? activeAudio.rate : 1.0}
+          onAudioRatePress={handleToggleAudioRate}
           onImagePress={({ uri, timestamp: imageTimestamp, senderName: imageSenderName }) => {
             if (selectionMode) {
               setSelectedMessageIds((prev) =>
