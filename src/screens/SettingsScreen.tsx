@@ -19,6 +19,7 @@ import useTheme from '../hooks/useTheme';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { UserProfile } from '../types/user';
 import CustomAlert from '../components/CustomAlert';
+import PasswordModal from '../components/PasswordModal';
 import { Pressable, Modal } from 'react-native';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
@@ -30,6 +31,8 @@ export default function SettingsScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [localMenuVisible, setLocalMenuVisible] = useState(false);
+  const [isPassModalVisible, setIsPassModalVisible] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [alertConfig, setAlertConfig] = useState<{
     visible: boolean;
@@ -91,18 +94,27 @@ export default function SettingsScreen({ navigation }: Props) {
     setAlertConfig({
       visible: true,
       title: 'Deletar Conta',
-      message: 'AVISO: Isso apagara permanentemente todos os seus dados. Esta acao nao pode ser desfeita.',
+      message: 'AVISO: Isso apagará permanentemente todos os seus dados no app e no servidor. Esta ação não pode ser desfeita.',
       confirmLabel: 'DELETAR',
       isDestructive: true,
-      onConfirm: async () => {
+      onConfirm: () => {
         hideAlert();
-        try {
-          await deleteUserAccount();
-        } catch (error: any) {
-          Alert.alert('Erro', error.message || 'Erro ao deletar conta');
-        }
+        setTimeout(() => setIsPassModalVisible(true), 500);
       },
     });
+  };
+
+  const onConfirmDeletion = async (password: string) => {
+    setIsDeleting(true);
+    try {
+      await deleteUserAccount(password);
+      // O AppNavigator irá redirecionar automaticamente pois o estado de auth mudará
+    } catch (error: any) {
+      Alert.alert('Erro', error.message || 'Falha ao deletar conta');
+    } finally {
+      setIsDeleting(false);
+      setIsPassModalVisible(false);
+    }
   };
 
   const headerPhone = profile?.phone || '+55 (XX) XXXXX-XXXX';
@@ -199,6 +211,16 @@ export default function SettingsScreen({ navigation }: Props) {
         onConfirm={alertConfig.onConfirm}
         confirmLabel={alertConfig.confirmLabel}
         isDestructive={alertConfig.isDestructive}
+      />
+
+      <PasswordModal
+        visible={isPassModalVisible}
+        loading={isDeleting}
+        onCancel={() => setIsPassModalVisible(false)}
+        onConfirm={onConfirmDeletion}
+        title="Confirmação de Segurança"
+        message="Por favor, digite sua senha para confirmar a exclusão permanente da sua conta."
+        confirmLabel="EXCLUIR AGORA"
       />
 
       <Modal transparent visible={localMenuVisible} animationType="fade" onRequestClose={() => setLocalMenuVisible(false)}>

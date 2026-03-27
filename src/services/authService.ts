@@ -9,6 +9,8 @@ import {
   sendPasswordResetEmail,
   PhoneAuthProvider,
   signInWithCredential,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
 } from 'firebase/auth';
 import {
   doc,
@@ -23,7 +25,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from '../config/firebaseConfig';
 import { UserProfile } from '../types/user';
-import { chatSyncFirebaseUser, chatRegisterPushToken } from './chatApi';
+import { chatSyncFirebaseUser, chatRegisterPushToken, chatDeleteMe } from './chatApi';
 import { clearChatSession, setChatSession } from './chatSession';
 import { connectChatSocket, disconnectChatSocket } from './chatSocket';
 
@@ -257,29 +259,44 @@ export const getCurrentUser = () => {
  * Deletar conta do usuário.
  * Remove o perfil no Firestore e a conta no Firebase Auth.
  */
-export const deleteUserAccount = async () => {
+export const deleteUserAccount = async (password: string) => {
   const user = auth.currentUser;
-  if (!user) throw new Error('Usuário não autenticado.');
+  if (!user || !user.email) throw new Error('Usuário não autenticado.');
 
-  // 1. Remover do Firestore
+  // 1. Reautenticar para poder deletar conta sensivel
+  try {
+    const credential = EmailAuthProvider.credential(user.email, password);
+    await reauthenticateWithCredential(user, credential);
+  } catch (error: any) {
+    if (error.code === 'auth/wrong-password') {
+      throw new Error('Senha incorreta. Tente novamente.');
+    }
+    throw new Error('Erro na reautenticação: ' + error.message);
+  }
+
+  // 2. Remover do Backend (MongoDB)
+  try {
+    await chatDeleteMe();
+  } catch (error) {
+    console.error('[AuthService] Erro ao deletar no Backend:', error);
+  }
+
+  // 3. Remover do Firestore
   try {
     await deleteDoc(doc(db, 'users', user.uid));
   } catch (error) {
     console.error('[AuthService] Erro ao deletar documento no Firestore:', error);
   }
 
-  // 2. Limpar sessão local
+  // 4. Limpar sessão local
   await clearChatSession();
   disconnectChatSocket();
 
-  // 3. Remover do Firebase Auth
+  // 5. Remover do Firebase Auth
   try {
     await deleteUser(user);
   } catch (error: any) {
-    if (error.code === 'auth/requires-recent-login') {
-      throw new Error('Para deletar sua conta, você precisa fazer login novamente por segurança.');
-    }
-    throw error;
+    throw new Error('Erro ao deletar conta no Firebase: ' + error.message);
   }
 };
 

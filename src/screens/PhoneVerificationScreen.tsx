@@ -14,11 +14,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
 import { RootStackParamList } from '../navigation/types';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { auth } from '../config/firebaseConfig';
-import { PhoneAuthProvider, signInWithCredential } from 'firebase/auth';
+import { getEnv } from '../config/env';
+import { PhoneAuthProvider } from 'firebase/auth';
 import { setPhoneVerified } from '../services/authService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PhoneVerification'>;
@@ -29,6 +31,15 @@ export default function PhoneVerificationScreen({ navigation }: Props) {
   const [verificationId, setVerificationId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<'phone' | 'code'>('phone');
+
+  const firebaseConfig = {
+    apiKey: getEnv('EXPO_PUBLIC_FIREBASE_API_KEY'),
+    authDomain: getEnv('EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN'),
+    projectId: getEnv('EXPO_PUBLIC_FIREBASE_PROJECT_ID'),
+    storageBucket: getEnv('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET'),
+    messagingSenderId: getEnv('EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID'),
+    appId: getEnv('EXPO_PUBLIC_FIREBASE_APP_ID'),
+  };
 
   // Firebase recaptcha verifier
   const recaptchaVerifier = useRef<any>(null);
@@ -158,6 +169,12 @@ export default function PhoneVerificationScreen({ navigation }: Props) {
             )}
           </View>
         </ScrollView>
+        
+        <FirebaseRecaptchaVerifierModal
+          ref={recaptchaVerifier}
+          firebaseConfig={firebaseConfig}
+          attemptInvisibleVerification={true}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

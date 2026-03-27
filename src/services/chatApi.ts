@@ -1,4 +1,4 @@
-﻿import { CHAT_API_CONFIG } from '../config/chatApiConfig';
+import { CHAT_API_CONFIG } from '../config/chatApiConfig';
 import { auth } from '../config/firebaseConfig';
 import type { ChatApiConversation, ChatApiMessage, ChatApiUser } from '../types/chatApi';
 
@@ -84,3 +84,5 @@ export const chatUploadMedia = async (file: any) => {
   const uploaded = await requestJson<any>('/api/media/upload', { method: 'POST', body: form });
   return { ...uploaded, mediaUrl: toAbsoluteUrl(CHAT_API_CONFIG.BASE_URL, uploaded.mediaUrl) };
 };
+
+export const chatDeleteMe = async () => requestJson<any>('/api/users/me', { method: 'DELETE' });
