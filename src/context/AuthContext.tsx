@@ -24,18 +24,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkSession = async () => {
     const session = await getChatSession();
+    console.log('[AuthContext] Verificando sessão local. phoneVerified:', !!session?.phoneVerified);
     setPhoneVerified(!!session?.phoneVerified);
   };
 
   const refreshSession = async () => {
+    console.log('[AuthContext] Refresh manual da sessão solicitado');
     await checkSession();
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthChange((firebaseUser) => {
+    const unsubscribe = onAuthChange(async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
-        checkSession();
+        // Tenta a sessão local primeiro
+        const session = await getChatSession();
+        if (session && session.phoneVerified) {
+          setPhoneVerified(true);
+        } else {
+          // Se não estiver na sessão local, verifica o Firestore diretamente
+          // para evitar o race condition do carregamento inicial/login.
+          try {
+            const { doc, getDoc, getFirestore } = await import('firebase/firestore');
+            const db = getFirestore();
+            const snap = await getDoc(doc(db, 'users', firebaseUser.uid));
+            if (snap.exists() && (snap.data() as any).phoneVerified) {
+              setPhoneVerified(true);
+            } else {
+              setPhoneVerified(false);
+            }
+          } catch (e) {
+            setPhoneVerified(false);
+          }
+        }
       } else {
         setPhoneVerified(false);
       }
