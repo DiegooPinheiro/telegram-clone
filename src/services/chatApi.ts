@@ -22,43 +22,57 @@ const toAbsoluteUrl = (baseUrl: string, url: string) => {
 };
 
 let _cachedToken: string | null = null;
-let _tokenExpiresAt: number = 0;
 let _cachedTokenUid: string | null = null;
 
-const getFirebaseIdToken = async () => {
+const getFirebaseIdToken = async (forceRefresh = false) => {
   const user = auth.currentUser;
   if (!user) throw new Error('Sessão do Firebase ausente. Faça login novamente.');
-  const now = Date.now();
-  if (_cachedToken && _cachedTokenUid === user.uid && now < _tokenExpiresAt) return _cachedToken;
-  const token = await user.getIdToken(false);
+  
+  // Se não for forceRefresh e tivermos o token do mesmo usuário, podemos usar o cache local
+  // Porém, o ideal é confiar no getIdToken(false) que já tem cache interno do Firebase.
+  const token = await user.getIdToken(forceRefresh);
   _cachedToken = token;
   _cachedTokenUid = user.uid;
-  _tokenExpiresAt = now + 55 * 60 * 1000;
   return token;
 };
 
 export const invalidateCachedToken = () => {
   _cachedToken = null;
-  _tokenExpiresAt = 0;
   _cachedTokenUid = null;
 };
 
-const requestJson = async <T>(path: string, init: RequestInit, options: RequestOptions = {}): Promise<T> => {
+const requestJson = async <T>(path: string, init: RequestInit, options: RequestOptions & { _isRetry?: boolean } = {}): Promise<T> => {
   const baseUrl = normalizeBaseUrl(CHAT_API_CONFIG.BASE_URL);
   const url = `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
   const headers = new Headers(init.headers);
   headers.set('Accept', 'application/json');
+
   if (options.auth !== false) {
-    const firebaseToken = await getFirebaseIdToken();
+    const firebaseToken = await getFirebaseIdToken(!!options._isRetry);
     headers.set('Authorization', `Bearer ${firebaseToken}`);
   }
+
   if (!headers.has('Content-Type') && init.body && !(init.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
   }
+
   const response = await fetch(url, { ...init, headers });
   let data: any = null;
-  try { data = await response.json(); } catch { data = null; }
+  try { 
+    const text = await response.text();
+    data = text ? JSON.parse(text) : null; 
+  } catch { 
+    data = null; 
+  }
+
   if (!response.ok) {
+    // Se for não autorizado e ainda não tentamos o retry, tenta forçar um novo token
+    if (response.status === 401 && !options._isRetry && auth.currentUser) {
+      console.warn('[ChatApi] Token rejeitado (401). Tentando renovar e refazer a requisição...');
+      invalidateCachedToken();
+      return requestJson<T>(path, init, { ...options, _isRetry: true });
+    }
+
     const message = data && typeof data === 'object' && data.message ? data.message : `${response.status} ${response.statusText}`;
     throw new Error(message);
   }

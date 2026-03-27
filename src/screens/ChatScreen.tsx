@@ -49,6 +49,8 @@ import { getChatSession } from '../services/chatSession';
 import { getCachedMessages, setCachedMessages } from '../services/messageCache';
 import { cloudinaryUpload } from '../services/cloudinaryService';
 import { EmptyChatState } from '../components/EmptyChatState';
+import { WallpaperPicker } from '../components/WallpaperPicker';
+import { loadWallpaper, type WallpaperConfig, DEFAULT_WALLPAPER } from '../services/wallpaperService';
 import {
   markMessagesReadSocket,
   onMessagesDeleted,
@@ -122,6 +124,8 @@ export default function ChatScreen({ navigation, route }: Props) {
   const [conversationId, setConversationId] = useState<string | null>(initialConversationId ?? null);
   const [isGroup, setIsGroup] = useState<boolean>(!!initialIsGroup);
   const [messages, setMessages] = useState<LocalChatMessage[]>([]);
+  const [wallpaper, setWallpaper] = useState<WallpaperConfig>(DEFAULT_WALLPAPER);
+  const [wallpaperModalVisible, setWallpaperModalVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [attachOpen, setAttachOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -966,7 +970,7 @@ export default function ChatScreen({ navigation, route }: Props) {
   }, [finishVoiceRecording, handleUploadAndSend]);
 
   const handleAudioPress = useCallback(
-    async ({ uri, fileName }: { uri: string; fileName: string; mediaType?: string }) => {
+    async ({ uri, fileName, mediaType }: { uri: string; fileName: string; mediaType?: string }) => {
       if (audioActionLockRef.current) {
         return;
       }
@@ -1307,11 +1311,32 @@ export default function ChatScreen({ navigation, route }: Props) {
         ? (lastKeyboardHeight || DEFAULT_EMOJI_PANEL_HEIGHT)
       : 0;
 
+  const renderWallpaper = () => {
+    if (wallpaper.type === 'color') {
+      return <View style={[styles.chatWallpaper, { backgroundColor: wallpaper.value }]} />;
+    }
+    if (wallpaper.type === 'image') {
+      return <Image source={{ uri: wallpaper.value }} style={styles.chatWallpaper} resizeMode="cover" />;
+    }
+    if (wallpaper.type === 'pattern' && wallpaper.value === 'chat_bg_doodle') {
+      return (
+        <View style={[styles.chatWallpaper, { backgroundColor: isDark ? '#1c2431' : '#e5e5ea' }]}>
+          <Image 
+            source={require('../../assets/chat_bg_doodle.png')} 
+            style={[StyleSheet.absoluteFill, { width: '100%', height: '100%', opacity: isDark ? 0.35 : 0.15 }]} 
+            resizeMode="repeat"
+          />
+        </View>
+      );
+    }
+    return <View style={[styles.chatWallpaper, { backgroundColor: colors.backgroundChat }]} />;
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundChat }]} edges={['bottom']}>
       {Platform.OS === 'ios' ? (
         <KeyboardAvoidingView behavior="padding" style={styles.flex} keyboardVerticalOffset={headerHeight}>
-          <View style={[styles.chatWallpaper, { backgroundColor: colors.backgroundChat }]} />
+          {renderWallpaper()}
           {activeAudio ? (
             <View style={styles.inlineAudioPlayer}>
               <TouchableOpacity activeOpacity={0.8} onPress={() => handleAudioPress(activeAudio)}>
@@ -1448,7 +1473,7 @@ export default function ChatScreen({ navigation, route }: Props) {
         </KeyboardAvoidingView>
       ) : (
         <View style={styles.flex}>
-          <View style={[styles.chatWallpaper, { backgroundColor: colors.backgroundChat }]} />
+          {renderWallpaper()}
           {activeAudio ? (
             <View style={styles.inlineAudioPlayer}>
               <TouchableOpacity activeOpacity={0.8} onPress={() => handleAudioPress(activeAudio)}>
@@ -1693,9 +1718,12 @@ export default function ChatScreen({ navigation, route }: Props) {
               <Text style={[styles.menuText, { color: colors.textPrimary }]}>Buscar</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.menuItem} activeOpacity={0.7} onPress={() => { setHeaderMenuVisible(false); Alert.alert('Papel de Parede', 'Em breve.'); }}>
-              <Ionicons name="image-outline" size={24} color={colors.textPrimary} />
-              <Text style={[styles.menuText, { color: colors.textPrimary }]}>Trocar Papel de Parede</Text>
+            <TouchableOpacity style={styles.menuItem} activeOpacity={0.7} onPress={() => { 
+                setHeaderMenuVisible(false); 
+                setWallpaperModalVisible(true);
+            }}>
+              <Ionicons name="image-outline" size={22} color={colors.textPrimary} />
+              <Text style={[styles.menuText, { color: colors.textPrimary }]}>Papel de Parede</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.menuItem} activeOpacity={0.7} onPress={() => { setHeaderMenuVisible(false); Alert.alert('Limpar Histórico', 'Em breve.'); }}>
@@ -1741,6 +1769,13 @@ export default function ChatScreen({ navigation, route }: Props) {
           </View>
         </View>
       </Modal>
+
+      <WallpaperPicker 
+        visible={wallpaperModalVisible}
+        onClose={() => setWallpaperModalVisible(false)}
+        onSelect={(config) => setWallpaper(config)}
+        currentWallpaper={wallpaper}
+      />
     </SafeAreaView>
   );
 }
