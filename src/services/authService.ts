@@ -247,7 +247,9 @@ export const updateUserProfile = async (
       displayName: data.displayName || user.displayName || 'Usuário',
       photoURL: data.photoURL !== undefined ? data.photoURL : (user.photoURL || undefined),
       phone: data.phone !== undefined ? data.phone : (freshData.phone || undefined),
-    });
+      username: data.username !== undefined ? data.username : (freshData.username || undefined),
+      phoneVerified: freshData.phoneVerified || false,
+    } as any);
   }
 };
 

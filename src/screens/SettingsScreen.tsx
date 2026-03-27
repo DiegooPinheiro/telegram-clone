@@ -302,7 +302,7 @@ function SettingRow({
 
 const settingStyles = StyleSheet.create({
   container: {
-    backgroundColor: '#1C1C1D',
+    // Fundo da linha agora usa surface via props, removendo hardcoded
   },
   row: {
     flexDirection: 'row',
@@ -324,7 +324,6 @@ const settingStyles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
-    color: '#FFFFFF',
   },
   subtitle: {
     fontSize: 13,
@@ -338,7 +337,6 @@ const settingStyles = StyleSheet.create({
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: '#38383A',
     marginLeft: 62,
   },
 });
@@ -399,7 +397,6 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: '#1C1C1D',
   },
   menuBackdrop: {
     flex: 1,

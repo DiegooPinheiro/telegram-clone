@@ -2,7 +2,7 @@ export type RootStackParamList = {
   // Auth
   Login: undefined;
   Register: undefined;
-  PhoneVerification: undefined;
+  PhoneVerification: { isChangingNumber?: boolean } | undefined;
 
   // Flows
   MainFlow: { screen?: string; params?: any };
@@ -39,6 +39,9 @@ export type RootStackParamList = {
   Privacy: undefined;
   DataStorage: undefined;
   Help: undefined;
+  ChangePhone: undefined;
+  ChangeUsername: undefined;
+  ChangeBirthday: undefined;
   GroupProfile: {
     conversationId: string;
     name: string;

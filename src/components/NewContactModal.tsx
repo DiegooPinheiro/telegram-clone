@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Animated,
+  PanResponder,
+  Dimensions,
 } from 'react-native';
+
+const SCREEN_HEIGHT = Dimensions.get('window').height;
 import { Ionicons } from '@expo/vector-icons';
 import useTheme from '../hooks/useTheme';
 
@@ -32,6 +37,41 @@ export const NewContactModal: React.FC<NewContactModalProps> = ({ visible, onClo
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
   const [syncWithPhone, setSyncWithPhone] = useState(true);
+
+  const panY = useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    if (visible) {
+      panY.setValue(0);
+    }
+  }, [visible]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => gestureState.dy > 5,
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          panY.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 120 || gestureState.vy > 0.5) {
+          Animated.timing(panY, {
+            toValue: SCREEN_HEIGHT,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(onClose);
+        } else {
+          Animated.spring(panY, {
+            toValue: 0,
+            useNativeDriver: true,
+            bounciness: 5,
+          }).start();
+        }
+      },
+    })
+  ).current;
 
   const handleCreate = () => {
     if (!firstName.trim()) return;
@@ -55,13 +95,24 @@ export const NewContactModal: React.FC<NewContactModalProps> = ({ visible, onClo
       animationType="slide"
       onRequestClose={onClose}
     >
-      <Pressable style={styles.overlay} onPress={onClose}>
+      <View style={styles.overlay}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
         >
-          <Pressable style={[styles.sheet, { backgroundColor: colors.surface }]}>
-            <View style={styles.indicator} />
+          <Animated.View 
+            style={[
+              styles.sheet, 
+              { 
+                backgroundColor: colors.surface,
+                transform: [{ translateY: panY }]
+              }
+            ]}
+          >
+            <View style={styles.indicatorContainer} {...panResponder.panHandlers}>
+              <View style={styles.indicator} />
+            </View>
             
             <View style={styles.header}>
               <Text style={[styles.title, { color: colors.textPrimary }]}>Novo Contato</Text>
@@ -138,9 +189,9 @@ export const NewContactModal: React.FC<NewContactModalProps> = ({ visible, onClo
               {/* Espaçamento extra para garantir que o botão não seja cortado */}
               <View style={{ height: 20 }} />
             </ScrollView>
-          </Pressable>
+          </Animated.View>
         </KeyboardAvoidingView>
-      </Pressable>
+      </View>
     </Modal>
   );
 };
@@ -160,13 +211,18 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: Platform.OS === 'ios' ? 40 : 10,
   },
+  indicatorContainer: {
+    width: '100%',
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   indicator: {
     width: 36,
     height: 4,
     borderRadius: 2,
     backgroundColor: '#8e8e93',
     alignSelf: 'center',
-    marginBottom: 20,
   },
   header: {
     paddingHorizontal: 24,

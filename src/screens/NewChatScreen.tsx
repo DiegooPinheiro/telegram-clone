@@ -8,9 +8,7 @@ import { spacing } from '../theme/spacing';
 import ContactItem from '../components/ContactItem';
 import LoadingSpinner from '../components/LoadingSpinner';
 import useTheme from '../hooks/useTheme';
-import * as Contacts from 'expo-contacts';
-import { chatSyncContacts } from '../services/chatApi';
-import { getChatSession } from '../services/chatSession';
+import { chatListUsers } from '../services/chatApi';
 import type { ChatApiUser } from '../types/chatApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NewChat'>;
@@ -84,6 +82,7 @@ export default function NewChatScreen({ navigation }: Props) {
 
       <FlatList
         data={filteredUsers}
+        style={{ backgroundColor: themeColors.surface }}
         renderItem={({ item }) => (
           <ContactItem
             uid={item._id}

@@ -25,6 +25,8 @@ import PrivacyScreen from '../screens/PrivacyScreen';
 import DataStorageScreen from '../screens/DataStorageScreen';
 import HelpScreen from '../screens/HelpScreen';
 import PhoneVerificationScreen from '../screens/PhoneVerificationScreen';
+import ChangePhoneScreen from '../screens/ChangePhoneScreen';
+import ChangeUsernameScreen from '../screens/ChangeUsernameScreen';
 import FloatingBottomTab from '../components/FloatingBottomTab';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -96,6 +98,8 @@ export default function AppNavigator() {
         <Stack.Screen name="Privacy" component={PrivacyScreen} options={{ title: 'Privacidade' }} />
         <Stack.Screen name="DataStorage" component={DataStorageScreen} options={{ title: 'Dados e Armazenamento' }} />
         <Stack.Screen name="Help" component={HelpScreen} options={{ title: 'Ajuda' }} />
+        <Stack.Screen name="ChangePhone" component={ChangePhoneScreen} options={{ title: 'Alterar Numero' }} />
+        <Stack.Screen name="ChangeUsername" component={ChangeUsernameScreen} options={{ title: 'Nome de Usuario' }} />
         <Stack.Screen name="PhoneVerification" component={PhoneVerificationScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
 

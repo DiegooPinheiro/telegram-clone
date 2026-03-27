@@ -112,7 +112,17 @@ export default function GroupProfileScreen({ navigation, route }: Props) {
 
         {/* Action Buttons */}
         <View style={styles.actionsRow}>
-          <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.surface }]}>
+          <TouchableOpacity 
+            style={[styles.actionButton, { backgroundColor: colors.surface }]}
+            onPress={() => {
+              navigation.navigate('Chat', {
+                conversationId,
+                name,
+                avatar,
+                isGroup: true
+              });
+            }}
+          >
             <View style={styles.actionIconContainer}>
               <Ionicons name="chatbubble" size={22} color={colors.textPrimary} />
             </View>

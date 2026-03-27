@@ -8,18 +8,18 @@ const common = {
 
 export const light = {
   ...common,
-  background: "#ffffff",
-  backgroundSecondary: "#f0f0f0",
+  background: "#f0f2f5",      // Cinza claro para o fundo das telas
+  surface: "#ffffff",         // Branco puro para os itens e cards
+  backgroundSecondary: "#e4e6eb", // Cinza levemente mais escuro
   backgroundChat: "#d6e8c4",
-  surface: "#ffffff",
   bubbleMine: "#EFFDDE",
   bubbleTheirs: "#ffffff",
   textPrimary: "#000000",
   textSecondary: "#707579",
   textOnPrimary: "#ffffff",
   textTimestamp: "#8E8E93",
-  separator: "#e0e0e0",
-  inputBackground: "#f0f0f0",
+  separator: "#dcdfe3",       // Separador mais definido
+  inputBackground: "#ffffff", // Input branco puro conforme solicitado
   badgeUnread: "#d9d9dd",
   tabBarBackground: "#ffffff",
   tabBarActive: "#0088cc",

@@ -2,14 +2,16 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import useTheme from '../hooks/useTheme';
+import Avatar from './Avatar';
 
 interface EmptyChatStateProps {
   type: 'private' | 'group' | 'saved';
   name: string;
+  avatar?: string | null;
   onSendWave?: () => void;
 }
 
-export const EmptyChatState: React.FC<EmptyChatStateProps> = ({ type, name, onSendWave }) => {
+export const EmptyChatState: React.FC<EmptyChatStateProps> = ({ type, name, avatar, onSendWave }) => {
   const { colors, isDark } = useTheme();
 
   const getContent = () => {
@@ -24,7 +26,7 @@ export const EmptyChatState: React.FC<EmptyChatStateProps> = ({ type, name, onSe
         };
       case 'group':
         return {
-          icon: 'people',
+          icon: avatar ? null : 'people',
           title: name || 'Novo Grupo',
           subtitle: 'Este é o início da sua conversa em grupo. Envie uma mensagem para começar!',
           sticker: null,
@@ -47,7 +49,13 @@ export const EmptyChatState: React.FC<EmptyChatStateProps> = ({ type, name, onSe
     <View style={styles.container}>
       <View style={[styles.card, { backgroundColor: isDark ? '#1c1c1e' : '#ffffff' }]}>
         {content.sticker && <Text style={styles.sticker}>{content.sticker}</Text>}
-        {content.icon && <Ionicons name={content.icon as any} size={64} color={colors.primary} style={styles.icon} />}
+        { (type === 'group' || avatar) && type !== 'saved' ? (
+          <View style={styles.icon}>
+            <Avatar uri={avatar} name={name} size={80} />
+          </View>
+        ) : (
+          content.icon && <Ionicons name={content.icon as any} size={64} color={colors.primary} style={styles.icon} />
+        )}
         
         <Text style={[styles.title, { color: colors.textPrimary }]}>{content.title}</Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{content.subtitle}</Text>

@@ -9,6 +9,7 @@ import {
   Platform,
   ActivityIndicator,
   ScrollView,
+  Alert,
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -130,13 +131,23 @@ export default function PhoneVerificationScreen({ navigation }: Props) {
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <TouchableOpacity 
             onPress={async () => {
-              await signOut();
+              if (navigation.canGoBack()) {
+                navigation.goBack();
+              } else {
+                await signOut();
+              }
             }} 
             style={styles.backButton}
           >
             <View style={styles.signOutButton}>
-              <Ionicons name="exit-outline" size={20} color={colors.textPrimary} />
-              <Text style={[styles.signOutText, { color: colors.textPrimary }]}>Sair</Text>
+              <Ionicons 
+                name={navigation.canGoBack() ? "arrow-back" : "exit-outline"} 
+                size={20} 
+                color={colors.textPrimary} 
+              />
+              <Text style={[styles.signOutText, { color: colors.textPrimary }]}>
+                {navigation.canGoBack() ? 'Voltar' : 'Sair'}
+              </Text>
             </View>
           </TouchableOpacity>
 

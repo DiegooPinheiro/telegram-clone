@@ -245,6 +245,7 @@ export default function ChatListScreen({ navigation }: Props) {
 
       <FlatList
         data={filteredConversations}
+        style={{ backgroundColor: themeColors.surface }}
         renderItem={renderConversation}
         keyExtractor={(item) => item._id}
         contentContainerStyle={styles.listContent}
@@ -338,7 +339,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 10,
-    backgroundColor: '#0e1621',
   },
   headerRow: {
     flexDirection: 'row',

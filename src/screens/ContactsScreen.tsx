@@ -128,6 +128,11 @@ export default function ContactsScreen({ navigation }: Props) {
       if (!silent) setLoading(false);
     }
   }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadUsers();
+    }, [loadUsers])
+  );
 
   const handleSaveContact = async (data: { firstName: string, lastName: string, phone: string, syncWithPhone: boolean }) => {
     try {

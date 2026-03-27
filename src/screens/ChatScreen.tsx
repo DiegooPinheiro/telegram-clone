@@ -1348,6 +1348,7 @@ export default function ChatScreen({ navigation, route }: Props) {
                 <EmptyChatState 
                   type={username === 'me' ? 'saved' : isGroup ? 'group' : 'private'}
                   name={name}
+                  avatar={avatar}
                   onSendWave={() => handleSend('👋')}
                 />
               ) : null
@@ -1484,6 +1485,7 @@ export default function ChatScreen({ navigation, route }: Props) {
                 <EmptyChatState 
                   type={username === 'me' ? 'saved' : isGroup ? 'group' : 'private'}
                   name={name}
+                  avatar={avatar}
                   onSendWave={() => handleSend('👋')}
                 />
               ) : null

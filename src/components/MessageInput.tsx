@@ -433,7 +433,6 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 40,
     borderRadius: 26,
-    backgroundColor: '#1a201bff',
     position: 'relative',
     paddingLeft: 6,
     paddingRight: 6,
@@ -511,7 +510,6 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    color: '#ffffff',
     fontSize: 16,
     height: 40,
     paddingVertical: 4,

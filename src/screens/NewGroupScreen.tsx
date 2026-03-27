@@ -20,8 +20,10 @@ import { RootStackParamList } from '../navigation/types';
 import Avatar from '../components/Avatar';
 import useTheme from '../hooks/useTheme';
 import * as Contacts from 'expo-contacts';
+import * as ImagePicker from 'expo-image-picker';
 import { chatSyncContacts, chatCreateGroup } from '../services/chatApi';
 import { getChatSession } from '../services/chatSession';
+import { cloudinaryUpload } from '../services/cloudinaryService';
 import type { ChatApiUser } from '../types/chatApi';
 import { spacing } from '../theme/spacing';
 
@@ -34,6 +36,8 @@ export default function NewGroupScreen({ navigation }: Props) {
   const [step, setStep] = useState<1 | 2>(1); // 1: Select Members, 2: Name & Create
   const [search, setSearch] = useState('');
   const [groupName, setGroupName] = useState('');
+  const [groupAvatar, setGroupAvatar] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [users, setUsers] = useState<ChatApiUser[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -44,6 +48,40 @@ export default function NewGroupScreen({ navigation }: Props) {
     title: '',
     message: '',
   });
+
+  const handlePickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      showAlert('Permissão Necessária', 'Precisamos de acesso às suas fotos para alterar a imagem do grupo.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+
+    if (!result.canceled && result.assets && result.assets[0]) {
+      const asset = result.assets[0];
+      
+      setIsUploading(true);
+      try {
+        const uploadResult = await cloudinaryUpload({
+          uri: asset.uri,
+          name: asset.fileName || 'group_avatar.jpg',
+          type: asset.mimeType || 'image/jpeg',
+        });
+        setGroupAvatar(uploadResult.mediaUrl);
+      } catch (error) {
+        console.error('Erro no upload da imagem do grupo:', error);
+        showAlert('Erro', 'Não foi possível fazer o upload da imagem.');
+      } finally {
+        setIsUploading(false);
+      }
+    }
+  };
 
   const showAlert = (title: string, message: string) => {
     setAlertConfig({ visible: true, title, message });
@@ -132,6 +170,7 @@ export default function NewGroupScreen({ navigation }: Props) {
       const participantIds = Array.from(selectedIds);
       const conversation = await chatCreateGroup({
         groupName: groupName.trim(),
+        groupAvatar: groupAvatar || '',
         participantIds,
       });
 
@@ -153,7 +192,7 @@ export default function NewGroupScreen({ navigation }: Props) {
 
   const renderStep1 = () => (
     <>
-      <View style={[styles.searchWrap, { backgroundColor: isDark ? '#1C1C1E' : '#E5E5EA' }]}>
+      <View style={[styles.searchWrap, { backgroundColor: colors.backgroundSecondary }]}>
         <Ionicons name="search-outline" size={20} color={colors.textSecondary} style={styles.searchIcon} />
         <TextInput
           style={[styles.searchInput, { color: colors.textPrimary }]}
@@ -222,9 +261,19 @@ export default function NewGroupScreen({ navigation }: Props) {
     >
       <View style={styles.step2Container}>
         <View style={styles.groupIconContainer}>
-          <View style={[styles.groupIconPlaceholder, { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' }]}>
-            <Ionicons name="camera" size={32} color={colors.primary} />
-          </View>
+          <TouchableOpacity 
+            style={[styles.groupIconPlaceholder, { backgroundColor: colors.backgroundSecondary }]}
+            onPress={handlePickImage}
+            disabled={isUploading}
+          >
+            {isUploading ? (
+              <ActivityIndicator color={colors.primary} />
+            ) : groupAvatar ? (
+              <Avatar uri={groupAvatar} name={groupName || 'G'} size={64} />
+            ) : (
+              <Ionicons name="camera" size={32} color={colors.primary} />
+            )}
+          </TouchableOpacity>
           <View style={styles.nameInputContainer}>
             <TextInput
               style={[styles.nameInput, { color: colors.textPrimary, borderBottomColor: colors.primary }]}
@@ -242,9 +291,9 @@ export default function NewGroupScreen({ navigation }: Props) {
         </Text>
 
         <TouchableOpacity 
-          style={[styles.createButton, { backgroundColor: colors.primary }]}
+          style={[styles.createButton, { backgroundColor: colors.primary, opacity: creating ? 0.7 : 1 }]}
           onPress={handleCreate}
-          disabled={creating}
+          disabled={creating || isUploading}
         >
           {creating ? (
             <ActivityIndicator color="#FFF" />
