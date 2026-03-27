@@ -48,7 +48,11 @@ export default function LoginScreen({ navigation }: Props) {
 
     setLoading(true);
     try {
-      const user = await signIn(email.trim(), password);
+      const authRes = await signIn(email.trim(), password) as any;
+      
+      if (authRes && !authRes.phoneVerified) {
+        navigation.replace('PhoneVerification');
+      }
     } catch (error: any) {
       Alert.alert('Erro no login', error.message || 'Tente novamente');
     } finally {

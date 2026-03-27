@@ -7,6 +7,8 @@ import {
   updateProfile,
   deleteUser,
   sendPasswordResetEmail,
+  PhoneAuthProvider,
+  signInWithCredential,
 } from 'firebase/auth';
 import {
   doc,
@@ -50,8 +52,16 @@ const syncChatUserFromFirebase = async (fallbackEmail: string) => {
     phone,
   });
 
-  await setChatSession({ userId: authRes._id });
+  // Store phone verification status in local session or context if needed
+  // Note: authRes now contains phoneVerified
+
+  await setChatSession({ 
+    userId: authRes._id,
+    phoneVerified: authRes.phoneVerified 
+  });
   await connectChatSocket(authRes._id);
+  
+  return authRes;
 };
 
 /**
@@ -80,7 +90,7 @@ export const signUp = async (email: string, password: string, displayName: strin
   });
 
   try {
-    await syncChatUserFromFirebase(email);
+    return await syncChatUserFromFirebase(email);
   } catch (error: any) {
     await chatRegisterPushToken('LOGGED_OUT_TOKEN').catch(() => {});
   await clearChatSession();
@@ -108,7 +118,7 @@ export const signIn = async (email: string, password: string) => {
   });
 
   try {
-    await syncChatUserFromFirebase(email);
+    return await syncChatUserFromFirebase(email);
   } catch (error: any) {
     await clearChatSession();
     disconnectChatSocket();
@@ -279,4 +289,24 @@ export const deleteUserAccount = async () => {
 export const resetPassword = async (email: string) => {
   if (!email || !email.trim()) throw new Error('E-mail é obrigatório para redefinir a senha.');
   await sendPasswordResetEmail(auth, email.trim().toLowerCase());
+};
+
+/**
+ * Atualiza o status de verificação do telefone no Firestore e Backend.
+ */
+export const setPhoneVerified = async (uid: string, phone: string) => {
+  await updateDoc(doc(db, 'users', uid), {
+    phone,
+    phoneVerified: true,
+  });
+
+  const user = auth.currentUser;
+  if (user) {
+    await chatSyncFirebaseUser({
+      email: (user.email || '').trim().toLowerCase(),
+      displayName: user.displayName || 'Usuário',
+      photoURL: user.photoURL || undefined,
+      phone,
+    });
+  }
 };

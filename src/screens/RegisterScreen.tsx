@@ -71,7 +71,11 @@ export default function RegisterScreen({ navigation }: Props) {
     try {
       // Remove a mascara antes de enviar para o backend
       const rawPhone = phone.replace(/\D/g, '');
-      await signUp(email.trim(), password, name.trim(), rawPhone);
+      const authRes = await signUp(email.trim(), password, name.trim(), rawPhone) as any;
+
+      if (authRes && !authRes.phoneVerified) {
+        navigation.replace('PhoneVerification');
+      }
     } catch (error: any) {
       Alert.alert('Erro no cadastro', error.message || 'Tente novamente');
     } finally {

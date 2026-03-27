@@ -1,7 +1,8 @@
-﻿export type RootStackParamList = {
+export type RootStackParamList = {
   // Auth
   Login: undefined;
   Register: undefined;
+  PhoneVerification: undefined;
 
   // Flows
   MainFlow: { screen?: string; params?: any };

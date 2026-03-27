@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { TouchableOpacity, Modal, Pressable, View, Text, StyleSheet, Alert } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from './types';
 import { navigationRef } from './navigationRef';
 import useTheme from '../hooks/useTheme';
+import useAuth from '../hooks/useAuth';
 import { useSettings } from '../context/SettingsContext';
 import ChatListScreen from '../screens/ChatListScreen';
 import ChatScreen from '../screens/ChatScreen';
@@ -23,6 +24,7 @@ import NotificationsScreen from '../screens/NotificationsScreen';
 import PrivacyScreen from '../screens/PrivacyScreen';
 import DataStorageScreen from '../screens/DataStorageScreen';
 import HelpScreen from '../screens/HelpScreen';
+import PhoneVerificationScreen from '../screens/PhoneVerificationScreen';
 import FloatingBottomTab from '../components/FloatingBottomTab';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -43,11 +45,12 @@ export default function AppNavigator() {
   const { isDark, colors } = useTheme();
   const { toggleTheme, menuVisible, setMenuVisible } = useSettings();
   const insets = useSafeAreaInsets();
-
+  const { phoneVerified } = useAuth();
 
   return (
     <>
       <Stack.Navigator
+        initialRouteName={phoneVerified ? "MainTabs" : "PhoneVerification"}
         screenOptions={{
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.textPrimary,
@@ -93,6 +96,7 @@ export default function AppNavigator() {
         <Stack.Screen name="Privacy" component={PrivacyScreen} options={{ title: 'Privacidade' }} />
         <Stack.Screen name="DataStorage" component={DataStorageScreen} options={{ title: 'Dados e Armazenamento' }} />
         <Stack.Screen name="Help" component={HelpScreen} options={{ title: 'Ajuda' }} />
+        <Stack.Screen name="PhoneVerification" component={PhoneVerificationScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
 
       <Modal transparent visible={menuVisible} animationType="fade" onRequestClose={() => setMenuVisible(false)}>
