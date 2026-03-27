@@ -37,12 +37,14 @@ const syncChatUserFromFirebase = async (fallbackEmail: string) => {
 
   let displayName = (user.displayName || '').trim();
   let phone: string | undefined = undefined;
+  let phoneVerified = false;
 
   const snap = await getDoc(doc(db, 'users', user.uid));
   if (snap.exists()) {
     const data = snap.data() as any;
     if (!displayName) displayName = String(data?.displayName || '').trim();
     phone = data?.phone || undefined;
+    phoneVerified = !!data?.phoneVerified;
   }
 
   if (!displayName) displayName = 'Usuário';
@@ -52,7 +54,8 @@ const syncChatUserFromFirebase = async (fallbackEmail: string) => {
     displayName,
     photoURL: user.photoURL || undefined,
     phone,
-  });
+    phoneVerified,
+  } as any);
 
   // Store phone verification status in local session or context if needed
   // Note: authRes now contains phoneVerified
@@ -324,6 +327,7 @@ export const setPhoneVerified = async (uid: string, phone: string) => {
       displayName: user.displayName || 'Usuário',
       photoURL: user.photoURL || undefined,
       phone,
-    });
+      phoneVerified: true,
+    } as any);
   }
 };

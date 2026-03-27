@@ -21,7 +21,7 @@ import { spacing } from '../theme/spacing';
 import { auth } from '../config/firebaseConfig';
 import { getEnv } from '../config/env';
 import { PhoneAuthProvider } from 'firebase/auth';
-import { setPhoneVerified } from '../services/authService';
+import { setPhoneVerified, signOut } from '../services/authService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PhoneVerification'>;
 
@@ -105,8 +105,16 @@ export default function PhoneVerificationScreen({ navigation }: Props) {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+          <TouchableOpacity 
+            onPress={async () => {
+              await signOut();
+            }} 
+            style={styles.backButton}
+          >
+            <View style={styles.signOutButton}>
+              <Ionicons name="exit-outline" size={20} color={colors.textPrimary} />
+              <Text style={[styles.signOutText, { color: colors.textPrimary }]}>Sair</Text>
+            </View>
           </TouchableOpacity>
 
           <View style={styles.header}>
@@ -194,10 +202,21 @@ const styles = StyleSheet.create({
     paddingTop: spacing.lg,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
+    alignSelf: 'flex-start',
     marginBottom: spacing.xxl,
+  },
+  signOutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.backgroundSecondary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  signOutText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   header: {
     alignItems: 'center',
