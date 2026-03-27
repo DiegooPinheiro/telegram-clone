@@ -1,13 +1,13 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet, Text, Dimensions } from 'react-native';
-import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useTheme from '../hooks/useTheme';
 
 const { width } = Dimensions.get('window');
 
-export default function FloatingBottomTab({ state, descriptors, navigation }: BottomTabBarProps) {
+export default function FloatingBottomTab({ state, descriptors, navigation }: MaterialTopTabBarProps) {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const unreadCount = 0; // sua API ainda não implementa contagem de não lidas
@@ -36,7 +36,12 @@ export default function FloatingBottomTab({ state, descriptors, navigation }: Bo
             });
 
             if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name);
+              // @ts-ignore - jumpTo existe em Tab Navigators mas o tipo pode variar
+              if (typeof (navigation as any).jumpTo === 'function') {
+                (navigation as any).jumpTo(route.name);
+              } else {
+                navigation.navigate(route.name);
+              }
             }
           };
 

@@ -1320,10 +1320,10 @@ export default function ChatScreen({ navigation, route }: Props) {
     }
     if (wallpaper.type === 'pattern' && wallpaper.value === 'chat_bg_doodle') {
       return (
-        <View style={[styles.chatWallpaper, { backgroundColor: isDark ? '#1c2431' : '#e5e5ea' }]}>
+        <View style={[styles.chatWallpaper, { backgroundColor: isDark ? '#1c2431' : '#d7e5d0' }]}>
           <Image 
             source={require('../../assets/chat_bg_doodle.png')} 
-            style={[StyleSheet.absoluteFill, { width: '100%', height: '100%', opacity: isDark ? 0.35 : 0.15 }]} 
+            style={[StyleSheet.absoluteFill, { width: '100%', height: '100%', opacity: isDark ? 0.35 : 0.4 }]} 
             resizeMode="repeat"
           />
         </View>

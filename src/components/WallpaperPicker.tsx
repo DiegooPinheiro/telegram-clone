@@ -16,6 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import useTheme from '../hooks/useTheme';
+import { useSettings } from '../context/SettingsContext';
 import { WallpaperConfig, saveWallpaper } from '../services/wallpaperService';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -38,7 +39,7 @@ const PRESET_COLORS = [
 
 const PRESET_THEMES = [
   { id: 'none', type: 'color', value: '#2a2f32', label: 'Sem Tema', isReset: true },
-  { id: 'doodle_dark', type: 'pattern', value: 'chat_bg_doodle', label: 'Doodle Dark', color: '#1c2431' },
+  { id: 'doodle', type: 'pattern', value: 'chat_bg_doodle', label: 'Doodle' },
   { id: 'blue_sky', type: 'color', value: '#3a86ff', label: 'Blue Sky' },
   { id: 'green_leaf', type: 'color', value: '#8338ec', label: 'Purple Vibe' },
   { id: 'warm', type: 'color', value: '#fb5607', label: 'Sunset' },
@@ -46,6 +47,7 @@ const PRESET_THEMES = [
 
 export const WallpaperPicker: React.FC<WallpaperPickerProps> = ({ visible, onClose, onSelect, currentWallpaper }) => {
   const { colors, isDark } = useTheme();
+  const { toggleTheme } = useSettings();
   const panY = useRef(new Animated.Value(0)).current;
 
   const panResponder = useRef(
@@ -127,7 +129,7 @@ export const WallpaperPicker: React.FC<WallpaperPickerProps> = ({ visible, onClo
               <Ionicons name="close" size={26} color={colors.textPrimary} />
             </TouchableOpacity>
             <Text style={[styles.title, { color: colors.textPrimary }]}>Selecionar tema</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={toggleTheme}>
               <Ionicons name={isDark ? "sunny" : "moon"} size={22} color={colors.textPrimary} />
             </TouchableOpacity>
           </View>
@@ -137,8 +139,11 @@ export const WallpaperPicker: React.FC<WallpaperPickerProps> = ({ visible, onClo
             showsHorizontalScrollIndicator={false} 
             contentContainerStyle={styles.themesScroll}
           >
-            {PRESET_THEMES.map((item) => {
+            {PRESET_THEMES.map((item: any) => {
               const isSelected = currentWallpaper?.value === item.value;
+              const previewBg = item.id === 'doodle' 
+                ? (isDark ? '#1c2431' : '#d7e5d0') 
+                : (item.color || item.value);
               
               return (
                 <TouchableOpacity 
@@ -146,14 +151,14 @@ export const WallpaperPicker: React.FC<WallpaperPickerProps> = ({ visible, onClo
                   style={[styles.themeCard, isSelected && { borderColor: colors.primary, borderWidth: 2 }]} 
                   onPress={() => handleSelectPreset(item)}
                 >
-                  <View style={[styles.themePreview, { backgroundColor: item.color || item.value }]}>
+                  <View style={[styles.themePreview, { backgroundColor: previewBg }]}>
                     {item.isReset && (
                       <Ionicons name="close-circle" size={32} color="#ff3b30" />
                     )}
                     {item.type === 'pattern' && (
                       <Image 
                         source={require('../../assets/chat_bg_doodle.png')} 
-                        style={[StyleSheet.absoluteFill, { opacity: 0.3, width: '100%', height: '100%' }]} 
+                        style={[StyleSheet.absoluteFill, { opacity: isDark ? 0.35 : 0.4, width: '100%', height: '100%' }]} 
                         resizeMode="cover"
                       />
                     )}

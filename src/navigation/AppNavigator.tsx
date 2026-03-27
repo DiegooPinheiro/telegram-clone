@@ -3,6 +3,7 @@ import { TouchableOpacity, Modal, Pressable, View, Text, StyleSheet, Alert } fro
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from './types';
@@ -30,11 +31,20 @@ import ChangeUsernameScreen from '../screens/ChangeUsernameScreen';
 import FloatingBottomTab from '../components/FloatingBottomTab';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
-const Tab = createBottomTabNavigator();
+const Tab = createMaterialTopTabNavigator();
 
 function TabNavigator() {
   return (
-    <Tab.Navigator tabBar={(props) => <FloatingBottomTab {...props} />} screenOptions={{ headerShown: false }}>
+    <Tab.Navigator 
+      tabBar={(props) => <FloatingBottomTab {...props as any} />} 
+      tabBarPosition="bottom"
+      keyboardDismissMode="on-drag"
+      screenOptions={{ 
+        tabBarShowLabel: false,
+        tabBarStyle: { height: 0, position: 'absolute' }, // Esconde a barra nativa do TopTabs
+        animationEnabled: false,
+      }}
+    >
       <Tab.Screen name="ChatList" component={ChatListScreen as any} />
       <Tab.Screen name="Contacts" component={ContactsScreen as any} />
       <Tab.Screen name="Settings" component={SettingsScreen as any} />
