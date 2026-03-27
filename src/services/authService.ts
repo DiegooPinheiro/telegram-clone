@@ -322,12 +322,18 @@ export const setPhoneVerified = async (uid: string, phone: string) => {
 
   const user = auth.currentUser;
   if (user) {
-    await chatSyncFirebaseUser({
+    const authRes = await chatSyncFirebaseUser({
       email: (user.email || '').trim().toLowerCase(),
       displayName: user.displayName || 'Usuário',
       photoURL: user.photoURL || undefined,
       phone,
       phoneVerified: true,
     } as any);
+
+    // CRITICAL: Update local session so useAuth() sees the change immediately
+    await setChatSession({ 
+      userId: authRes._id,
+      phoneVerified: true 
+    });
   }
 };

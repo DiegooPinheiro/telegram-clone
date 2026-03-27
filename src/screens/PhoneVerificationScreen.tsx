@@ -22,10 +22,12 @@ import { auth } from '../config/firebaseConfig';
 import { getEnv } from '../config/env';
 import { PhoneAuthProvider } from 'firebase/auth';
 import { setPhoneVerified, signOut } from '../services/authService';
+import useAuth from '../hooks/useAuth';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PhoneVerification'>;
 
 export default function PhoneVerificationScreen({ navigation }: Props) {
+  const { refreshSession } = useAuth();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [verificationId, setVerificationId] = useState<string | null>(null);
@@ -91,6 +93,9 @@ export default function PhoneVerificationScreen({ navigation }: Props) {
       // Para este fluxo, apenas confirmamos a validade e atualizamos nosso backend
       await setPhoneVerified(user.uid, phoneNumber);
       
+      // Atualizar o estado global de autenticação imediatamente
+      await refreshSession();
+
       Alert.alert('Sucesso', 'Telefone verificado com sucesso!', [
         { text: 'OK', onPress: () => navigation.replace('MainTabs' as any) }
       ]);

@@ -11,6 +11,7 @@ import { setupNotifications, showMessageNotification } from './src/services/noti
 import Toast from 'react-native-toast-message';
 import MessageToast from './src/components/MessageToast';
 import { SettingsProvider, useSettings } from './src/context/SettingsContext';
+import { AuthProvider } from './src/context/AuthContext';
 import { connectChatSocket, disconnectChatSocket, onReceiveMessage } from './src/services/chatSocket';
 import { getChatSession } from './src/services/chatSession';
 import { chatRegisterPushToken } from './src/services/chatApi';
@@ -162,7 +163,9 @@ function MainApp() {
 export default function App() {
   return (
     <SettingsProvider>
-      <MainApp />
+      <AuthProvider>
+        <MainApp />
+      </AuthProvider>
     </SettingsProvider>
   );
 }
