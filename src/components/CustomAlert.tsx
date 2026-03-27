@@ -13,8 +13,8 @@ interface CustomAlertProps {
   visible: boolean;
   title: string;
   message: string;
-  onCancel: () => void;
   onConfirm: () => void;
+  onCancel?: () => void; // Made optional
   confirmLabel?: string;
   cancelLabel?: string;
   isDestructive?: boolean;
@@ -24,9 +24,9 @@ export default function CustomAlert({
   visible,
   title,
   message,
-  onCancel,
   onConfirm,
-  confirmLabel = 'Confirmar',
+  onCancel,
+  confirmLabel = 'OK',
   cancelLabel = 'Cancelar',
   isDestructive = false,
 }: CustomAlertProps) {
@@ -34,17 +34,21 @@ export default function CustomAlert({
 
   if (!visible) return null;
 
+  const handleBackdropPress = onCancel || onConfirm;
+
   return (
-    <Modal transparent visible={visible} animationType="fade" onRequestClose={onCancel}>
-      <Pressable style={styles.backdrop} onPress={onCancel}>
+    <Modal transparent visible={visible} animationType="fade" onRequestClose={handleBackdropPress}>
+      <Pressable style={styles.backdrop} onPress={handleBackdropPress}>
         <Pressable style={[styles.alertCard, { backgroundColor: colors.surface }]} onPress={() => {}}>
           <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
           <Text style={[styles.message, { color: colors.textSecondary }]}>{message}</Text>
           
           <View style={styles.actions}>
-            <TouchableOpacity style={styles.button} onPress={onCancel} activeOpacity={0.7}>
-              <Text style={[styles.buttonText, { color: colors.primary }]}>{cancelLabel}</Text>
-            </TouchableOpacity>
+            {onCancel && (
+              <TouchableOpacity style={styles.button} onPress={onCancel} activeOpacity={0.7}>
+                <Text style={[styles.buttonText, { color: colors.primary }]}>{cancelLabel}</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity style={styles.button} onPress={onConfirm} activeOpacity={0.7}>
               <Text style={[styles.buttonText, { color: isDestructive ? '#FF3B30' : colors.primary, fontWeight: '700' }]}>
                 {confirmLabel}

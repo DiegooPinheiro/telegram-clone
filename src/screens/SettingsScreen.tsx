@@ -84,7 +84,12 @@ export default function SettingsScreen({ navigation }: Props) {
         try {
           await signOut();
         } catch (error: any) {
-          Alert.alert('Erro', error.message || 'Erro ao sair');
+          setAlertConfig({
+            visible: true,
+            title: 'Erro',
+            message: error.message || 'Erro ao sair',
+            onConfirm: hideAlert,
+          });
         }
       },
     });

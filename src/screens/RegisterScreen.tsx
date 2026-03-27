@@ -17,6 +17,7 @@ import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { validateEmail, validatePassword, validateDisplayName } from '../utils/validators';
 import { signUp } from '../services/authService';
+import CustomAlert from '../components/CustomAlert';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
 
@@ -27,6 +28,17 @@ export default function RegisterScreen({ navigation }: Props) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: '',
+    message: '',
+  });
+
+  const showAlert = (title: string, message: string) => {
+    setAlertConfig({ visible: true, title, message });
+  };
+
+  const hideAlert = () => setAlertConfig({ ...alertConfig, visible: false });
 
   const handlePhoneChange = (text: string) => {
     let clean = text.replace(/\D/g, '');
@@ -77,7 +89,19 @@ export default function RegisterScreen({ navigation }: Props) {
         navigation.replace('PhoneVerification');
       }
     } catch (error: any) {
-      Alert.alert('Erro no cadastro', error.message || 'Tente novamente');
+      let message = 'Tente novamente mais tarde.';
+      
+      if (error.code === 'auth/email-already-in-use') {
+        message = 'Este e-mail já está em uso por outra conta.';
+      } else if (error.code === 'auth/weak-password') {
+        message = 'A senha é muito fraca. Use pelo menos 6 caracteres.';
+      } else if (error.code === 'auth/invalid-email') {
+        message = 'E-mail inválido.';
+      } else if (error.message) {
+        message = error.message;
+      }
+      
+      showAlert('Erro no cadastro', message);
     } finally {
       setLoading(false);
     }
@@ -158,11 +182,18 @@ export default function RegisterScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Já tem uma conta? </Text>
+          <Text style={[styles.footerText, { color: colors.textSecondary }]}>Já tem uma conta? </Text>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Text style={styles.footerLink}>Fazer login</Text>
           </TouchableOpacity>
         </View>
+
+        <CustomAlert
+          visible={alertConfig.visible}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          onConfirm={hideAlert}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

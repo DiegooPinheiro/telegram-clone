@@ -12,13 +12,15 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/types';
 import Avatar from '../components/Avatar';
 import useTheme from '../hooks/useTheme';
-import { chatListUsers, chatCreateGroup } from '../services/chatApi';
+import * as Contacts from 'expo-contacts';
+import { chatSyncContacts, chatCreateGroup } from '../services/chatApi';
 import { getChatSession } from '../services/chatSession';
 import type { ChatApiUser } from '../types/chatApi';
 import { spacing } from '../theme/spacing';
@@ -37,6 +39,17 @@ export default function NewGroupScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [myUserId, setMyUserId] = useState<string | null>(null);
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: '',
+    message: '',
+  });
+
+  const showAlert = (title: string, message: string) => {
+    setAlertConfig({ visible: true, title, message });
+  };
+
+  const hideAlert = () => setAlertConfig(prev => ({ ...prev, visible: false }));
 
   useEffect(() => {
     loadData();
@@ -48,7 +61,41 @@ export default function NewGroupScreen({ navigation }: Props) {
       const session = await getChatSession();
       if (session?.userId) setMyUserId(session.userId);
 
-      const fetched = await chatListUsers();
+      let fetched: ChatApiUser[] = [];
+      const { status } = await Contacts.requestPermissionsAsync();
+
+      if (status === 'granted') {
+        const { data } = await Contacts.getContactsAsync({
+          fields: [Contacts.Fields.PhoneNumbers],
+        });
+
+        const phones: string[] = [];
+        data.forEach((contact) => {
+          contact.phoneNumbers?.forEach((phone) => {
+            if (phone.number) {
+              const clean = phone.number.replace(/[^\d+]/g, '');
+              if (clean.length < 8) return;
+              phones.push(clean);
+              if (clean.startsWith('+')) {
+                phones.push(clean.substring(1));
+              } else {
+                if (clean.startsWith('0')) {
+                  const noZero = clean.substring(1);
+                  phones.push(`+55${noZero}`);
+                } else if (!clean.startsWith('55')) {
+                  phones.push(`+55${clean}`);
+                }
+              }
+            }
+          });
+        });
+
+        if (phones.length > 0) {
+          const uniquePhones = Array.from(new Set(phones)).filter(p => !!p && p.length >= 8);
+          fetched = await chatSyncContacts(uniquePhones);
+        }
+      }
+
       // Filtra o próprio usuário da lista de seleção
       setUsers(fetched.filter(u => u._id !== session?.userId));
     } catch (error) {
@@ -76,7 +123,7 @@ export default function NewGroupScreen({ navigation }: Props) {
 
   const handleCreate = async () => {
     if (!groupName.trim()) {
-      Alert.alert('Aviso', 'Por favor, informe um nome para o grupo.');
+      showAlert('Aviso', 'Por favor, informe um nome para o grupo.');
       return;
     }
 
@@ -96,7 +143,9 @@ export default function NewGroupScreen({ navigation }: Props) {
         isGroup: true,
       });
     } catch (error: any) {
-      Alert.alert('Erro', error.message || 'Não foi possível criar o grupo.');
+      let message = 'Não foi possível criar o grupo. Tente novamente.';
+      if (error.message) message = error.message;
+      showAlert('Erro', message);
     } finally {
       setCreating(false);
     }
@@ -132,7 +181,7 @@ export default function NewGroupScreen({ navigation }: Props) {
                   {item.nome || item.username}
                 </Text>
                 <Text style={[styles.userStatus, { color: colors.textSecondary }]}>
-                  @{item.username}
+                  visto recentemente
                 </Text>
               </View>
               <View style={[
@@ -224,6 +273,13 @@ export default function NewGroupScreen({ navigation }: Props) {
       ) : (
         step === 1 ? renderStep1() : renderStep2()
       )}
+
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        onConfirm={hideAlert}
+      />
     </SafeAreaView>
   );
 }

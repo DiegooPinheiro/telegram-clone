@@ -17,6 +17,7 @@ import { RootStackParamList } from '../navigation/types';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { signIn, resetPassword } from '../services/authService';
+import CustomAlert from '../components/CustomAlert';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
@@ -25,24 +26,36 @@ export default function LoginScreen({ navigation }: Props) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    confirmLabel: 'OK',
+  });
+
+  const showAlert = (title: string, message: string) => {
+    setAlertConfig({ visible: true, title, message, confirmLabel: 'OK' });
+  };
+
+  const hideAlert = () => setAlertConfig({ ...alertConfig, visible: false });
 
   const handleForgotPassword = async () => {
     if (!email.trim()) {
-      Alert.alert('E-mail necessário', 'Por favor, digite seu e-mail no campo acima para receber as instrucões de redefinicao.');
+      showAlert('E-mail necessário', 'Por favor, digite seu e-mail no campo acima para receber as instruções de redefinição.');
       return;
     }
 
     try {
       await resetPassword(email);
-      Alert.alert('Sucesso', 'Um e-mail de redefinicao de senha foi enviado para: ' + email);
+      showAlert('Sucesso', 'Um e-mail de redefinição de senha foi enviado para: ' + email);
     } catch (error: any) {
-      Alert.alert('Erro', error.message || 'Nao foi possivel enviar o e-mail de redefinicao.');
+      showAlert('Erro', error.message || 'Não foi possível enviar o e-mail de redefinição.');
     }
   };
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Erro', 'Preencha todos os campos');
+      showAlert('Erro', 'Preencha todos os campos');
       return;
     }
 
@@ -54,7 +67,23 @@ export default function LoginScreen({ navigation }: Props) {
         navigation.replace('PhoneVerification');
       }
     } catch (error: any) {
-      Alert.alert('Erro no login', error.message || 'Tente novamente');
+      let message = 'Tente novamente mais tarde.';
+      
+      if (error.code === 'auth/invalid-credential' || error.message?.includes('invalid-credential')) {
+        message = 'E-mail ou senha incorretos.';
+      } else if (error.code === 'auth/user-not-found') {
+        message = 'Usuário não encontrado.';
+      } else if (error.code === 'auth/wrong-password') {
+        message = 'Senha incorreta.';
+      } else if (error.code === 'auth/too-many-requests') {
+        message = 'Muitas tentativas falhas. Tente novamente em alguns minutos.';
+      } else if (error.code === 'auth/invalid-email') {
+        message = 'E-mail inválido.';
+      } else if (error.message) {
+        message = error.message;
+      }
+      
+      showAlert('Erro no login', message);
     } finally {
       setLoading(false);
     }
@@ -115,6 +144,14 @@ export default function LoginScreen({ navigation }: Props) {
             <Text style={styles.footerLink}>Cadastre-se</Text>
           </TouchableOpacity>
         </View>
+
+        <CustomAlert
+          visible={alertConfig.visible}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          confirmLabel={alertConfig.confirmLabel}
+          onConfirm={hideAlert}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

@@ -17,6 +17,7 @@ import * as Contacts from 'expo-contacts';
 import { RootStackParamList } from '../navigation/types';
 import Avatar from '../components/Avatar';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { NewContactModal } from '../components/NewContactModal';
 import useTheme from '../hooks/useTheme';
 import { chatListUsers, chatSyncContacts } from '../services/chatApi';
 import { getChatSession } from '../services/chatSession';
@@ -40,6 +41,7 @@ export default function ContactsScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [noSession, setNoSession] = useState(false);
   const [contactsPermissionDenied, setContactsPermissionDenied] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
   const hasFetchedRef = useRef(false);
 
   const loadUsers = useCallback(async (silent = false) => {
@@ -75,15 +77,40 @@ export default function ContactsScreen({ navigation }: Props) {
         data.forEach((contact) => {
           contact.phoneNumbers?.forEach((phone) => {
             if (phone.number) {
-              const clean = phone.number.replace(/\D/g, '');
-              if (clean.length >= 8) phones.push(clean);
+              // Limpeza básica: remove tudo que não é dígito ou +
+              let clean = phone.number.replace(/[^\d+]/g, '');
+              if (clean.length < 8) return;
+
+              // Adiciona o número limpo original
+              phones.push(clean);
+
+              // Se começar com +, adiciona versão sem +
+              if (clean.startsWith('+')) {
+                phones.push(clean.substring(1));
+              } else {
+                // Se não tem +, tenta com +55 (Brasil) que é o padrão do app
+                // Se o número começar com 0 (ex: 011...), remove o 0 antes de por +55
+                if (clean.startsWith('0')) {
+                  const noZero = clean.substring(1);
+                  phones.push(`+55${noZero}`);
+                  phones.push(`55${noZero}`);
+                } else if (!clean.startsWith('55')) {
+                  // Se não tem 55, adiciona tanto com +55 quanto com 55
+                  phones.push(`+55${clean}`);
+                  phones.push(`55${clean}`);
+                } else {
+                  // Se já começa com 55 mas não tem +, adiciona com +
+                  phones.push(`+${clean}`);
+                }
+              }
             }
           });
         });
 
         if (phones.length > 0) {
-          // Busca apenas os contatos da agenda que têm o Vibe
-          fetched = await chatSyncContacts(phones);
+          // Remove duplicatas e valores vazios
+          const uniquePhones = Array.from(new Set(phones)).filter(p => !!p && p.length >= 8);
+          fetched = await chatSyncContacts(uniquePhones);
         } else {
           fetched = await chatListUsers();
         }
@@ -102,17 +129,45 @@ export default function ContactsScreen({ navigation }: Props) {
     }
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      if (!hasFetchedRef.current) {
-        hasFetchedRef.current = true;
-        loadUsers();
+  const handleSaveContact = async (data: { firstName: string, lastName: string, phone: string, syncWithPhone: boolean }) => {
+    try {
+      if (data.syncWithPhone) {
+        const { status } = await Contacts.requestPermissionsAsync();
+        if (status === 'granted') {
+          // Normaliza o número para garantir o +55 se necessário
+          let formattedPhone = data.phone.replace(/[^\d+]/g, '');
+          if (!formattedPhone.startsWith('+')) {
+            if (formattedPhone.startsWith('0')) {
+              formattedPhone = `+55${formattedPhone.substring(1)}`;
+            } else if (!formattedPhone.startsWith('55')) {
+              formattedPhone = `+55${formattedPhone}`;
+            } else {
+              formattedPhone = `+${formattedPhone}`;
+            }
+          }
+
+          const contact: any = {
+            firstName: data.firstName,
+            lastName: data.lastName,
+            phoneNumbers: [{
+              label: 'mobile',
+              number: formattedPhone
+            }],
+          };
+          
+          await Contacts.addContactAsync(contact);
+          loadUsers(true); // Tenta um re-sync silencioso
+        } else {
+          Alert.alert('Permissão Negada', 'Não temos permissão para salvar contatos na sua agenda.');
+        }
       } else {
-        loadUsers(true);
+        Alert.alert('Aviso', 'A sincronização com o celular está desativada. Para que o contato apareça aqui, ele precisa ser salvo na sua agenda.');
       }
-      return () => {};
-    }, [loadUsers])
-  );
+    } catch (error) {
+      console.error('Erro ao salvar contato:', error);
+      Alert.alert('Erro', 'Não foi possível salvar o contato na sua agenda.');
+    }
+  };
 
   const filteredUsers = useMemo(() => {
     const normalized = search.trim().toLowerCase();
@@ -211,7 +266,10 @@ export default function ContactsScreen({ navigation }: Props) {
               </View>
 
               <View style={[styles.actionsCard, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
-                <TouchableOpacity style={[styles.actionRow, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.separator }]} activeOpacity={0.7}>
+                <TouchableOpacity 
+                  style={[styles.actionRow, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.separator }]} 
+                  activeOpacity={0.7}
+                >
                   <View style={[styles.sideLetterWrap, { alignItems: 'flex-start' }]}>
                     <View style={[styles.actionIconBg, { backgroundColor: '#2196F3' }]}>
                       <Ionicons name="person-add" size={16} color="#FFF" />
@@ -221,14 +279,58 @@ export default function ContactsScreen({ navigation }: Props) {
                     <Text style={[styles.actionText, { color: colors.textPrimary }]}>Convidar Amigos</Text>
                   </View>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.actionRow} activeOpacity={0.7}>
+
+                <TouchableOpacity 
+                  style={[styles.actionRow, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.separator }]} 
+                  activeOpacity={0.7}
+                  onPress={() => navigation.navigate('NewGroup')}
+                >
                   <View style={[styles.sideLetterWrap, { alignItems: 'flex-start' }]}>
                     <View style={[styles.actionIconBg, { backgroundColor: '#4CAF50' }]}>
+                      <Ionicons name="people" size={16} color="#FFF" />
+                    </View>
+                  </View>
+                  <View style={styles.contactInfo}>
+                    <Text style={[styles.actionText, { color: colors.textPrimary }]}>Novo Grupo</Text>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.actionRow, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.separator }]} 
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.sideLetterWrap, { alignItems: 'flex-start' }]}>
+                    <View style={[styles.actionIconBg, { backgroundColor: '#FF9800' }]}>
                       <Ionicons name="call" size={16} color="#FFF" />
                     </View>
                   </View>
                   <View style={styles.contactInfo}>
                     <Text style={[styles.actionText, { color: colors.textPrimary }]}>Chamadas recentes</Text>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={styles.actionRow} 
+                  activeOpacity={0.7}
+                  onPress={async () => {
+                    const session = await getChatSession();
+                    if (session?.userId) {
+                      navigation.navigate('Chat', {
+                        userId: session.userId,
+                        name: 'Mensagens Salvas',
+                        avatar: null,
+                        username: 'me',
+                      });
+                    }
+                  }}
+                >
+                  <View style={[styles.sideLetterWrap, { alignItems: 'flex-start' }]}>
+                    <View style={[styles.actionIconBg, { backgroundColor: colors.primary }]}>
+                      <Ionicons name="bookmark" size={16} color="#FFF" />
+                    </View>
+                  </View>
+                  <View style={styles.contactInfo}>
+                    <Text style={[styles.actionText, { color: colors.textPrimary }]}>Mensagens Salvas</Text>
                   </View>
                 </TouchableOpacity>
               </View>
@@ -268,7 +370,7 @@ export default function ContactsScreen({ navigation }: Props) {
               <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Nenhum contato encontrado</Text>
             </View>
           }
-          ListFooterComponent={<View style={[styles.listCardBottom, { backgroundColor: colors.surface }]} />}
+          ListFooterComponent={<View style={[styles.listCardBottom, { backgroundColor: colors.surface, marginTop: -1 }]} />}
           stickySectionHeadersEnabled={false}
           showsVerticalScrollIndicator={false}
         />
@@ -277,10 +379,16 @@ export default function ContactsScreen({ navigation }: Props) {
       <TouchableOpacity
         style={[styles.fab, { bottom: insets.bottom + 82, backgroundColor: colors.primary }]}
         activeOpacity={0.85}
-        onPress={() => navigation.navigate('NewChat')}
+        onPress={() => setModalVisible(true)}
       >
         <Ionicons name="person-add" size={24} color="#ffffff" />
       </TouchableOpacity>
+
+      <NewContactModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onSave={handleSaveContact}
+      />
     </SafeAreaView>
   );
 }
@@ -326,6 +434,7 @@ const styles = StyleSheet.create({
   actionsCard: {
     borderRadius: 14,
     marginBottom: 16,
+    overflow: 'hidden',
   },
   actionRow: {
     flexDirection: 'row',
@@ -357,8 +466,6 @@ const styles = StyleSheet.create({
     height: 16,
   },
   emptyStateWrap: {
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
     paddingBottom: 24,
   },
   listTitle: {

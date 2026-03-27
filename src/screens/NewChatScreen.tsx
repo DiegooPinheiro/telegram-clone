@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, FlatList, StyleSheet, TextInput, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -8,7 +8,9 @@ import { spacing } from '../theme/spacing';
 import ContactItem from '../components/ContactItem';
 import LoadingSpinner from '../components/LoadingSpinner';
 import useTheme from '../hooks/useTheme';
-import { chatListUsers } from '../services/chatApi';
+import * as Contacts from 'expo-contacts';
+import { chatSyncContacts } from '../services/chatApi';
+import { getChatSession } from '../services/chatSession';
 import type { ChatApiUser } from '../types/chatApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NewChat'>;
@@ -86,7 +88,7 @@ export default function NewChatScreen({ navigation }: Props) {
           <ContactItem
             uid={item._id}
             name={item.nome || item.username}
-            status={item.username}
+            status="visto recentemente"
             avatar={item.foto || null}
             online={false}
             onPress={() => handleStartChat(item)}

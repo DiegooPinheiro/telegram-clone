@@ -8,9 +8,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Alert,
   ScrollView,
 } from 'react-native';
+import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,6 +33,23 @@ export default function PhoneVerificationScreen({ navigation }: Props) {
   const [verificationId, setVerificationId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<'phone' | 'code'>('phone');
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
+  const showAlert = (title: string, message: string, onConfirm?: () => void) => {
+    setAlertConfig({ 
+      visible: true, 
+      title, 
+      message, 
+      onConfirm: onConfirm || hideAlert 
+    });
+  };
+
+  const hideAlert = () => setAlertConfig(prev => ({ ...prev, visible: false }));
 
   const firebaseConfig = {
     apiKey: getEnv('EXPO_PUBLIC_FIREBASE_API_KEY'),
@@ -48,7 +65,7 @@ export default function PhoneVerificationScreen({ navigation }: Props) {
 
   const handleSendCode = async () => {
     if (!phoneNumber.trim() || phoneNumber.length < 10) {
-      Alert.alert('Erro', 'Informe um número de telefone válido com DDD (ex: +5511...)');
+      showAlert('Erro', 'Informe um número de telefone válido com DDD (ex: +5511...)');
       return;
     }
 
@@ -63,7 +80,7 @@ export default function PhoneVerificationScreen({ navigation }: Props) {
       );
       setVerificationId(vid);
       setStep('code');
-      Alert.alert('Código Enviado', 'O código de verificação foi enviado para seu celular.');
+      showAlert('Código Enviado', 'O código de verificação foi enviado para seu celular.');
     } catch (error: any) {
       console.error('Erro ao enviar SMS:', error);
       Alert.alert('Erro', error.message || 'Não foi possível enviar o código SMS.');
@@ -74,7 +91,7 @@ export default function PhoneVerificationScreen({ navigation }: Props) {
 
   const handleVerifyCode = async () => {
     if (!verificationCode || verificationCode.length < 6) {
-      Alert.alert('Erro', 'Digite o código de 6 dígitos');
+      showAlert('Erro', 'Digite o código de 6 dígitos');
       return;
     }
 
@@ -96,11 +113,12 @@ export default function PhoneVerificationScreen({ navigation }: Props) {
       // Atualizar o estado global de autenticação imediatamente
       await refreshSession();
 
-      Alert.alert('Sucesso', 'Telefone verificado com sucesso!', [
-        { text: 'OK', onPress: () => navigation.replace('MainTabs' as any) }
-      ]);
+      showAlert('Sucesso', 'Telefone verificado com sucesso!', () => {
+        hideAlert();
+        navigation.replace('MainTabs' as any);
+      });
     } catch (error: any) {
-      Alert.alert('Erro', 'Código inválido. Tente novamente.');
+      showAlert('Erro', 'Código inválido. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -187,6 +205,13 @@ export default function PhoneVerificationScreen({ navigation }: Props) {
           ref={recaptchaVerifier}
           firebaseConfig={firebaseConfig}
           attemptInvisibleVerification={true}
+        />
+
+        <CustomAlert
+          visible={alertConfig.visible}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          onConfirm={alertConfig.onConfirm}
         />
       </KeyboardAvoidingView>
     </SafeAreaView>

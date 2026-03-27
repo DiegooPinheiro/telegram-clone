@@ -1,4 +1,4 @@
-﻿import React, { useRef, useCallback, useEffect, useState, useMemo } from 'react';
+import React, { useRef, useCallback, useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -48,6 +48,7 @@ import {
 import { getChatSession } from '../services/chatSession';
 import { getCachedMessages, setCachedMessages } from '../services/messageCache';
 import { cloudinaryUpload } from '../services/cloudinaryService';
+import { EmptyChatState } from '../components/EmptyChatState';
 import {
   markMessagesReadSocket,
   onMessagesDeleted,
@@ -152,10 +153,9 @@ export default function ChatScreen({ navigation, route }: Props) {
     !selectedEditableMessage.mediaUrl &&
     !!selectedEditableMessage.text?.trim();
 
+  // Removed setLayoutAnimationEnabledExperimental to avoid warning in New Architecture
   useEffect(() => {
-    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-      UIManager.setLayoutAnimationEnabledExperimental(true);
-    }
+    // LayoutAnimation setup if needed
   }, []);
 
   useEffect(() => {
@@ -610,7 +610,7 @@ export default function ChatScreen({ navigation, route }: Props) {
     }
 
     if (!receiverId) {
-      throw new Error('ImpossÃ­vel iniciar conversa sem um destinatÃ¡rio ou ID de grupo.');
+      throw new Error('Impossível iniciar conversa sem um destinatário ou ID de grupo.');
     }
 
     const conversation = await chatCreateConversation(receiverId as string);
@@ -641,7 +641,7 @@ export default function ChatScreen({ navigation, route }: Props) {
   const handleSend = useCallback(
     async (text: string) => {
       if (!myUserId) {
-        Alert.alert('Erro', 'SessÃ£o do chat ausente. FaÃ§a login novamente.');
+        Alert.alert('Erro', 'Sessão do chat ausente. Faça login novamente.');
         return;
       }
 
@@ -665,7 +665,7 @@ export default function ChatScreen({ navigation, route }: Props) {
           handleCancelEditingMessage();
         } catch (error: any) {
           console.error('Erro ao editar mensagem:', error);
-          Alert.alert('Erro', error?.message || 'NÃƒÂ£o foi possÃƒÂ­vel editar a mensagem.');
+          Alert.alert('Erro', error?.message || 'Não foi possível editar a mensagem.');
         }
         return;
       }
@@ -681,7 +681,7 @@ export default function ChatScreen({ navigation, route }: Props) {
         resolvedConversationId = await ensureConversationId();
       } catch (error: any) {
         console.error('Erro ao iniciar conversa:', error);
-        Alert.alert('Erro', error?.message || 'NÃ£o foi possÃ­vel iniciar a conversa.');
+        Alert.alert('Erro', error?.message || 'Não foi possível iniciar a conversa.');
         sendingMessageRef.current = false;
         return;
       }
@@ -711,7 +711,7 @@ export default function ChatScreen({ navigation, route }: Props) {
       } catch (error: any) {
         setMessages((prev) => prev.filter((m) => m._id !== optimisticMessage._id));
         console.error('Erro ao enviar:', error);
-        Alert.alert('Erro', error?.message || 'NÃ£o foi possÃ­vel enviar a mensagem.');
+        Alert.alert('Erro', error?.message || 'Não foi possível enviar a mensagem.');
       } finally {
         setTimeout(() => {
           sendingMessageRef.current = false;
@@ -724,7 +724,7 @@ export default function ChatScreen({ navigation, route }: Props) {
   const handleUploadAndSend = useCallback(
     async (file: { uri: string; name: string; type: string }) => {
       if (!myUserId) {
-        Alert.alert('Erro', 'SessÃ£o do chat ausente. FaÃ§a login novamente.');
+        Alert.alert('Erro', 'Sessão do chat ausente. Faça login novamente.');
         return;
       }
 
@@ -772,7 +772,7 @@ export default function ChatScreen({ navigation, route }: Props) {
       } catch (error: any) {
         setMessages((prev) => prev.filter((m) => m._id !== optimisticId));
         console.error('Erro ao enviar mÃ­dia:', error);
-        Alert.alert('Erro', error?.message || 'NÃ£o foi possÃ­vel enviar o arquivo.');
+        Alert.alert('Erro', error?.message || 'Não foi possível enviar o arquivo.');
       } finally {
         setUploading(false);
         setTimeout(() => {
@@ -846,7 +846,7 @@ export default function ChatScreen({ navigation, route }: Props) {
       if (!permission.granted) {
         permission = await Audio.requestPermissionsAsync();
         if (!permission.granted) {
-          Alert.alert('PermissÃ£o', 'Permita acesso ao microfone para gravar Ã¡udio.');
+          Alert.alert('Permissão', 'Permita acesso ao microfone para gravar áudio.');
           return;
         }
       }
@@ -870,8 +870,8 @@ export default function ChatScreen({ navigation, route }: Props) {
       setRecordingDurationMs(0);
       setRecordingVoice(true);
     } catch (error: any) {
-      console.error('Erro ao iniciar gravaÃ§Ã£o:', error);
-      Alert.alert('Erro', error?.message || 'NÃ£o foi possÃ­vel iniciar a gravaÃ§Ã£o.');
+      console.error('Erro ao iniciar gravação:', error);
+      Alert.alert('Erro', error?.message || 'NÃ£o foi possÃ­vel iniciar a gravação.');
     } finally {
       setTimeout(() => {
         recordingActionRef.current = false;
@@ -922,7 +922,7 @@ export default function ChatScreen({ navigation, route }: Props) {
         await FileSystem.deleteAsync(result.uri, { idempotent: true });
       }
     } catch (error) {
-      console.error('Erro ao cancelar gravaÃ§Ã£o:', error);
+      console.error('Erro ao cancelar gravação:', error);
     } finally {
       setTimeout(() => {
         recordingActionRef.current = false;
@@ -956,8 +956,8 @@ export default function ChatScreen({ navigation, route }: Props) {
         type: extension === 'caf' ? 'audio/x-caf' : extension === '3gp' ? 'audio/3gpp' : 'audio/mp4',
       });
     } catch (error: any) {
-      console.error('Erro ao enviar gravaÃ§Ã£o:', error);
-      Alert.alert('Erro', error?.message || 'NÃ£o foi possÃ­vel enviar o Ã¡udio.');
+      console.error('Erro ao enviar gravação:', error);
+      Alert.alert('Erro', error?.message || 'NÃ£o foi possÃ­vel enviar o áudio.');
     } finally {
       setTimeout(() => {
         recordingActionRef.current = false;
@@ -1067,8 +1067,8 @@ export default function ChatScreen({ navigation, route }: Props) {
           rate: activeAudio?.rate || 1.0,
         });
       } catch (error: any) {
-        console.error('Erro ao reproduzir Ã¡udio:', error);
-        Alert.alert('Erro', error?.message || 'Nao foi possivel reproduzir o Ã¡udio.');
+        console.error('Erro ao reproduzir áudio:', error);
+        Alert.alert('Erro', error?.message || 'Nao foi possivel reproduzir o áudio.');
       } finally {
         setTimeout(() => {
           audioActionLockRef.current = false;
@@ -1103,7 +1103,7 @@ export default function ChatScreen({ navigation, route }: Props) {
       await audioSoundRef.current.setRateAsync(nextRate, true);
       setActiveAudio(prev => prev ? { ...prev, rate: nextRate } : null);
     } catch (err) {
-      console.error('Erro ao mudar velocidade do Ã¡udio:', err);
+      console.error('Erro ao mudar velocidade do áudio:', err);
     }
   }, [activeAudio]);
 
@@ -1112,7 +1112,7 @@ export default function ChatScreen({ navigation, route }: Props) {
 
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('PermissÃ£o', 'Permita acesso Ã  galeria para enviar arquivos.');
+      Alert.alert('Permissão', 'Permita acesso Ã  galeria para enviar arquivos.');
       return;
     }
 
@@ -1136,7 +1136,7 @@ export default function ChatScreen({ navigation, route }: Props) {
 
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('PermissÃ£o', 'Permita acesso Ã  cÃ¢mera para enviar fotos.');
+      Alert.alert('Permissão', 'Permita acesso Ã  cÃ¢mera para enviar fotos.');
       return;
     }
 
@@ -1343,21 +1343,15 @@ export default function ChatScreen({ navigation, route }: Props) {
             ]}
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
             showsVerticalScrollIndicator={false}
-            ListEmptyComponent={
+                        ListEmptyComponent={() => (
               !loading && messages.length === 0 ? (
-                <View style={styles.emptyContainerCenter}>
-                  <View style={[styles.emptyChatCard, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
-                    <Text style={[styles.emptyChatTitle, { color: colors.textPrimary }]}>Ainda nÃ£o hÃ¡ mensagens aqui...</Text>
-                    <Text style={[styles.emptyChatSubtitle, { color: colors.textSecondary }]}>
-                      Envie uma mensagem ou toque no aceno abaixo.
-                    </Text>
-                    <TouchableOpacity activeOpacity={0.7} onPress={() => handleSend('ðŸ‘‹')}>
-                      <Text style={styles.emptyChatSticker}>ðŸ‘‹ðŸ»</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
+                <EmptyChatState 
+                  type={username === 'me' ? 'saved' : isGroup ? 'group' : 'private'}
+                  name={name}
+                  onSendWave={() => handleSend('👋')}
+                />
               ) : null
-            }
+            )}
           />
 
           {editingMessageId ? (
@@ -1485,21 +1479,15 @@ export default function ChatScreen({ navigation, route }: Props) {
             ]}
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
             showsVerticalScrollIndicator={false}
-                        ListEmptyComponent={
+                                    ListEmptyComponent={() => (
               !loading && messages.length === 0 ? (
-                <View style={styles.emptyContainerCenter}>
-                  <View style={[styles.emptyChatCard, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
-                    <Text style={[styles.emptyChatTitle, { color: colors.textPrimary }]}>Ainda nÃ£o hÃ¡ mensagens aqui...</Text>
-                    <Text style={[styles.emptyChatSubtitle, { color: colors.textSecondary }]}>
-                      Envie uma mensagem ou toque no aceno abaixo.
-                    </Text>
-                    <TouchableOpacity activeOpacity={0.7} onPress={() => handleSend('ðŸ‘‹')}>
-                      <Text style={styles.emptyChatSticker}>ðŸ‘‹ðŸ»</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
+                <EmptyChatState 
+                  type={username === 'me' ? 'saved' : isGroup ? 'group' : 'private'}
+                  name={name}
+                  onSendWave={() => handleSend('👋')}
+                />
               ) : null
-            }
+            )}
           />
 
           {editingMessageId ? (
@@ -1611,7 +1599,7 @@ export default function ChatScreen({ navigation, route }: Props) {
               </Text>
               <Text style={styles.viewerSubtitle}>
                 {viewerImage
-                  ? `hoje Ã s ${new Date(viewerImage.timestamp * 1000).toLocaleTimeString([], {
+                  ? `hoje às ${new Date(viewerImage.timestamp * 1000).toLocaleTimeString([], {
                       hour: '2-digit',
                       minute: '2-digit',
                       hour12: false,
@@ -1627,7 +1615,7 @@ export default function ChatScreen({ navigation, route }: Props) {
               <TouchableOpacity activeOpacity={0.75} onPress={() => Alert.alert('Compartilhar', 'Em breve.')}>
                 <Ionicons name="arrow-redo-outline" size={24} color="#ffffff" />
               </TouchableOpacity>
-              <TouchableOpacity activeOpacity={0.75} onPress={() => Alert.alert('Mais opÃ§Ãµes', 'Em breve.')}>
+              <TouchableOpacity activeOpacity={0.75} onPress={() => Alert.alert('Mais opções', 'Em breve.')}>
                 <Ionicons name="ellipsis-vertical" size={20} color="#ffffff" />
               </TouchableOpacity>
             </View>
@@ -1666,7 +1654,7 @@ export default function ChatScreen({ navigation, route }: Props) {
 
           <TouchableOpacity style={styles.sheetItem} onPress={takePhoto} disabled={uploading}>
             <Ionicons name="camera-outline" size={22} color={colors.textPrimary} />
-            <Text style={[styles.sheetItemText, { color: colors.textPrimary }]}>CÃ¢mera</Text>
+            <Text style={[styles.sheetItemText, { color: colors.textPrimary }]}>Câmera</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.sheetItem} onPress={pickDocument} disabled={uploading}>
@@ -1708,9 +1696,9 @@ export default function ChatScreen({ navigation, route }: Props) {
               <Text style={[styles.menuText, { color: colors.textPrimary }]}>Trocar Papel de Parede</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.menuItem} activeOpacity={0.7} onPress={() => { setHeaderMenuVisible(false); Alert.alert('Limpar HistÃ³rico', 'Em breve.'); }}>
+            <TouchableOpacity style={styles.menuItem} activeOpacity={0.7} onPress={() => { setHeaderMenuVisible(false); Alert.alert('Limpar Histórico', 'Em breve.'); }}>
               <Ionicons name="brush-outline" size={24} color={colors.textPrimary} />
-              <Text style={[styles.menuText, { color: colors.textPrimary }]}>Limpar HistÃ³rico</Text>
+              <Text style={[styles.menuText, { color: colors.textPrimary }]}>Limpar Histórico</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.menuItem} activeOpacity={0.7} onPress={() => { setHeaderMenuVisible(false); handleDeleteConversation(); }}>
