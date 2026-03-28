@@ -42,6 +42,7 @@ export type RootStackParamList = {
   ChangePhone: undefined;
   ChangeUsername: undefined;
   ChangeBirthday: undefined;
+  ChatSettings: undefined;
   GroupProfile: {
     conversationId: string;
     name: string;

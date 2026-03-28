@@ -28,6 +28,7 @@ import HelpScreen from '../screens/HelpScreen';
 import PhoneVerificationScreen from '../screens/PhoneVerificationScreen';
 import ChangePhoneScreen from '../screens/ChangePhoneScreen';
 import ChangeUsernameScreen from '../screens/ChangeUsernameScreen';
+import ChatSettingsScreen from '../screens/ChatSettingsScreen';
 import FloatingBottomTab from '../components/FloatingBottomTab';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -110,6 +111,7 @@ export default function AppNavigator() {
         <Stack.Screen name="Help" component={HelpScreen} options={{ title: 'Ajuda' }} />
         <Stack.Screen name="ChangePhone" component={ChangePhoneScreen} options={{ title: 'Alterar Numero' }} />
         <Stack.Screen name="ChangeUsername" component={ChangeUsernameScreen} options={{ title: 'Nome de Usuario' }} />
+        <Stack.Screen name="ChatSettings" component={ChatSettingsScreen} options={{ headerShown: false }} />
         <Stack.Screen name="PhoneVerification" component={PhoneVerificationScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
 

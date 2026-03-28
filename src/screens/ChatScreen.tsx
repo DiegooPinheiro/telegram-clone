@@ -144,6 +144,7 @@ export default function ChatScreen({ navigation, route }: Props) {
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingMessagePreview, setEditingMessagePreview] = useState('');
   const editingBarAnim = useRef(new Animated.Value(0)).current;
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   const { statusText, online } = useOnlineStatusByEmail(username || '', !!username);
   const selectionMode = selectedMessageIds.length > 0;
@@ -1320,9 +1321,13 @@ export default function ChatScreen({ navigation, route }: Props) {
       
       // Aplicamos o desenho se for o Doodle base ou se for uma cor (exceto o cinza de reset)
       const showPattern = isDoodleBase || (wallpaper.type === 'color' && wallpaper.value !== '#2a2f32');
+      const parallaxY = scrollY.interpolate({
+        inputRange: [-1, 0, 1000],
+        outputRange: [0.1, 0, -50], // Sutil paralaxe (moves slower)
+      });
 
       return (
-        <View style={[styles.chatWallpaper, { backgroundColor: bgColor }]}>
+        <Animated.View style={[styles.chatWallpaper, { backgroundColor: bgColor, transform: [{ translateY: parallaxY }] }]}>
           {showPattern && (
             <Image 
               source={require('../../assets/chat_bg_doodle.png')} 
@@ -1330,7 +1335,9 @@ export default function ChatScreen({ navigation, route }: Props) {
               resizeMode="repeat"
             />
           )}
-        </View>
+          {/* Vinheta sutil para dar profundidade */}
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)' }]} />
+        </Animated.View>
       );
     }
     if (wallpaper.type === 'image') {
@@ -1362,8 +1369,8 @@ export default function ChatScreen({ navigation, route }: Props) {
             </View>
           ) : null}
 
-          <FlatList
-            ref={flatListRef}
+          <Animated.FlatList
+            ref={flatListRef as any}
             data={messages}
             renderItem={renderMessage}
             keyExtractor={(item) => item._id}
@@ -1375,6 +1382,11 @@ export default function ChatScreen({ navigation, route }: Props) {
             ]}
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
             showsVerticalScrollIndicator={false}
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+              { useNativeDriver: true }
+            )}
+            scrollEventThrottle={16}
                         ListEmptyComponent={() => (
               !loading && messages.length === 0 ? (
                 <EmptyChatState 
@@ -1499,8 +1511,8 @@ export default function ChatScreen({ navigation, route }: Props) {
             </View>
           ) : null}
 
-          <FlatList
-            ref={flatListRef}
+          <Animated.FlatList
+            ref={flatListRef as any}
             data={processedMessages}
             renderItem={renderMessage}
             keyExtractor={(item) => item._id}
@@ -1512,6 +1524,11 @@ export default function ChatScreen({ navigation, route }: Props) {
             ]}
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
             showsVerticalScrollIndicator={false}
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+              { useNativeDriver: true }
+            )}
+            scrollEventThrottle={16}
                                     ListEmptyComponent={() => (
               !loading && messages.length === 0 ? (
                 <EmptyChatState 

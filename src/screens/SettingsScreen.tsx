@@ -162,7 +162,7 @@ export default function SettingsScreen({ navigation }: Props) {
             iconBgColor="#F7931A"
             label="Configuracoes de Chat"
             subtitle="Papel de Parede, Modo Noturno, Animacoes"
-            onPress={() => {}}
+            onPress={() => navigation.navigate('ChatSettings')}
           />
           <SettingRow
             iconName="key"

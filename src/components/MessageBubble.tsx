@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, View, Text, StyleSheet, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
 import useTheme from '../hooks/useTheme';
+import { useSettings } from '../context/SettingsContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface MessageBubbleProps {
@@ -53,6 +54,7 @@ export default function MessageBubble({
   onAudioRatePress,
 }: MessageBubbleProps) {
   const { colors, isDark } = useTheme();
+  const { textSize, bubbleRadius } = useSettings();
   const selectAnim = useRef(new Animated.Value(selected ? 1 : 0)).current;
   const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null);
 
@@ -227,6 +229,9 @@ export default function MessageBubble({
               backgroundColor: bubbleBg,
               shadowOpacity: isDark ? 0.22 : 0.1,
               shadowRadius: isDark ? 4 : 2,
+              borderRadius: bubbleRadius,
+              borderBottomRightRadius: isMine ? Math.min(bubbleRadius, 5) : bubbleRadius,
+              borderBottomLeftRadius: !isMine ? Math.min(bubbleRadius, 5) : bubbleRadius,
             },
           ]}
         >
@@ -370,7 +375,7 @@ export default function MessageBubble({
               styles.messageText,
               isMine ? styles.messageTextMine : null,
               mediaUrl ? styles.messageTextWithMedia : (isMine ? styles.messageTextWithMetaMine : styles.messageTextWithMetaTheirs),
-              { color: colors.textPrimary },
+              { color: colors.textPrimary, fontSize: textSize, lineHeight: textSize * 1.35 },
             ]}
           >
             {message}
@@ -473,11 +478,11 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     position: 'relative',
     minWidth: 90,
-    elevation: 2,
+    elevation: 4,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
   },
   mine: {
     borderBottomRightRadius: 5,
