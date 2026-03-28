@@ -20,6 +20,7 @@ import MessageBubble from '../components/MessageBubble';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { WallpaperPicker } from '../components/WallpaperPicker';
+import { type WallpaperConfig } from '../services/wallpaperService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ChatSettings'>;
 
@@ -67,42 +68,47 @@ export default function ChatSettingsScreen({ navigation }: Props) {
         </TouchableOpacity>
       </View>
 
-      {/* CHAT PREVIEW - AGORA DINÂMICO */}
-      <View style={[
-        styles.previewContainer, 
-        { backgroundColor: wallpaper.type === 'color' ? wallpaper.value : (isDark ? '#1c2431' : '#d6e8c4') }
-      ]}>
-        {(wallpaper.type === 'pattern' || wallpaper.type === 'color') && (
-          <Image 
-            source={require('../../assets/chat_bg_doodle.png')} 
-            style={[StyleSheet.absoluteFill, { opacity: 0.25 }]} 
-            resizeMode="repeat"
-          />
-        )}
-        {wallpaper.type === 'image' && (
-          <Image 
-            source={{ uri: wallpaper.value }} 
-            style={StyleSheet.absoluteFill} 
-            resizeMode="cover"
-          />
-        )}
-        <View style={[styles.previewMessageWrap, { padding: 16 }]}>
-          <MessageBubble
-            message={"Bom dia! 👋\nVocê sabe que horas são?"}
-            timestamp={Date.now() / 1000 - 3600}
-            isMine={false}
-            senderName="D H"
-          />
-          <MessageBubble
-            message="É manhã em Tóquio 😎"
-            timestamp={Date.now() / 1000}
-            isMine={true}
-            status="read"
-          />
+      <ScrollView 
+        contentContainerStyle={styles.scrollInside} 
+        showsVerticalScrollIndicator={false}
+        style={{ flex: 1, backgroundColor: colors.background }}
+      >
+        {/* CHAT PREVIEW - AGORA DENTRO DO SCROLLVIEW PARA EVITAR VAZAMENTOS E ROLAR NATURAMENTE */}
+        <View style={[
+          styles.previewContainer, 
+          { backgroundColor: wallpaper.type === 'color' ? wallpaper.value : (isDark ? '#1c2431' : '#d6e8c4') }
+        ]}>
+          {(wallpaper.type === 'pattern' || wallpaper.type === 'color') && (
+            <Image 
+              source={require('../../assets/chat_bg_doodle.png')} 
+              style={[StyleSheet.absoluteFill, { opacity: 0.25 }]} 
+              resizeMode="repeat"
+            />
+          )}
+          {wallpaper.type === 'image' && (
+            <Image 
+              source={{ uri: wallpaper.value }} 
+              style={StyleSheet.absoluteFill} 
+              resizeMode="cover"
+            />
+          )}
+          <View style={[styles.previewMessageWrap, { padding: 16 }]}>
+            <MessageBubble
+              message={"Bom dia! 👋\nVocê sabe que horas são?"}
+              timestamp={Date.now() / 1000 - 3600}
+              isMine={false}
+              senderName="D H"
+            />
+            <MessageBubble
+              message="É manhã em Tóquio 😎"
+              timestamp={Date.now() / 1000}
+              isMine={true}
+              status="read"
+            />
+          </View>
         </View>
-      </View>
 
-      <ScrollView contentContainerStyle={styles.scrollInside} showsVerticalScrollIndicator={false}>
+        <View style={styles.cardSection}>
         {/* TEXT SIZE SECTION */}
         <View style={[styles.card, { backgroundColor: colors.surface }]}>
           {renderSectionHeader('Tamanho do texto das mensagens')}
@@ -224,19 +230,31 @@ export default function ChatSettingsScreen({ navigation }: Props) {
            <PreferenceRow label="Mostrar Conteúdo +18" value={false} isSubtle subtitle="Não ocultar mídias (+18)" />
            <PreferenceRow label="Enviar com Enter" value={sendWithEnter} onToggle={setSendWithEnter} isSubtle />
         </View>
+        </View>
 
       </ScrollView>
 
       <WallpaperPicker 
         visible={wallpaperModalVisible}
         onClose={() => setWallpaperModalVisible(false)}
-        onSelect={(config) => {
+        onSelect={(config: WallpaperConfig) => {
           setWallpaper(config);
         }}
         currentWallpaper={wallpaper}
       />
     </SafeAreaView>
   );
+}
+
+interface PreferenceRowProps {
+  icon?: any;
+  label: string;
+  subtitle?: string;
+  value: boolean;
+  onToggle?: (val: boolean) => void;
+  isSubtle?: boolean;
+  isLink?: boolean;
+  valueLabel?: string;
 }
 
 function PreferenceRow({ 
@@ -248,7 +266,7 @@ function PreferenceRow({
   isSubtle = false,
   isLink = false,
   valueLabel = ''
-}: any) {
+}: PreferenceRowProps) {
   const { colors } = useTheme();
   
   return (
@@ -297,8 +315,11 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   scrollInside: {
+    paddingBottom: 40,
+  },
+  cardSection: {
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 16,
   },
   card: {
     borderRadius: 12,
@@ -330,15 +351,16 @@ const styles = StyleSheet.create({
   previewContainer: {
     width: '100%',
     padding: 0,
-    minHeight: 180,
+    height: 200,
     justifyContent: 'center',
     position: 'relative',
+    overflow: 'hidden',
   },
   previewMessageWrap: {
     paddingVertical: 10,
   },
   actionRows: {
-    marginTop: 10,
+    marginTop: 4,
   },
   actionRow: {
     flexDirection: 'row',
