@@ -103,14 +103,14 @@ export default function MessageBubble({
   const isAudio = !!mediaUrl && isAudioMedia(mediaType, fileNameFromMessage(message, mediaUrl));
   const showText = !!message?.trim();
   const metaColor = isMine
-    ? (isDark ? `${colors.chatPrimary}B3` : `${colors.chatPrimary}A6`) // ~70% ou ~65% de opacidade da cor do chat
+    ? 'rgba(255, 255, 255, 0.7)' // Sugestão Premium: Branco suave para fundos vibrantes
     : (isDark ? '#7f91a4' : colors.textTimestamp);
   const statusColor = status === 'read'
     ? (isDark ? '#8ec3f5' : '#4fa3f7')
     : status === 'error'
       ? '#ff3b30'
       : isMine
-        ? (isDark ? `${colors.chatPrimary}B3` : `${colors.chatPrimary}A6`)
+        ? 'rgba(255, 255, 255, 0.7)'
         : colors.chatPrimary;
   const statusIconName =
     status === 'sending'
@@ -230,13 +230,16 @@ export default function MessageBubble({
               shadowOpacity: isDark ? 0.22 : 0.1,
               shadowRadius: isDark ? 4 : 2,
               borderRadius: bubbleRadius,
-              borderBottomRightRadius: isMine ? Math.min(bubbleRadius, 5) : bubbleRadius,
-              borderBottomLeftRadius: !isMine ? Math.min(bubbleRadius, 5) : bubbleRadius,
+              borderBottomRightRadius: isMine ? Math.min(bubbleRadius, 12) : bubbleRadius,
+              borderBottomLeftRadius: !isMine ? Math.min(bubbleRadius, 12) : bubbleRadius,
             },
           ]}
         >
         {!isMine && senderName && (
           <Text style={[styles.senderName, { color: colors.chatPrimary, paddingHorizontal: mediaUrl ? 12 : 0, paddingTop: mediaUrl ? 8 : 0 }]}>{senderName}</Text>
+        )}
+        {isMine && senderName && (
+          <Text style={[styles.senderName, { color: '#ffffff', paddingHorizontal: mediaUrl ? 12 : 0, paddingTop: mediaUrl ? 8 : 0 }]}>{senderName}</Text>
         )}
 
         {mediaUrl ? (
@@ -375,7 +378,7 @@ export default function MessageBubble({
               styles.messageText,
               isMine ? styles.messageTextMine : null,
               mediaUrl ? styles.messageTextWithMedia : (isMine ? styles.messageTextWithMetaMine : styles.messageTextWithMetaTheirs),
-              { color: colors.textPrimary, fontSize: textSize, lineHeight: textSize * 1.35 },
+              { color: isMine ? '#ffffff' : colors.textPrimary, fontSize: textSize, lineHeight: textSize * 1.35 },
             ]}
           >
             {message}
@@ -485,12 +488,12 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
   },
   mine: {
-    borderBottomRightRadius: 5,
+    borderBottomRightRadius: 12,
     paddingTop: 9,
     paddingBottom: 7,
   },
   theirs: {
-    borderBottomLeftRadius: 5,
+    borderBottomLeftRadius: 12,
   },
   containerMedia: {
     paddingHorizontal: 0,
