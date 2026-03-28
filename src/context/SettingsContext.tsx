@@ -35,6 +35,8 @@ interface SettingsContextType {
   setSendWithEnter: (enabled: boolean) => void;
   distanceUnit: 'automatic' | 'metric' | 'imperial';
   setDistanceUnit: (unit: 'automatic' | 'metric' | 'imperial') => void;
+  chatThemeColor: string;
+  setChatThemeColor: (color: string) => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -55,6 +57,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [pauseOnRecording, setPauseOnRecordingState] = useState(true);
   const [sendWithEnter, setSendWithEnterState] = useState(false);
   const [distanceUnit, setDistanceUnitState] = useState<'automatic' | 'metric' | 'imperial'>('automatic');
+  const [chatThemeColor, setChatThemeColorState] = useState('#0088cc');
 
   useEffect(() => {
     loadSettings();
@@ -73,6 +76,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       const s_pause = await AsyncStorage.getItem('app_pause_on_recording');
       const s_enter = await AsyncStorage.getItem('app_send_with_enter');
       const s_unit = await AsyncStorage.getItem('app_distance_unit');
+      const s_chatTheme = await AsyncStorage.getItem('app_chat_theme_color');
       
       const loadedWallpaper = await loadWallpaper();
       setWallpaperState(loadedWallpaper);
@@ -88,6 +92,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       if (s_pause) setPauseOnRecordingState(s_pause === 'true');
       if (s_enter) setSendWithEnterState(s_enter === 'true');
       if (s_unit) setDistanceUnitState(s_unit as 'automatic' | 'metric' | 'imperial');
+      if (s_chatTheme) setChatThemeColorState(s_chatTheme);
     } catch (e) {
       console.error('Erro ao carregar configurações:', e);
     }
@@ -155,6 +160,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem('app_distance_unit', unit);
   };
 
+  const setChatThemeColor = async (color: string) => {
+    setChatThemeColorState(color);
+    await AsyncStorage.setItem('app_chat_theme_color', color);
+  };
+
   return (
     <SettingsContext.Provider 
       value={{ 
@@ -168,7 +178,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         raiseToListen, setRaiseToListen,
         pauseOnRecording, setPauseOnRecording,
         sendWithEnter, setSendWithEnter,
-        distanceUnit, setDistanceUnit
+        distanceUnit, setDistanceUnit,
+        chatThemeColor, setChatThemeColor
       }}
     >
       {children}

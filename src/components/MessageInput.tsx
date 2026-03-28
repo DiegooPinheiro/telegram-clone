@@ -356,7 +356,7 @@ const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>((props, r
 
         {hasText || recordingLocked ? (
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: colors.primary }]}
+            style={[styles.actionButton, { backgroundColor: colors.chatPrimary }]}
             onPress={() => {
               if (recordingLocked) {
                 onSendRecording?.();
@@ -373,7 +373,7 @@ const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>((props, r
           <Animated.View
             style={[
               styles.actionButton,
-              { backgroundColor: colors.primary },
+              { backgroundColor: colors.chatPrimary },
               showRecordingGestureUi
                 ? {
                     transform: [

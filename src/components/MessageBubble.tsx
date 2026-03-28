@@ -103,15 +103,15 @@ export default function MessageBubble({
   const isAudio = !!mediaUrl && isAudioMedia(mediaType, fileNameFromMessage(message, mediaUrl));
   const showText = !!message?.trim();
   const metaColor = isMine
-    ? (isDark ? '#9db7d3' : 'rgba(93, 108, 77, 0.88)')
+    ? (isDark ? `${colors.chatPrimary}B3` : `${colors.chatPrimary}A6`) // ~70% ou ~65% de opacidade da cor do chat
     : (isDark ? '#7f91a4' : colors.textTimestamp);
   const statusColor = status === 'read'
     ? (isDark ? '#8ec3f5' : '#4fa3f7')
     : status === 'error'
       ? '#ff3b30'
       : isMine
-        ? (isDark ? '#9db7d3' : 'rgba(93, 108, 77, 0.88)')
-        : colors.primary;
+        ? (isDark ? `${colors.chatPrimary}B3` : `${colors.chatPrimary}A6`)
+        : colors.chatPrimary;
   const statusIconName =
     status === 'sending'
       ? 'clock-outline'
@@ -236,7 +236,7 @@ export default function MessageBubble({
           ]}
         >
         {!isMine && senderName && (
-          <Text style={[styles.senderName, { color: colors.primary, paddingHorizontal: mediaUrl ? 12 : 0, paddingTop: mediaUrl ? 8 : 0 }]}>{senderName}</Text>
+          <Text style={[styles.senderName, { color: colors.chatPrimary, paddingHorizontal: mediaUrl ? 12 : 0, paddingTop: mediaUrl ? 8 : 0 }]}>{senderName}</Text>
         )}
 
         {mediaUrl ? (

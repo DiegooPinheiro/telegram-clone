@@ -28,6 +28,7 @@ export default function ChatSettingsScreen({ navigation }: Props) {
   const { colors, isDark } = useTheme();
   const {
     wallpaper, setWallpaper,
+    chatThemeColor, setChatThemeColor,
     textSize, setTextSize,
     bubbleRadius, setBubbleRadius,
     chatListView, setChatListView,
@@ -40,17 +41,24 @@ export default function ChatSettingsScreen({ navigation }: Props) {
     toggleTheme,
   } = useSettings();
 
-  const [activeThemeId, setActiveThemeId] = useState('cyan');
   const [wallpaperModalVisible, setWallpaperModalVisible] = useState(false);
 
   const THEMES = [
-    { id: 'cyan', color: '#0088cc', label: 'Cyan' },
-    { id: 'purple', color: '#8e85ee', label: 'Purple' },
-    { id: 'mint', color: '#4fdca5', label: 'Mint' },
-    { id: 'orange', color: '#f27a21', label: 'Orange' },
-    { id: 'dark', color: '#1e1e1e', label: 'Dark' },
-    { id: 'pink', color: '#e0549c', label: 'Pink' },
+    { id: 'cyan', color: '#0088cc', bgLight: '#e6f4fe', bgDark: '#1c2431', label: 'Cyan' },
+    { id: 'purple', color: '#8e85ee', bgLight: '#f0e6ff', bgDark: '#232d31', label: 'Purple' },
+    { id: 'mint', color: '#4fdca5', bgLight: '#e5fcf3', bgDark: '#1c312a', label: 'Mint' },
+    { id: 'orange', color: '#f27a21', bgLight: '#fef2e6', bgDark: '#31271c', label: 'Orange' },
+    { id: 'dark', color: '#314151', bgLight: '#f0f2f5', bgDark: '#0e1621', label: 'Dark' },
+    { id: 'pink', color: '#e0549c', bgLight: '#fcecf5', bgDark: '#311c26', label: 'Pink' },
   ];
+
+  const handleThemeSelect = (themeId: string) => {
+    const selected = THEMES.find(t => t.id === themeId);
+    if (!selected) return;
+
+    // 1. Atualiza apenas a cor temática (balões, acentos)
+    setChatThemeColor(selected.color);
+  };
 
   const renderSectionHeader = (title: string) => (
     <Text style={[styles.sectionHeader, { color: colors.primary }]}>{title}</Text>
@@ -157,13 +165,13 @@ export default function ChatSettingsScreen({ navigation }: Props) {
                 style={[
                   styles.themeItem,
                   { backgroundColor: t.color },
-                  activeThemeId === t.id && { borderColor: colors.primary, borderWidth: 2 }
+                  chatThemeColor === t.color && { borderColor: colors.primary, borderWidth: 3 }
                 ]}
-                onPress={() => setActiveThemeId(t.id)}
+                onPress={() => handleThemeSelect(t.id)}
               >
                 {/* Mini bubbles inside theme card to match the requested model */}
-                <View style={styles.miniBubbleTheirs} />
-                <View style={styles.miniBubbleMine} />
+                <View style={[styles.miniBubbleTheirs, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.3)' }]} />
+                <View style={[styles.miniBubbleMine, { backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.5)' }]} />
               </TouchableOpacity>
             ))}
           </ScrollView>

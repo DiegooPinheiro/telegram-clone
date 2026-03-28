@@ -54,7 +54,7 @@ export const EmptyChatState: React.FC<EmptyChatStateProps> = ({ type, name, avat
             <Avatar uri={avatar} name={name} size={80} />
           </View>
         ) : (
-          content.icon && <Ionicons name={content.icon as any} size={64} color={colors.primary} style={styles.icon} />
+          content.icon && <Ionicons name={content.icon as any} size={64} color={colors.chatPrimary} style={styles.icon} />
         )}
         
         <Text style={[styles.title, { color: colors.textPrimary }]}>{content.title}</Text>
@@ -62,12 +62,12 @@ export const EmptyChatState: React.FC<EmptyChatStateProps> = ({ type, name, avat
 
         {content.showWave && (
           <TouchableOpacity 
-            style={[styles.waveBtn, { backgroundColor: colors.primary + '20' }]} 
+            style={[styles.waveBtn, { backgroundColor: colors.chatPrimary + '20' }]} 
             activeOpacity={0.7} 
             onPress={onSendWave}
           >
             <Text style={styles.waveEmoji}>👋</Text>
-            <Text style={[styles.waveText, { color: colors.primary }]}>Dê um aceno</Text>
+            <Text style={[styles.waveText, { color: colors.chatPrimary }]}>Dê um aceno</Text>
           </TouchableOpacity>
         )}
       </View>
