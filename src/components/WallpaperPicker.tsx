@@ -45,6 +45,10 @@ const PRESET_THEMES = [
   { id: 'green_leaf', type: 'color', value: '#8338ec', label: 'Purple Vibe' },
   { id: 'warm', type: 'color', value: '#fb5607', label: 'Sunset' },
   { id: 'midnight', type: 'color', value: '#000000', label: 'Midnight' },
+  { id: 'pink_rose', type: 'color', value: '#ff006e', label: 'Pink Rose' },
+  { id: 'mint_green', type: 'color', value: '#06d6a0', label: 'Mint Green' },
+  { id: 'forest', type: 'color', value: '#2d4a22', label: 'Deep Forest' },
+  { id: 'gold_sand', type: 'color', value: '#ffbe0b', label: 'Gold Sand' },
 ];
 
 export const WallpaperPicker: React.FC<WallpaperPickerProps> = ({ visible, onClose, onSelect, currentWallpaper }) => {
@@ -127,7 +131,7 @@ export const WallpaperPicker: React.FC<WallpaperPickerProps> = ({ visible, onClo
           {(item.type === 'pattern' || (item.type === 'color' && !item.isReset)) && (
             <Image 
               source={require('../../assets/chat_bg_doodle.png')} 
-              style={[StyleSheet.absoluteFill, { opacity: isDark ? 0.65 : 0.75, width: '100%', height: '100%' }]} 
+              style={[StyleSheet.absoluteFill, { opacity: isDark ? 0.9 : 1.0, width: '100%', height: '100%' }]} 
               resizeMode="repeat"
             />
           )}

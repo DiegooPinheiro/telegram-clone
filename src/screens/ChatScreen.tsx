@@ -1326,7 +1326,7 @@ export default function ChatScreen({ navigation, route }: Props) {
           {showPattern && (
             <Image 
               source={require('../../assets/chat_bg_doodle.png')} 
-              style={[StyleSheet.absoluteFill, { width: '100%', height: '100%', opacity: isDark ? 0.65 : 0.75 }]} 
+              style={[StyleSheet.absoluteFill, { width: '100%', height: '100%', opacity: isDark ? 0.9 : 1.0 }]} 
               resizeMode="repeat"
             />
           )}
