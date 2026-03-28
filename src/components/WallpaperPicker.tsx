@@ -18,7 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import useTheme from '../hooks/useTheme';
 import { useSettings } from '../context/SettingsContext';
-import { WallpaperConfig, saveWallpaper } from '../services/wallpaperService';
+import { WallpaperConfig } from '../services/wallpaperService';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -99,14 +99,12 @@ export const WallpaperPicker: React.FC<WallpaperPickerProps> = ({ visible, onClo
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
       const config: WallpaperConfig = { type: 'image', value: result.assets[0].uri };
-      await saveWallpaper(config);
       onSelect(config);
     }
   };
 
-  const handleSelectPreset = async (item: any) => {
+  const handleSelectPreset = (item: any) => {
     const config: WallpaperConfig = { type: item.type as any, value: item.value };
-    await saveWallpaper(config);
     onSelect(config);
   };
 
@@ -114,7 +112,7 @@ export const WallpaperPicker: React.FC<WallpaperPickerProps> = ({ visible, onClo
     const isSelected = currentWallpaper?.value === item.value;
     const previewBg = item.id === 'doodle' 
       ? (isDark ? '#1c2431' : '#d1e1f1') 
-      : (item.color || item.value);
+      : item.value;
     
     return (
       <TouchableOpacity 
@@ -131,7 +129,7 @@ export const WallpaperPicker: React.FC<WallpaperPickerProps> = ({ visible, onClo
           {(item.type === 'pattern' || (item.type === 'color' && !item.isReset)) && (
             <Image 
               source={require('../../assets/chat_bg_doodle.png')} 
-              style={[StyleSheet.absoluteFill, { opacity: isDark ? 0.9 : 1.0, width: '100%', height: '100%' }]} 
+              style={[StyleSheet.absoluteFill, { opacity: 0.2, width: '100%', height: '100%' }]} 
               resizeMode="repeat"
             />
           )}
@@ -237,12 +235,12 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   themeCard: {
-    width: 104, // Ajustado para incluir a borda de 2px de cada lado
+    width: 104, 
     marginRight: 12,
     alignItems: 'center',
     borderRadius: 14,
-    borderWidth: 2, // Borda fixa sempre presente
-    padding: 2, // Espaçamento para o conteúdo interno
+    borderWidth: 2, 
+    padding: 2, 
   },
   themePreview: {
     width: 96,
@@ -263,7 +261,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#0088cc', // Cor Telegram Blue para o check
+    backgroundColor: '#0088cc', 
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,

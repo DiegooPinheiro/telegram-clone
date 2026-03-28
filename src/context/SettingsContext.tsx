@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Appearance } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { loadWallpaper, saveWallpaper, WallpaperConfig, DEFAULT_WALLPAPER } from '../services/wallpaperService';
 
 type Theme = 'light' | 'dark';
 type Language = 'pt' | 'en';
@@ -14,6 +15,8 @@ interface SettingsContextType {
   setMenuVisible: (visible: boolean) => void;
   
   // Novas configurações de chat
+  wallpaper: WallpaperConfig;
+  setWallpaper: (config: WallpaperConfig) => void;
   textSize: number;
   setTextSize: (size: number) => void;
   bubbleRadius: number;
@@ -42,6 +45,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [menuVisible, setMenuVisible] = useState(false);
 
   // Estados das novas configurações
+  const [wallpaper, setWallpaperState] = useState<WallpaperConfig>(DEFAULT_WALLPAPER);
   const [textSize, setTextSizeState] = useState(17);
   const [bubbleRadius, setBubbleRadiusState] = useState(17);
   const [chatListView, setChatListViewState] = useState<'two' | 'three'>('two');
@@ -69,6 +73,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       const s_pause = await AsyncStorage.getItem('app_pause_on_recording');
       const s_enter = await AsyncStorage.getItem('app_send_with_enter');
       const s_unit = await AsyncStorage.getItem('app_distance_unit');
+      
+      const loadedWallpaper = await loadWallpaper();
+      setWallpaperState(loadedWallpaper);
 
       if (savedTheme) setTheme(savedTheme as Theme);
       if (savedLang) setLanguageState(savedLang as Language);
@@ -98,6 +105,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Funções de Setter
+  const setWallpaper = async (config: WallpaperConfig) => {
+    setWallpaperState(config);
+    await saveWallpaper(config);
+  };
+
   const setTextSize = async (size: number) => {
     setTextSizeState(size);
     await AsyncStorage.setItem('app_text_size', String(size));
@@ -147,6 +159,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     <SettingsContext.Provider 
       value={{ 
         theme, language, toggleTheme, setLanguage, menuVisible, setMenuVisible,
+        wallpaper, setWallpaper,
         textSize, setTextSize,
         bubbleRadius, setBubbleRadius,
         chatListView, setChatListView,

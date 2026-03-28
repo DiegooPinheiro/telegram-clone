@@ -50,7 +50,8 @@ import { getCachedMessages, setCachedMessages } from '../services/messageCache';
 import { cloudinaryUpload } from '../services/cloudinaryService';
 import { EmptyChatState } from '../components/EmptyChatState';
 import { WallpaperPicker } from '../components/WallpaperPicker';
-import { loadWallpaper, type WallpaperConfig, DEFAULT_WALLPAPER } from '../services/wallpaperService';
+import { useSettings } from '../context/SettingsContext';
+import { type WallpaperConfig } from '../services/wallpaperService';
 import {
   markMessagesReadSocket,
   onMessagesDeleted,
@@ -92,6 +93,7 @@ type ActiveAudio = {
 export default function ChatScreen({ navigation, route }: Props) {
   const EMOJI_SEARCH_LIFT = 176;
   const { colors, isDark } = useTheme();
+  const { wallpaper, setWallpaper } = useSettings();
   const { 
     conversationId: initialConversationId, 
     userId: receiverId, 
@@ -124,7 +126,6 @@ export default function ChatScreen({ navigation, route }: Props) {
   const [conversationId, setConversationId] = useState<string | null>(initialConversationId ?? null);
   const [isGroup, setIsGroup] = useState<boolean>(!!initialIsGroup);
   const [messages, setMessages] = useState<LocalChatMessage[]>([]);
-  const [wallpaper, setWallpaper] = useState<WallpaperConfig>(DEFAULT_WALLPAPER);
   const [wallpaperModalVisible, setWallpaperModalVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [attachOpen, setAttachOpen] = useState(false);
@@ -1331,7 +1332,7 @@ export default function ChatScreen({ navigation, route }: Props) {
           {showPattern && (
             <Image 
               source={require('../../assets/chat_bg_doodle.png')} 
-              style={[StyleSheet.absoluteFill, { width: '100%', height: '100%', opacity: isDark ? 0.9 : 1.0 }]} 
+              style={[StyleSheet.absoluteFill, { width: '100%', height: '100%', opacity: 0.25 }]} 
               resizeMode="repeat"
             />
           )}

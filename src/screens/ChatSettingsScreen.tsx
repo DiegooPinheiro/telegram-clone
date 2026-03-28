@@ -19,12 +19,14 @@ import useTheme from '../hooks/useTheme';
 import MessageBubble from '../components/MessageBubble';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
+import { WallpaperPicker } from '../components/WallpaperPicker';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ChatSettings'>;
 
 export default function ChatSettingsScreen({ navigation }: Props) {
   const { colors, isDark } = useTheme();
   const {
+    wallpaper, setWallpaper,
     textSize, setTextSize,
     bubbleRadius, setBubbleRadius,
     chatListView, setChatListView,
@@ -37,7 +39,8 @@ export default function ChatSettingsScreen({ navigation }: Props) {
     toggleTheme,
   } = useSettings();
 
-  const [activeThemeId, setActiveThemeId] = useState('default');
+  const [activeThemeId, setActiveThemeId] = useState('cyan');
+  const [wallpaperModalVisible, setWallpaperModalVisible] = useState(false);
 
   const THEMES = [
     { id: 'cyan', color: '#0088cc', label: 'Cyan' },
@@ -64,13 +67,25 @@ export default function ChatSettingsScreen({ navigation }: Props) {
         </TouchableOpacity>
       </View>
 
-      {/* CHAT PREVIEW - AGORA NO TOPO */}
-      <View style={[styles.previewContainer, { backgroundColor: isDark ? '#1c2431' : '#d6e8c4' }]}>
-        <Image 
-          source={require('../../assets/chat_bg_doodle.png')} 
-          style={[StyleSheet.absoluteFill, { opacity: isDark ? 0.9 : 1.0 }]} 
-          resizeMode="repeat"
-        />
+      {/* CHAT PREVIEW - AGORA DINÂMICO */}
+      <View style={[
+        styles.previewContainer, 
+        { backgroundColor: wallpaper.type === 'color' ? wallpaper.value : (isDark ? '#1c2431' : '#d6e8c4') }
+      ]}>
+        {(wallpaper.type === 'pattern' || wallpaper.type === 'color') && (
+          <Image 
+            source={require('../../assets/chat_bg_doodle.png')} 
+            style={[StyleSheet.absoluteFill, { opacity: 0.25 }]} 
+            resizeMode="repeat"
+          />
+        )}
+        {wallpaper.type === 'image' && (
+          <Image 
+            source={{ uri: wallpaper.value }} 
+            style={StyleSheet.absoluteFill} 
+            resizeMode="cover"
+          />
+        )}
         <View style={[styles.previewMessageWrap, { padding: 16 }]}>
           <MessageBubble
             message={"Bom dia! 👋\nVocê sabe que horas são?"}
@@ -107,7 +122,11 @@ export default function ChatSettingsScreen({ navigation }: Props) {
           </View>
 
           <View style={styles.actionRows}>
-            <TouchableOpacity style={styles.actionRow} activeOpacity={0.7}>
+            <TouchableOpacity 
+              style={styles.actionRow} 
+              activeOpacity={0.7}
+              onPress={() => setWallpaperModalVisible(true)}
+            >
               <Ionicons name="images-outline" size={24} color={colors.primary} />
               <Text style={[styles.actionLabel, { color: colors.textPrimary }]}>Alterar Papel de Parede</Text>
             </TouchableOpacity>
@@ -207,6 +226,15 @@ export default function ChatSettingsScreen({ navigation }: Props) {
         </View>
 
       </ScrollView>
+
+      <WallpaperPicker 
+        visible={wallpaperModalVisible}
+        onClose={() => setWallpaperModalVisible(false)}
+        onSelect={(config) => {
+          setWallpaper(config);
+        }}
+        currentWallpaper={wallpaper}
+      />
     </SafeAreaView>
   );
 }
