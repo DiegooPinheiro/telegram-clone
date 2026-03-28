@@ -1181,7 +1181,7 @@ export default function ChatScreen({ navigation, route }: Props) {
       if ('type' in item && item.type === 'date-separator') {
         return (
           <View style={styles.dateSeparatorContainer}>
-            <View style={[styles.dateSeparatorPill, { backgroundColor: isDark ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.08)' }]}>
+            <View style={[styles.dateSeparatorPill, { backgroundColor: isDark ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.85)' }]}>
               <Text style={[styles.dateSeparatorText, { color: colors.textPrimary }]}>{item.dateText}</Text>
             </View>
           </View>
@@ -1312,22 +1312,29 @@ export default function ChatScreen({ navigation, route }: Props) {
       : 0;
 
   const renderWallpaper = () => {
-    if (wallpaper.type === 'color') {
-      return <View style={[styles.chatWallpaper, { backgroundColor: wallpaper.value }]} />;
+    if (wallpaper.type === 'color' || wallpaper.type === 'pattern') {
+      const isDoodleBase = wallpaper.type === 'pattern' && wallpaper.value === 'chat_bg_doodle';
+      const bgColor = isDoodleBase 
+        ? (isDark ? '#1c2431' : '#d1e1f1') 
+        : wallpaper.value;
+      
+      // Aplicamos o desenho se for o Doodle base ou se for uma cor (exceto o cinza de reset)
+      const showPattern = isDoodleBase || (wallpaper.type === 'color' && wallpaper.value !== '#2a2f32');
+
+      return (
+        <View style={[styles.chatWallpaper, { backgroundColor: bgColor }]}>
+          {showPattern && (
+            <Image 
+              source={require('../../assets/chat_bg_doodle.png')} 
+              style={[StyleSheet.absoluteFill, { width: '100%', height: '100%', opacity: isDark ? 0.65 : 0.75 }]} 
+              resizeMode="repeat"
+            />
+          )}
+        </View>
+      );
     }
     if (wallpaper.type === 'image') {
       return <Image source={{ uri: wallpaper.value }} style={styles.chatWallpaper} resizeMode="cover" />;
-    }
-    if (wallpaper.type === 'pattern' && wallpaper.value === 'chat_bg_doodle') {
-      return (
-        <View style={[styles.chatWallpaper, { backgroundColor: isDark ? '#1c2431' : '#d7e5d0' }]}>
-          <Image 
-            source={require('../../assets/chat_bg_doodle.png')} 
-            style={[StyleSheet.absoluteFill, { width: '100%', height: '100%', opacity: isDark ? 0.35 : 0.4 }]} 
-            resizeMode="repeat"
-          />
-        </View>
-      );
     }
     return <View style={[styles.chatWallpaper, { backgroundColor: colors.backgroundChat }]} />;
   };

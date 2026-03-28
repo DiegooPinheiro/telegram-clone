@@ -12,6 +12,7 @@ import {
   Dimensions,
   Image,
   Platform,
+  FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -38,11 +39,12 @@ const PRESET_COLORS = [
 ];
 
 const PRESET_THEMES = [
-  { id: 'none', type: 'color', value: '#2a2f32', label: 'Sem Tema', isReset: true },
+  { id: 'none', type: 'color', value: '#2a2f32', label: 'Sem Papel de Parede', isReset: true },
   { id: 'doodle', type: 'pattern', value: 'chat_bg_doodle', label: 'Doodle' },
   { id: 'blue_sky', type: 'color', value: '#3a86ff', label: 'Blue Sky' },
   { id: 'green_leaf', type: 'color', value: '#8338ec', label: 'Purple Vibe' },
   { id: 'warm', type: 'color', value: '#fb5607', label: 'Sunset' },
+  { id: 'midnight', type: 'color', value: '#000000', label: 'Midnight' },
 ];
 
 export const WallpaperPicker: React.FC<WallpaperPickerProps> = ({ visible, onClose, onSelect, currentWallpaper }) => {
@@ -95,7 +97,6 @@ export const WallpaperPicker: React.FC<WallpaperPickerProps> = ({ visible, onClo
       const config: WallpaperConfig = { type: 'image', value: result.assets[0].uri };
       await saveWallpaper(config);
       onSelect(config);
-      onClose();
     }
   };
 
@@ -103,7 +104,44 @@ export const WallpaperPicker: React.FC<WallpaperPickerProps> = ({ visible, onClo
     const config: WallpaperConfig = { type: item.type as any, value: item.value };
     await saveWallpaper(config);
     onSelect(config);
-    onClose();
+  };
+
+  const renderThemeItem = ({ item }: { item: any }) => {
+    const isSelected = currentWallpaper?.value === item.value;
+    const previewBg = item.id === 'doodle' 
+      ? (isDark ? '#1c2431' : '#d1e1f1') 
+      : (item.color || item.value);
+    
+    return (
+      <TouchableOpacity 
+        style={[
+          styles.themeCard, 
+          { borderColor: isSelected ? colors.primary : 'transparent' }
+        ]} 
+        onPress={() => handleSelectPreset(item)}
+      >
+        <View style={[styles.themePreview, { backgroundColor: previewBg }]}>
+          {item.isReset && (
+            <Ionicons name="close-circle" size={32} color="#ff3b30" />
+          )}
+          {(item.type === 'pattern' || (item.type === 'color' && !item.isReset)) && (
+            <Image 
+              source={require('../../assets/chat_bg_doodle.png')} 
+              style={[StyleSheet.absoluteFill, { opacity: isDark ? 0.65 : 0.75, width: '100%', height: '100%' }]} 
+              resizeMode="repeat"
+            />
+          )}
+          {isSelected && (
+            <View style={styles.selectedOverlay}>
+              <View style={styles.checkCircle}>
+                <Ionicons name="checkmark" size={20} color="#fff" />
+              </View>
+            </View>
+          )}
+        </View>
+        <Text style={[styles.themeLabel, { color: colors.textPrimary }]}>{item.label}</Text>
+      </TouchableOpacity>
+    );
   };
 
   return (
@@ -128,46 +166,21 @@ export const WallpaperPicker: React.FC<WallpaperPickerProps> = ({ visible, onClo
             <TouchableOpacity onPress={onClose}>
               <Ionicons name="close" size={26} color={colors.textPrimary} />
             </TouchableOpacity>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>Selecionar tema</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>Selecionar papel de parede</Text>
             <TouchableOpacity onPress={toggleTheme}>
               <Ionicons name={isDark ? "sunny" : "moon"} size={22} color={colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false} 
+          <FlatList
+            data={PRESET_THEMES}
+            renderItem={renderThemeItem}
+            keyExtractor={(item) => item.id}
+            horizontal
+            showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.themesScroll}
-          >
-            {PRESET_THEMES.map((item: any) => {
-              const isSelected = currentWallpaper?.value === item.value;
-              const previewBg = item.id === 'doodle' 
-                ? (isDark ? '#1c2431' : '#d7e5d0') 
-                : (item.color || item.value);
-              
-              return (
-                <TouchableOpacity 
-                  key={item.id} 
-                  style={[styles.themeCard, isSelected && { borderColor: colors.primary, borderWidth: 2 }]} 
-                  onPress={() => handleSelectPreset(item)}
-                >
-                  <View style={[styles.themePreview, { backgroundColor: previewBg }]}>
-                    {item.isReset && (
-                      <Ionicons name="close-circle" size={32} color="#ff3b30" />
-                    )}
-                    {item.type === 'pattern' && (
-                      <Image 
-                        source={require('../../assets/chat_bg_doodle.png')} 
-                        style={[StyleSheet.absoluteFill, { opacity: isDark ? 0.35 : 0.4, width: '100%', height: '100%' }]} 
-                        resizeMode="cover"
-                      />
-                    )}
-                  </View>
-                  <Text style={[styles.themeLabel, { color: colors.textPrimary }]}>{item.label}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+            extraData={currentWallpaper?.value}
+          />
 
           <TouchableOpacity style={styles.galleryBtn} onPress={handlePickFromGallery}>
             <Text style={[styles.galleryBtnText, { color: colors.primary }]}>Escolher da Galeria</Text>
@@ -189,7 +202,7 @@ const styles = StyleSheet.create({
   sheet: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    minHeight: 300,
+    minHeight: 330,
   },
   indicatorContainer: {
     width: '100%',
@@ -220,20 +233,37 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   themeCard: {
-    width: 100,
+    width: 104, // Ajustado para incluir a borda de 2px de cada lado
     marginRight: 12,
     alignItems: 'center',
-    borderRadius: 12,
-    overflow: 'hidden',
+    borderRadius: 14,
+    borderWidth: 2, // Borda fixa sempre presente
+    padding: 2, // Espaçamento para o conteúdo interno
   },
   themePreview: {
-    width: 100,
-    height: 150,
-    borderRadius: 12,
+    width: 96,
+    height: 146,
+    borderRadius: 10,
     backgroundColor: '#3a3a3c',
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
+  },
+  selectedOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#0088cc', // Cor Telegram Blue para o check
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#ffffff',
   },
   themeLabel: {
     marginTop: 8,
