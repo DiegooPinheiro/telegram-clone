@@ -50,8 +50,7 @@ export default function TwoStepVerifyScreen({ navigation, route }: Props) {
   }, [pin]);
 
   const verifyPin = async (enteredPin: string) => {
-    // Para facilitar o teste, aceitamos '123456' ou o código vindo por parâmetro
-    if (enteredPin !== expectedCode && enteredPin !== '123456') {
+    if (enteredPin !== expectedCode) {
       Alert.alert('Erro', 'Código de verificação incorreto.');
       setPin(['', '', '', '', '', '']);
       inputs.current[0]?.focus();

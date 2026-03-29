@@ -102,3 +102,4 @@ export const chatUploadMedia = async (file: any) => {
 };
 
 export const chatDeleteMe = async () => requestJson<any>('/api/users/me', { method: 'DELETE' });
+export const chatSendTwoStepCode = async (email: string) => requestJson<any>('/api/users/2fa/send-code', { method: 'POST', body: JSON.stringify({ email }) });

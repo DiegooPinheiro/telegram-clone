@@ -7,7 +7,8 @@ import {
   TouchableOpacity, 
   KeyboardAvoidingView, 
   Platform,
-  Alert
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,24 +17,40 @@ import { RootStackParamList } from '../navigation/types';
 import useTheme from '../hooks/useTheme';
 import { validateEmail } from '../utils/validators';
 
+import { chatSendTwoStepCode } from '../services/chatApi';
+
 type Props = NativeStackScreenProps<RootStackParamList, 'TwoStepEmail'>;
 
 export default function TwoStepEmailScreen({ navigation, route }: Props) {
   const { colors } = useTheme();
   const { password } = route.params;
   const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!validateEmail(email)) {
       Alert.alert('E-mail inválido', 'Por favor, insira um endereço de e-mail válido.');
       return;
     }
 
-    // Simulando o envio de um código para o e-mail
-    const code = '123456';
-    console.log(`[2FA Sync] Código fixo para teste (${email}): ${code}`);
-    
-    navigation.navigate('TwoStepVerify', { password, email, code });
+    setLoading(true);
+    try {
+      // Chama o backend para enviar o e-mail real via Resend
+      const response = await chatSendTwoStepCode(email);
+      
+      if (response && response.success) {
+        // Navega para a tela de verificação com o código que o servidor retornou
+        navigation.navigate('TwoStepVerify', { 
+          password, 
+          email, 
+          code: response.code 
+        });
+      }
+    } catch (error: any) {
+      Alert.alert('Erro no envio', error.message || 'Não foi possível enviar o e-mail de verificação.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -75,11 +92,16 @@ export default function TwoStepEmailScreen({ navigation, route }: Props) {
 
         {email.length > 3 && (
           <TouchableOpacity 
-            style={[styles.floatingButton, { backgroundColor: colors.primary }]}
+            style={[styles.floatingButton, { backgroundColor: colors.primary, opacity: loading ? 0.7 : 1 }]}
             activeOpacity={0.8}
             onPress={handleNext}
+            disabled={loading}
           >
-            <Ionicons name="arrow-forward" size={28} color="#fff" />
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Ionicons name="arrow-forward" size={28} color="#fff" />
+            )}
           </TouchableOpacity>
         )}
       </KeyboardAvoidingView>
