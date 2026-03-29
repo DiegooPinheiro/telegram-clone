@@ -42,6 +42,11 @@ export type RootStackParamList = {
   ChangeUsername: undefined;
   ChangeBirthday: undefined;
   ChatSettings: undefined;
+  TwoStepIntro: undefined;
+  TwoStepPassword: undefined;
+  TwoStepEmail: { password: string };
+  TwoStepVerify: { password: string; email: string; code: string };
+  TwoStepSuccess: undefined;
   GroupProfile: {
     conversationId: string;
     name: string;

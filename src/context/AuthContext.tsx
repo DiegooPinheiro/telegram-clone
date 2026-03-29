@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, useContext, ReactNode } from
 import { User } from 'firebase/auth';
 import { onAuthChange, getCurrentUser } from '../services/authService';
 import { getChatSession } from '../services/chatSession';
+import { UserProfile } from '../types/user';
 
 interface AuthContextType {
   user: User | null;
@@ -12,6 +13,7 @@ interface AuthContextType {
   displayName: string | null;
   email: string | null;
   photoURL: string | null;
+  userProfile: UserProfile | null;
   refreshSession: () => Promise<void>;
 }
 
@@ -21,6 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(getCurrentUser());
   const [loading, setLoading] = useState(true);
   const [phoneVerified, setPhoneVerified] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
   const checkSession = async () => {
     const session = await getChatSession();
@@ -41,24 +44,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const session = await getChatSession();
         if (session && session.phoneVerified) {
           setPhoneVerified(true);
-        } else {
-          // Se não estiver na sessão local, verifica o Firestore diretamente
-          // para evitar o race condition do carregamento inicial/login.
-          try {
-            const { doc, getDoc, getFirestore } = await import('firebase/firestore');
-            const db = getFirestore();
-            const snap = await getDoc(doc(db, 'users', firebaseUser.uid));
-            if (snap.exists() && (snap.data() as any).phoneVerified) {
-              setPhoneVerified(true);
-            } else {
-              setPhoneVerified(false);
-            }
-          } catch (e) {
-            setPhoneVerified(false);
+        }
+        
+        // Fetch full profile from Firestore
+        try {
+          const { doc, getDoc, getFirestore } = await import('firebase/firestore');
+          const db = getFirestore();
+          const snap = await getDoc(doc(db, 'users', firebaseUser.uid));
+          if (snap.exists()) {
+            const data = snap.data() as UserProfile;
+            setUserProfile(data);
+            if (data.phoneVerified) setPhoneVerified(true);
           }
+        } catch (e) {
+          console.error('[AuthContext] Error fetching profile:', e);
         }
       } else {
         setPhoneVerified(false);
+        setUserProfile(null);
       }
       setLoading(false);
     });
@@ -85,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     displayName: user?.displayName || null,
     email: user?.email || null,
     photoURL: user?.photoURL || null,
+    userProfile,
     refreshSession,
   };
 

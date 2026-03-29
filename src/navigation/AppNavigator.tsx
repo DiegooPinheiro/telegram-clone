@@ -28,6 +28,11 @@ import HelpScreen from '../screens/HelpScreen';
 import ChangePhoneScreen from '../screens/ChangePhoneScreen';
 import ChangeUsernameScreen from '../screens/ChangeUsernameScreen';
 import ChatSettingsScreen from '../screens/ChatSettingsScreen';
+import TwoStepIntroScreen from '../screens/TwoStepIntroScreen';
+import TwoStepPasswordScreen from '../screens/TwoStepPasswordScreen';
+import TwoStepEmailScreen from '../screens/TwoStepEmailScreen';
+import TwoStepVerifyScreen from '../screens/TwoStepVerifyScreen';
+import TwoStepSuccessScreen from '../screens/TwoStepSuccessScreen';
 import FloatingBottomTab from '../components/FloatingBottomTab';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -105,12 +110,17 @@ export default function AppNavigator() {
         <Stack.Screen name="GroupProfile" component={GroupProfileScreen} options={{ headerShown: false }} />
         <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Editar Perfil' }} />
         <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Notificacoes' }} />
-        <Stack.Screen name="Privacy" component={PrivacyScreen} options={{ title: 'Privacidade' }} />
+        <Stack.Screen name="Privacy" component={PrivacyScreen} options={{ title: 'Privacidade e Segurança' }} />
         <Stack.Screen name="DataStorage" component={DataStorageScreen} options={{ title: 'Dados e Armazenamento' }} />
         <Stack.Screen name="Help" component={HelpScreen} options={{ title: 'Ajuda' }} />
         <Stack.Screen name="ChangePhone" component={ChangePhoneScreen} options={{ title: 'Alterar Numero' }} />
         <Stack.Screen name="ChangeUsername" component={ChangeUsernameScreen} options={{ title: 'Nome de Usuario' }} />
         <Stack.Screen name="ChatSettings" component={ChatSettingsScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="TwoStepIntro" component={TwoStepIntroScreen} options={{ title: '' }} />
+        <Stack.Screen name="TwoStepPassword" component={TwoStepPasswordScreen} options={{ title: '' }} />
+        <Stack.Screen name="TwoStepEmail" component={TwoStepEmailScreen} options={{ title: '' }} />
+        <Stack.Screen name="TwoStepVerify" component={TwoStepVerifyScreen} options={{ title: '' }} />
+        <Stack.Screen name="TwoStepSuccess" component={TwoStepSuccessScreen} options={{ title: '', headerLeft: () => null }} />
       </Stack.Navigator>
 
       <Modal transparent visible={menuVisible} animationType="fade" onRequestClose={() => setMenuVisible(false)}>

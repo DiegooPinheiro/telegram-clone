@@ -356,3 +356,18 @@ export const setPhoneVerified = async (uid: string, phone: string) => {
     });
   }
 };
+
+/**
+ * Atualiza o status e detalhes da Verificação em Duas Etapas (2FA).
+ */
+export const updateTwoStepAuth = async (data: { password?: string; email?: string; enabled: boolean }) => {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Usuário não autenticado.');
+
+  const docRef = doc(db, 'users', user.uid);
+  await updateDoc(docRef, {
+    twoStepEnabled: data.enabled,
+    twoStepPassword: data.password || null,
+    twoStepEmail: data.email || null,
+  });
+};

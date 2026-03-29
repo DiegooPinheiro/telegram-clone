@@ -11,4 +11,8 @@ export interface UserProfile {
   createdAt: string;
   lastSeen: string;
   online: boolean;
+  phoneVerified?: boolean;
+  twoStepEnabled?: boolean;
+  twoStepEmail?: string;
+  twoStepPassword?: string;
 }
