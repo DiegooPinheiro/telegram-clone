@@ -1,5 +1,5 @@
 import { AppState, type AppStateStatus } from 'react-native';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebaseConfig';
 
 const setPresence = async (online: boolean) => {
@@ -7,10 +7,10 @@ const setPresence = async (online: boolean) => {
   if (!user?.uid) return;
 
   try {
-    await updateDoc(doc(db, 'users', user.uid), {
+    await setDoc(doc(db, 'users', user.uid), {
       online,
       lastSeen: new Date().toISOString(),
-    });
+    }, { merge: true });
   } catch (error) {
     console.warn('[Presence] Falha ao atualizar presença:', error);
   }

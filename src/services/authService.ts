@@ -118,10 +118,10 @@ export const signIn = async (email: string, password: string) => {
   const userCredential = await signInWithEmailAndPassword(auth, email, password);
   const user = userCredential.user;
 
-  await updateDoc(doc(db, 'users', user.uid), {
+  await setDoc(doc(db, 'users', user.uid), {
     online: true,
     lastSeen: new Date().toISOString(),
-  });
+  }, { merge: true });
 
   try {
     return await syncChatUserFromFirebase(email);
@@ -242,7 +242,7 @@ export const updateUserProfile = async (
     birthday?: string;
   }
 ) => {
-  await updateDoc(doc(db, 'users', uid), data);
+    await setDoc(doc(db, 'users', uid), data, { merge: true });
 
   const user = auth.currentUser;
   if (user && (data.displayName || data.photoURL !== undefined)) {
@@ -332,10 +332,10 @@ export const resetPassword = async (email: string) => {
  * Atualiza o status de verificação do telefone no Firestore e Backend.
  */
 export const setPhoneVerified = async (uid: string, phone: string) => {
-  await updateDoc(doc(db, 'users', uid), {
+  await setDoc(doc(db, 'users', uid), {
     phone,
     phoneVerified: true,
-  });
+  }, { merge: true });
 
   const user = auth.currentUser;
   if (user) {

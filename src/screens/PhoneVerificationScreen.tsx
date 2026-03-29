@@ -137,27 +137,6 @@ export default function PhoneVerificationScreen({ navigation }: Props) {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          <TouchableOpacity 
-            onPress={async () => {
-              if (navigation.canGoBack()) {
-                navigation.goBack();
-              } else {
-                await signOut();
-              }
-            }} 
-            style={styles.backButton}
-          >
-            <View style={styles.signOutButton}>
-              <Ionicons 
-                name={navigation.canGoBack() ? "arrow-back" : "exit-outline"} 
-                size={20} 
-                color={colors.textPrimary} 
-              />
-              <Text style={[styles.signOutText, { color: colors.textPrimary }]}>
-                {navigation.canGoBack() ? 'Voltar' : 'Sair'}
-              </Text>
-            </View>
-          </TouchableOpacity>
 
           <View style={styles.header}>
             <Ionicons 
@@ -249,23 +228,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.lg,
-  },
-  backButton: {
-    alignSelf: 'flex-start',
-    marginBottom: spacing.xxl,
-  },
-  signOutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.backgroundSecondary,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  signOutText: {
-    fontSize: 14,
-    fontWeight: '600',
   },
   header: {
     alignItems: 'center',
