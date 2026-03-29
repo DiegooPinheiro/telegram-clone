@@ -8,6 +8,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   phoneVerified: boolean;
+  requiresTwoStepLogin: boolean;
   isAuthenticated: boolean;
   uid: string | null;
   displayName: string | null;
@@ -15,6 +16,7 @@ interface AuthContextType {
   photoURL: string | null;
   userProfile: UserProfile | null;
   refreshSession: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,6 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(getCurrentUser());
   const [loading, setLoading] = useState(true);
   const [phoneVerified, setPhoneVerified] = useState(false);
+  const [requiresTwoStepLogin, setRequiresTwoStepLogin] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
   const checkSession = async () => {
@@ -36,6 +39,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await checkSession();
   };
 
+  const refreshProfile = async () => {
+    if (!user) return;
+    console.log('[AuthContext] Atualizando perfil do Firestore...');
+    try {
+      const { doc, getDoc, getFirestore } = await import('firebase/firestore');
+      const db = getFirestore();
+      const snap = await getDoc(doc(db, 'users', user.uid));
+      if (snap.exists()) {
+        const data = snap.data() as UserProfile;
+        setUserProfile(data);
+        console.log('[AuthContext] Perfil atualizado com sucesso');
+      }
+    } catch (e) {
+      console.error('[AuthContext] Erro ao atualizar perfil:', e);
+    }
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthChange(async (firebaseUser) => {
       setUser(firebaseUser);
@@ -44,6 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const session = await getChatSession();
         if (session && session.phoneVerified) {
           setPhoneVerified(true);
+          setRequiresTwoStepLogin(false);
         }
         
         // Fetch full profile from Firestore
@@ -54,13 +75,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (snap.exists()) {
             const data = snap.data() as UserProfile;
             setUserProfile(data);
-            if (data.phoneVerified) setPhoneVerified(true);
+            
+            // SECURITY: Only auto-verify the phone if 2FA is DISABLED.
+            // If 2FA is ENABLED, the user MUST pass the password screen on each new session (clean cache).
+            if (data.phoneVerified) {
+              const session = await getChatSession();
+              const isLocalSessionVerified = !!(session && session.phoneVerified);
+              
+              if (!data.twoStepEnabled || isLocalSessionVerified) {
+                console.log('[AuthContext] Auto-verifying session.');
+                setPhoneVerified(true);
+                setRequiresTwoStepLogin(false);
+              } else {
+                console.log('[AuthContext] 2FA required for this new session.');
+                setPhoneVerified(false);
+                setRequiresTwoStepLogin(true);
+              }
+            }
           }
         } catch (e) {
           console.error('[AuthContext] Error fetching profile:', e);
         }
       } else {
         setPhoneVerified(false);
+        setRequiresTwoStepLogin(false);
         setUserProfile(null);
       }
       setLoading(false);
@@ -83,6 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     loading,
     phoneVerified,
+    requiresTwoStepLogin,
     isAuthenticated: !!user,
     uid: user?.uid || null,
     displayName: user?.displayName || null,
@@ -90,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     photoURL: user?.photoURL || null,
     userProfile,
     refreshSession,
+    refreshProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

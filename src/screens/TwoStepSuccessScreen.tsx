@@ -14,8 +14,10 @@ import { spacing } from '../theme/spacing';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TwoStepSuccess'>;
 
-export default function TwoStepSuccessScreen({ navigation }: Props) {
+export default function TwoStepSuccessScreen({ navigation, route }: Props) {
   const { colors } = useTheme();
+  const title = route.params?.title || 'Senha Definida!';
+  const description = route.params?.description || 'Essa senha será solicitada quando você entrar em um novo dispositivo, após o código SMS.';
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
@@ -25,11 +27,11 @@ export default function TwoStepSuccessScreen({ navigation }: Props) {
         </View>
 
         <Text style={[styles.title, { color: colors.textPrimary }]}>
-          Senha Definida!
+          {title}
         </Text>
 
         <Text style={[styles.description, { color: colors.textSecondary }]}>
-          Essa senha será solicitada quando você entrar em um novo dispositivo, após o código SMS.
+          {description}
         </Text>
       </View>
 
@@ -37,7 +39,15 @@ export default function TwoStepSuccessScreen({ navigation }: Props) {
         <TouchableOpacity 
           style={[styles.button, { backgroundColor: colors.primary }]}
           activeOpacity={0.8}
-          onPress={() => navigation.navigate('Privacy')}
+          onPress={() => {
+            navigation.reset({
+              index: 1,
+              routes: [
+                { name: 'MainTabs' as any },
+                { name: 'Privacy' as any }
+              ],
+            });
+          }}
         >
           <Text style={[styles.buttonText, { color: colors.textOnPrimary }]}>
             Voltar às Configurações

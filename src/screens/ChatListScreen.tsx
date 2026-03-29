@@ -15,11 +15,14 @@ import { onMessagesDeleted, onMessageUpdated, onReceiveMessage } from '../servic
 import { CACHE_KEYS, loadCache, saveCache } from '../services/persistentCache';
 import { useSettings } from '../context/SettingsContext';
 import type { ChatApiConversation, ChatApiUser } from '../types/chatApi';
+import useAuth from '../hooks/useAuth';
+import { ensureChatSessionForCurrentUser } from '../services/authService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ChatList'>;
 
 export default function ChatListScreen({ navigation }: Props) {
   const { colors: themeColors } = useTheme();
+  const { uid } = useAuth();
   const { setMenuVisible: setGlobalMenuVisible } = useSettings();
   const insets = useSafeAreaInsets();
   const [conversations, setConversations] = useState<ChatApiConversation[]>([]);
@@ -34,16 +37,24 @@ export default function ChatListScreen({ navigation }: Props) {
   const loadConversations = useCallback(async (silent = false) => {
     try {
       const session = await getChatSession();
-      if (!session?.userId) {
+      let resolvedSession = session;
+
+      if (uid && resolvedSession?.userId === uid) {
+        console.warn('[ChatList] Found Firebase UID in chat session. Repairing before loading conversations...');
+        await ensureChatSessionForCurrentUser();
+        resolvedSession = await getChatSession();
+      }
+
+      if (!resolvedSession?.userId) {
         setMyUserId(null);
         myUserIdRef.current = null;
         setConversations([]);
         return;
       }
 
-      setMyUserId(session.userId);
-      myUserIdRef.current = session.userId;
-      const cacheKey = `${CACHE_KEYS.CONVERSATIONS}_${session.userId}`;
+      setMyUserId(resolvedSession.userId);
+      myUserIdRef.current = resolvedSession.userId;
+      const cacheKey = `${CACHE_KEYS.CONVERSATIONS}_${resolvedSession.userId}`;
 
       if (!silent) {
         // Hydrate from cache instantly
@@ -57,7 +68,7 @@ export default function ChatListScreen({ navigation }: Props) {
       }
 
       // Fetch fresh data in the background
-      const fetched = await chatGetConversations(session.userId);
+      const fetched = await chatGetConversations(resolvedSession.userId);
       setConversations((prev) => {
         // If data is exact same length and first item matches, maybe skip?
         // Actually, just set it and overwrite cache
@@ -70,7 +81,7 @@ export default function ChatListScreen({ navigation }: Props) {
     } finally {
       if (!silent) setLoading(false);
     }
-  }, []);
+  }, [uid]);
 
   // Load once on mount / first focus — avoid double load
   useFocusEffect(

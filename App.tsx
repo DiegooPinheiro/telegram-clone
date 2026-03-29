@@ -18,11 +18,24 @@ import { chatRegisterPushToken } from './src/services/chatApi';
 import { registerForPushNotificationsAsync, setupPushNotificationListeners } from './src/services/pushNotificationService';
 import { startPresenceTracking } from './src/services/presenceService';
 import { dark, light } from './src/theme/colors';
+import { ensureChatSessionForCurrentUser } from './src/services/authService';
 
 function MainApp() {
-  const { isAuthenticated, phoneVerified, loading: authLoading } = useAuth();
+  const { isAuthenticated, phoneVerified, requiresTwoStepLogin, loading: authLoading, uid, userProfile } = useAuth();
   const { theme } = useSettings();
   const [chatReady, setChatReady] = useState(false);
+  const [authRouteLock, setAuthRouteLock] = useState<'phone' | 'twoStep'>('phone');
+
+  useEffect(() => {
+    if (!isAuthenticated || phoneVerified) {
+      setAuthRouteLock('phone');
+      return;
+    }
+
+    if (requiresTwoStepLogin) {
+      setAuthRouteLock('twoStep');
+    }
+  }, [isAuthenticated, phoneVerified, requiresTwoStepLogin]);
 
   useEffect(() => {
     setupNotifications();
@@ -85,7 +98,14 @@ function MainApp() {
 
     const initChatSocket = async (retries = 5) => {
       try {
-        const session = await getChatSession();
+        let session = await getChatSession();
+
+        if (uid && session?.userId === uid) {
+          console.warn('[App] Chat session is using Firebase UID instead of chat user id. Repairing session...');
+          await ensureChatSessionForCurrentUser();
+          session = await getChatSession();
+        }
+
         currentUserId = session?.userId || null;
         if (!session?.userId) {
           if (retries > 0) {
@@ -118,7 +138,7 @@ function MainApp() {
       unsubscribe?.();
       stopPresence?.();
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, uid, phoneVerified]);
 
   if (authLoading || (isAuthenticated && !chatReady)) {
     return <LoadingSpinner message="Carregando..." />;
@@ -147,15 +167,30 @@ function MainApp() {
   const toastConfig = {
     messageToast: (props: any) => <MessageToast {...props} />,
   };
+  const rootNavKey = phoneVerified
+    ? `app-${uid || 'guest'}`
+    : `auth-${authRouteLock}-${uid || 'guest'}`;
 
   return (
     <View style={{ flex: 1, backgroundColor: navTheme.colors.background }}>
       <SafeAreaProvider>
-        <NavigationContainer ref={navigationRef} theme={navTheme}>
+        <NavigationContainer key={rootNavKey} ref={navigationRef} theme={navTheme}>
           {phoneVerified ? (
-            <AppNavigator />
+            <AppNavigator key={rootNavKey} />
           ) : (
-            <AuthNavigator initialRoute={isAuthenticated ? 'Register' : 'PhoneVerification'} />
+            <AuthNavigator
+              key={rootNavKey}
+              initialRoute={authRouteLock === 'twoStep' ? 'TwoStepVerifyPassword' : 'PhoneVerification'}
+              twoStepParams={
+                authRouteLock === 'twoStep'
+                  ? {
+                      mode: 'login',
+                      targetUid: uid || undefined,
+                      phoneNumber: userProfile?.phone,
+                    }
+                  : undefined
+              }
+            />
           )}
         </NavigationContainer>
         <Toast config={toastConfig} />

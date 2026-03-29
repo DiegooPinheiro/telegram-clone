@@ -43,7 +43,8 @@ export default function TwoStepEmailScreen({ navigation, route }: Props) {
         navigation.navigate('TwoStepVerify', { 
           password, 
           email, 
-          code: response.code 
+          code: response.code,
+          mode: route.params?.mode
         });
       }
     } catch (error: any) {

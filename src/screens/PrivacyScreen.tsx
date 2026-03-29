@@ -29,7 +29,14 @@ export default function PrivacyScreen({ navigation }: Props) {
               label="Verificação em Duas Etapas" 
               value={twoStepEnabled ? "Ativada" : "Desativada"} 
               valueColor={twoStepEnabled ? colors.primary : colors.textSecondary}
-              onPress={() => navigation.navigate('TwoStepIntro')}
+              onPress={() => {
+                if (twoStepEnabled) {
+                  navigation.navigate('TwoStepVerifyPasswordSettings', { mode: 'settings' });
+                  return;
+                }
+
+                navigation.navigate('TwoStepIntro');
+              }}
             />
             <Divider />
             

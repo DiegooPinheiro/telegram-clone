@@ -22,13 +22,15 @@ import { spacing } from '../theme/spacing';
 import { auth } from '../config/firebaseConfig';
 import { getEnv } from '../config/env';
 import { PhoneAuthProvider, signInWithCredential } from 'firebase/auth';
-import { setPhoneVerified, signOut, getUserByPhone } from '../services/authService';
-import useAuth from '../hooks/useAuth';
+import { 
+  completePhoneVerificationLogin,
+  getUserByPhone,
+  normalizePhoneNumber 
+} from '../services/authService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PhoneVerification'>;
 
 export default function PhoneVerificationScreen({ navigation }: Props) {
-  const { refreshSession } = useAuth();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [verificationId, setVerificationId] = useState<string | null>(null);
@@ -108,22 +110,40 @@ export default function PhoneVerificationScreen({ navigation }: Props) {
 
       if (!user) throw new Error('Falha ao autenticar via SMS.');
 
-      // 2. Verificar se este telefone já está cadastrado no nosso banco (Firestore)
-      const rawPhone = phoneNumber.replace(/\D/g, '');
-      const existingUser = await getUserByPhone(rawPhone);
+      // 2. Identificar o usuário (Prioridade: UID -> Fallback: Telefone)
+      const { uid } = user;
+      console.log('[PhoneVerify] Checking identity for UID:', uid);
+      
+      const normalizedPhone = normalizePhoneNumber(phoneNumber);
+      const { getUserProfile } = await import('../services/authService');
+      let userData = await getUserByPhone(normalizedPhone);
+      
+      if (!userData) {
+        console.log('[PhoneVerify] No profile found by phone. Trying current Firebase UID...');
+        userData = await getUserProfile(uid);
+      }
 
-      if (existingUser) {
-        // USUÁRIO EXISTENTE: Finaliza a verificação e entra no app
-        await setPhoneVerified(user.uid, rawPhone);
-        await refreshSession();
-
-        showAlert('Sucesso', 'Bem-vindo de volta!', () => {
-          hideAlert();
-          navigation.replace('MainTabs' as any);
-        });
+      if (userData) {
+        console.log('[PhoneVerify] Identity confirmed:', userData.displayName || 'User');
+        const resolvedUid = userData.uid || uid;
+        if (!resolvedUid) throw new Error('Conta encontrada sem UID valido.');
+        
+        // USUÁRIO EXISTENTE: Verifica se tem 2FA ativado
+        if (userData.twoStepEnabled) {
+          console.log('[PhoneVerify] 2FA is ENABLED. Redirecting to password challenge...');
+          navigation.navigate('TwoStepVerifyPassword', {
+            mode: 'login',
+            phoneNumber: normalizedPhone,
+            targetUid: resolvedUid,
+          });
+        } else {
+          console.log('[PhoneVerify] 2FA is disabled. Finalizing login...');
+          await completePhoneVerificationLogin(resolvedUid, normalizedPhone);
+          // O AuthContext vai detectar a mudança e navegar para MainTabs
+        }
       } else {
-        // NOVO USUÁRIO: Leva para a tela de finalização de cadastro
-        navigation.replace('Register', { phone: rawPhone });
+        console.log('[PhoneVerify] Complete NEW ACCOUNT. Redirecting to Register...');
+        navigation.navigate('Register', { phone: normalizedPhone });
       }
     } catch (error: any) {
       console.error('Erro na verificação:', error);

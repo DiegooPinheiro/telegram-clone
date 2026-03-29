@@ -26,7 +26,7 @@ import {
 import { auth, db } from '../config/firebaseConfig';
 import { UserProfile } from '../types/user';
 import { chatSyncFirebaseUser, chatRegisterPushToken, chatDeleteMe } from './chatApi';
-import { clearChatSession, setChatSession } from './chatSession';
+import { clearChatSession, getChatSession, setChatSession } from './chatSession';
 import { connectChatSocket, disconnectChatSocket } from './chatSocket';
 
 const syncChatUserFromFirebase = async (fallbackEmail: string) => {
@@ -69,6 +69,19 @@ const syncChatUserFromFirebase = async (fallbackEmail: string) => {
   return authRes;
 };
 
+export const ensureChatSessionForCurrentUser = async () => {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error('Sessao do Firebase ausente. Faca login novamente.');
+  }
+
+  const snap = await getDoc(doc(db, 'users', user.uid));
+  const data = snap.exists() ? (snap.data() as Partial<UserProfile>) : null;
+  const fallbackEmail = String(data?.email || user.email || '').trim().toLowerCase();
+
+  return syncChatUserFromFirebase(fallbackEmail);
+};
+
 /**
  * Finaliza o cadastro de um novo usuário (Nome e opcionalmente Email).
  * O usuário já deve estar autenticado via telefone no Firebase.
@@ -80,22 +93,21 @@ export const signUp = async (displayName: string, email: string = '', phone: str
   // Atualiza no Firebase Auth
   await updateProfile(user, { displayName, photoURL });
 
-  // Cria o documento no Firestore
+  // Cria ou atualiza o documento no Firestore de forma NÃO DESTRUTIVA
   await setDoc(doc(db, 'users', user.uid), {
     uid: user.uid,
     email: email || user.email || null,
     displayName,
     photoURL: photoURL || null,
     status: 'Hey there! I am using Vibe',
-    username: null,
-    phone: phone || user.phoneNumber || '',
+    phone: phone || (user.phoneNumber ? user.phoneNumber.replace(/\D/g, '') : ''),
     phoneVerified: true,
     bio: '',
     birthday: '',
     createdAt: new Date().toISOString(),
     lastSeen: new Date().toISOString(),
     online: true,
-  });
+  }, { merge: true });
 
   try {
     // Sincroniza com a API do Chat
@@ -198,7 +210,11 @@ export const getUsersByIds = async (uids: string[]): Promise<UserProfile[]> => {
 export const getUserProfile = async (uid: string) => {
   const docRef = doc(db, 'users', uid);
   const docSnap = await getDoc(docRef);
-  return docSnap.exists() ? docSnap.data() : null;
+  if (!docSnap.exists()) return null;
+  return {
+    ...(docSnap.data() as UserProfile),
+    uid: (docSnap.data() as UserProfile).uid || docSnap.id,
+  } as UserProfile;
 };
 
 /**
@@ -212,21 +228,69 @@ export const getUserProfileByUsername = async (username: string) => {
   const querySnapshot = await getDocs(q);
   if (querySnapshot.empty) return null;
 
-  return querySnapshot.docs[0].data();
+  const docSnap = querySnapshot.docs[0];
+  return {
+    ...(docSnap.data() as UserProfile),
+    uid: (docSnap.data() as UserProfile).uid || docSnap.id,
+  } as UserProfile;
+};
+
+/**
+ * Normaliza um número de telefone para o formato padrão (com 55 se no Brasil).
+ */
+export const normalizePhoneNumber = (phone: string) => {
+  let cleaned = phone.replace(/\D/g, '').trim();
+  console.log('[AuthService] Normalizing phone:', { input: phone, cleaned });
+  // Se for um número brasileiro sem o 55, adiciona.
+  if (cleaned.length === 10 || cleaned.length === 11) {
+    const withDDI = '55' + cleaned;
+    console.log('[AuthService] Appended DDI 55:', withDDI);
+    return withDDI;
+  }
+  return cleaned;
 };
 
 /**
  * Buscar perfil de um usuário pelo número de telefone.
  */
 export const getUserByPhone = async (phone: string) => {
-  const normalizedPhone = phone.replace(/\D/g, '').trim();
+  const normalizedPhone = normalizePhoneNumber(phone);
   if (!normalizedPhone) return null;
 
+  console.log('[AuthService] Searching for account with phone:', normalizedPhone);
+  
   const q = query(collection(db, 'users'), where('phone', '==', normalizedPhone));
   const querySnapshot = await getDocs(q);
-  if (querySnapshot.empty) return null;
+  
+  if (!querySnapshot.empty) {
+    console.log('[AuthService] Account found!');
+    const docSnap = querySnapshot.docs[0];
+    return {
+      ...(docSnap.data() as UserProfile),
+      uid: (docSnap.data() as UserProfile).uid || docSnap.id,
+    } as UserProfile;
+  }
 
-  return querySnapshot.docs[0].data() as UserProfile;
+  // FALLBACK: Se o número for brasileiro e a busca com '55' falhou, tenta sem o '55'
+  // por seguranca caso o usuario tenha cadastrado antes da normalizacao.
+  if (normalizedPhone.startsWith('55')) {
+    const withoutDDI = normalizedPhone.substring(2);
+    console.log('[AuthService] No match with 55. Trying fallback search without DDI:', withoutDDI);
+    const qFallback = query(collection(db, 'users'), where('phone', '==', withoutDDI));
+    const fallbackSnapshot = await getDocs(qFallback);
+    
+    if (!fallbackSnapshot.empty) {
+      console.log('[AuthService] Account found with fallback search!');
+      const docSnap = fallbackSnapshot.docs[0];
+      return {
+        ...(docSnap.data() as UserProfile),
+        uid: (docSnap.data() as UserProfile).uid || docSnap.id,
+      } as UserProfile;
+    }
+  }
+
+  console.log('[AuthService] No account found for this phone.');
+  return null;
 };
 
 /**
@@ -330,31 +394,82 @@ export const resetPassword = async (email: string) => {
   await sendPasswordResetEmail(auth, email.trim().toLowerCase());
 };
 
-/**
- * Atualiza o status de verificação do telefone no Firestore e Backend.
- */
 export const setPhoneVerified = async (uid: string, phone: string) => {
-  await setDoc(doc(db, 'users', uid), {
-    phone,
+  console.log('[AuthService] Marking phone as verified for:', uid);
+  // 1. Atualiza no Firestore
+  const userRef = doc(db, 'users', uid);
+  await updateDoc(userRef, { 
     phoneVerified: true,
-  }, { merge: true });
+    phone: phone.replace(/\D/g, '')
+  });
+
+  // 2. Sincroniza com a API do Chat (Backend)
+  const user = auth.currentUser;
+  let chatUserId: string | null = null;
+  if (user) {
+    const freshProfile = await getDoc(userRef);
+    const profileData = (freshProfile.exists() ? freshProfile.data() : null) as UserProfile | null;
+
+    const authRes = await chatSyncFirebaseUser({
+        email: String(profileData?.email || user.email || '').trim().toLowerCase(),
+        displayName: user.displayName || 'Usuário',
+        photoURL: profileData?.photoURL || user.photoURL || undefined,
+        phone: phone.replace(/\D/g, ''),
+        phoneVerified: true,
+      } as any);
+      chatUserId = authRes?._id ? String(authRes._id) : null;
+  }
+
+  // 3. Atualiza a sessão local para o AuthContext detectar a mudança
+  if (!chatUserId && !user) {
+    const existingSession = await getChatSession();
+    chatUserId = existingSession?.userId || null;
+  }
+
+  if (!chatUserId) {
+    throw new Error('NÃ£o foi possÃ­vel concluir a sessÃ£o do chat apÃ³s validar o telefone.');
+  }
+
+  await setChatSession({ userId: chatUserId, phoneVerified: true });
+  console.log('[AuthService] Phone verification completed and saved.');
+};
+
+export const completePhoneVerificationLogin = async (uid: string, phone: string) => {
+  console.log('[AuthService] Completing phone verification login for:', uid);
+  const normalizedPhone = phone.replace(/\D/g, '');
+
+  const userRef = doc(db, 'users', uid);
+  await updateDoc(userRef, {
+    phoneVerified: true,
+    phone: normalizedPhone,
+  });
 
   const user = auth.currentUser;
-  if (user) {
-    const authRes = await chatSyncFirebaseUser({
-      email: (user.email || '').trim().toLowerCase(),
-      displayName: user.displayName || 'Usuário',
-      photoURL: user.photoURL || undefined,
-      phone,
-      phoneVerified: true,
-    } as any);
-
-    // CRITICAL: Update local session so useAuth() sees the change immediately
-    await setChatSession({ 
-      userId: authRes._id,
-      phoneVerified: true 
-    });
+  if (!user) {
+    await clearChatSession();
+    throw new Error('Sessao do Firebase ausente. Faca login novamente.');
   }
+
+  const freshProfile = await getDoc(userRef);
+  const profileData = (freshProfile.exists() ? freshProfile.data() : null) as UserProfile | null;
+
+  const authRes = await chatSyncFirebaseUser({
+    email: String(profileData?.email || user.email || '').trim().toLowerCase(),
+    displayName: String(profileData?.displayName || user.displayName || 'Usuario').trim(),
+    photoURL: profileData?.photoURL || user.photoURL || undefined,
+    phone: normalizedPhone,
+    phoneVerified: true,
+  } as any);
+
+  const chatUserId = authRes?._id ? String(authRes._id) : null;
+  if (!chatUserId) {
+    await clearChatSession();
+    throw new Error('Nao foi possivel sincronizar sua sessao com o chat apos validar o telefone.');
+  }
+
+  await setChatSession({ userId: chatUserId, phoneVerified: true });
+  await connectChatSocket(chatUserId);
+  console.log('[AuthService] Phone verification login completed.');
 };
 
 /**
@@ -365,9 +480,27 @@ export const updateTwoStepAuth = async (data: { password?: string; email?: strin
   if (!user) throw new Error('Usuário não autenticado.');
 
   const docRef = doc(db, 'users', user.uid);
-  await updateDoc(docRef, {
+  const updateData: any = {
     twoStepEnabled: data.enabled,
-    twoStepPassword: data.password || null,
-    twoStepEmail: data.email || null,
+  };
+  
+  if (data.password !== undefined) updateData.twoStepPassword = data.password;
+  if (data.email !== undefined) updateData.twoStepEmail = data.email;
+
+  await updateDoc(docRef, updateData);
+};
+
+/**
+ * Desativa a Verificação em Duas Etapas (2FA).
+ */
+export const disableTwoStepAuth = async () => {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Usuário não autenticado.');
+
+  const docRef = doc(db, 'users', user.uid);
+  await updateDoc(docRef, {
+    twoStepEnabled: false,
+    twoStepPassword: null,
+    twoStepEmail: null,
   });
 };

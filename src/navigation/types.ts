@@ -1,5 +1,6 @@
 export type RootStackParamList = {
   // Auth
+  Login: undefined;
   Register: { phone: string };
   PhoneVerification: { isChangingNumber?: boolean; mode?: 'login' | 'register'; phone?: string } | undefined;
 
@@ -43,10 +44,13 @@ export type RootStackParamList = {
   ChangeBirthday: undefined;
   ChatSettings: undefined;
   TwoStepIntro: undefined;
-  TwoStepPassword: undefined;
-  TwoStepEmail: { password: string };
-  TwoStepVerify: { password: string; email: string; code: string };
-  TwoStepSuccess: undefined;
+  TwoStepPassword: { mode?: 'setup' | 'change' } | undefined;
+  TwoStepEmail: { password: string; mode?: 'setup' | 'change' };
+  TwoStepVerify: { password: string; email: string; code: string; mode?: 'setup' | 'change' };
+  TwoStepSuccess: { title?: string; description?: string } | undefined;
+  TwoStepSettings: undefined;
+  TwoStepVerifyPassword: { mode?: 'settings' | 'login' | 'change'; phoneNumber?: string; targetUid?: string };
+  TwoStepVerifyPasswordSettings: { mode?: 'settings' | 'login' | 'change'; phoneNumber?: string; targetUid?: string } | undefined;
   GroupProfile: {
     conversationId: string;
     name: string;

@@ -33,6 +33,8 @@ import TwoStepPasswordScreen from '../screens/TwoStepPasswordScreen';
 import TwoStepEmailScreen from '../screens/TwoStepEmailScreen';
 import TwoStepVerifyScreen from '../screens/TwoStepVerifyScreen';
 import TwoStepSuccessScreen from '../screens/TwoStepSuccessScreen';
+import TwoStepSettingsScreen from '../screens/TwoStepSettings';
+import TwoStepVerifyPasswordScreen from '../screens/TwoStepVerifyPassword';
 import FloatingBottomTab from '../components/FloatingBottomTab';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -121,6 +123,13 @@ export default function AppNavigator() {
         <Stack.Screen name="TwoStepEmail" component={TwoStepEmailScreen} options={{ title: '' }} />
         <Stack.Screen name="TwoStepVerify" component={TwoStepVerifyScreen} options={{ title: '' }} />
         <Stack.Screen name="TwoStepSuccess" component={TwoStepSuccessScreen} options={{ title: '', headerLeft: () => null }} />
+        <Stack.Screen name="TwoStepSettings" component={TwoStepSettingsScreen} options={{ title: 'Verificação em Duas Etapas' }} />
+        <Stack.Screen
+          name="TwoStepVerifyPasswordSettings"
+          component={TwoStepVerifyPasswordScreen as any}
+          initialParams={{ mode: 'settings' }}
+          options={{ title: '' }}
+        />
       </Stack.Navigator>
 
       <Modal transparent visible={menuVisible} animationType="fade" onRequestClose={() => setMenuVisible(false)}>

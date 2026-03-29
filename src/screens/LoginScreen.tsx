@@ -140,7 +140,7 @@ export default function LoginScreen({ navigation }: Props) {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Nao tem uma conta? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+          <TouchableOpacity onPress={() => navigation.navigate('PhoneVerification')}>
             <Text style={styles.footerLink}>Cadastre-se</Text>
           </TouchableOpacity>
         </View>

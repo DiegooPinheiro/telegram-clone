@@ -15,11 +15,14 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import useTheme from '../hooks/useTheme';
 import { updateTwoStepAuth } from '../services/authService';
+import { useAuthContext } from '../context/AuthContext';
+import { ScrollView } from 'react-native';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TwoStepVerify'>;
 
 export default function TwoStepVerifyScreen({ navigation, route }: Props) {
   const { colors } = useTheme();
+  const { refreshProfile } = useAuthContext();
   const { password, email, code: expectedCode } = route.params;
   const [pin, setPin] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
@@ -59,12 +62,27 @@ export default function TwoStepVerifyScreen({ navigation, route }: Props) {
 
     setLoading(true);
     try {
-      await updateTwoStepAuth({
-        password,
+      const updateData: any = {
         email,
         enabled: true
-      });
-      navigation.navigate('TwoStepSuccess');
+      };
+      
+      // Se tiver password (setup inicial), envia. Se for so email, nao envia para nao sobrescrever.
+      if (password) {
+        updateData.password = password;
+      }
+
+      await updateTwoStepAuth(updateData);
+      await refreshProfile();
+
+      if (route.params?.mode === 'change') {
+        navigation.replace('TwoStepSuccess', { 
+          title: 'Email Alterado!',
+          description: 'Seu email de recuperação foi atualizado com sucesso.'
+        });
+      } else {
+        navigation.replace('TwoStepSuccess');
+      }
     } catch (error: any) {
       Alert.alert('Erro ao ativar 2FA', error.message || 'Tente novamente mais tarde.');
     } finally {
@@ -126,8 +144,7 @@ export default function TwoStepVerifyScreen({ navigation, route }: Props) {
   );
 }
 
-// Obs: Import ScrollView was missing
-import { ScrollView } from 'react-native';
+// ScrollView cleanup
 
 const styles = StyleSheet.create({
   container: {

@@ -16,7 +16,7 @@ import { RootStackParamList } from '../navigation/types';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { validateEmail, validatePassword, validateDisplayName } from '../utils/validators';
-import { signUp } from '../services/authService';
+import { signUp, normalizePhoneNumber } from '../services/authService';
 import CustomAlert from '../components/CustomAlert';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -88,8 +88,8 @@ export default function RegisterScreen({ navigation, route }: Props) {
 
     setLoading(true);
     try {
-      // Remove a mascara antes de enviar para o backend
-      const rawPhone = phone.replace(/\D/g, '');
+      // Remove a mascara antes de enviar para o backend de forma normalizada
+      const rawPhone = normalizePhoneNumber(phone);
       const authRes = await signUp(name.trim(), '', rawPhone, photoUrl) as any;
 
       if (authRes) {

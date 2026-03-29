@@ -6,7 +6,8 @@ import {
   TextInput, 
   TouchableOpacity, 
   KeyboardAvoidingView, 
-  Platform 
+  Platform,
+  Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,20 +15,31 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import useTheme from '../hooks/useTheme';
 import { spacing } from '../theme/spacing';
+import { updateTwoStepAuth } from '../services/authService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TwoStepPassword'>;
 
-export default function TwoStepPasswordScreen({ navigation }: Props) {
+export default function TwoStepPasswordScreen({ navigation, route }: Props) {
   const { colors } = useTheme();
   const [password, setPassword] = useState('');
   const inputRef = useRef<TextInput>(null);
 
-  const handleNext = () => {
-    if (password.length < 4) {
-      // Pequena validação para garantir segurança mínima
-      return;
+  const handleNext = async () => {
+    if (password.length < 4) return;
+
+    if (route.params?.mode === 'change') {
+      try {
+        await updateTwoStepAuth({ password, enabled: true });
+        navigation.replace('TwoStepSuccess', { 
+          title: 'Senha Alterada!',
+          description: 'Sua senha de Verificação em Duas Etapas foi atualizada com sucesso.'
+        });
+      } catch (error: any) {
+        Alert.alert('Erro', error.message || 'Falha ao atualizar senha.');
+      }
+    } else {
+      navigation.navigate('TwoStepEmail', { password });
     }
-    navigation.navigate('TwoStepEmail', { password });
   };
 
   return (
