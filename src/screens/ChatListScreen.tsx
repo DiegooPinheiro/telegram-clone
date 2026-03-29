@@ -40,7 +40,6 @@ export default function ChatListScreen({ navigation }: Props) {
       let resolvedSession = session;
 
       if (firebaseUid && resolvedSession?.userId === firebaseUid) {
-        console.warn('[ChatList] Found Firebase UID in chat session. Repairing before loading conversations...');
         await ensureChatSessionForCurrentUser();
         resolvedSession = await getChatSession();
       }
@@ -77,7 +76,7 @@ export default function ChatListScreen({ navigation }: Props) {
       await saveCache(cacheKey, fetched);
 
     } catch (error: any) {
-      console.error('Erro ao carregar conversas:', error);
+      console.error('[ChatListScreen] Erro ao carregar conversas:', error);
     } finally {
       if (!silent) setLoading(false);
     }
@@ -217,7 +216,7 @@ export default function ChatListScreen({ navigation }: Props) {
               setConversations((prev) => prev.filter((c) => c._id !== menuConversation._id));
               loadConversations();
             } catch (error: any) {
-              console.error('Erro ao excluir conversa:', error);
+              console.error('[ChatListScreen] Erro ao excluir conversa:', error);
               Alert.alert(
                 'Erro',
                 error?.message ||

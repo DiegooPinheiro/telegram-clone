@@ -50,7 +50,7 @@ export default function ProfileScreen({ navigation }: Props) {
         setProfile(data as UserProfile);
       }
     } catch (error) {
-      console.error("Erro ao carregar perfil:", error);
+      console.error('[ProfileScreen] Erro ao carregar perfil:', error);
     } finally {
       setLoading(false);
     }

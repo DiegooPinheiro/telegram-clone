@@ -109,7 +109,6 @@ function MainApp() {
         let session = await getChatSession();
 
         if (firebaseUid && session?.userId === firebaseUid) {
-          console.warn('[App] Chat session is using Firebase UID instead of chat user id. Repairing session...');
           await ensureChatSessionForCurrentUser();
           session = await getChatSession();
         }
@@ -130,12 +129,12 @@ function MainApp() {
         registerForPushNotificationsAsync()
           .then((token) => {
             if (token) {
-              chatRegisterPushToken(token).catch(err => console.warn('Push Token Registration failed:', err));
+              chatRegisterPushToken(token).catch(err => console.warn('[Push] Falha ao registrar token:', err));
             }
           })
-          .catch(err => console.warn('Push Token Generation failed:', err));
+          .catch(err => console.warn('[Push] Falha ao gerar token:', err));
       } catch (error) {
-        console.error('[ChatAPI] Erro ao inicializar sessão:', error);
+        console.error('[App] Erro ao inicializar sessao de chat:', error);
         setChatReady(true);
       }
     };

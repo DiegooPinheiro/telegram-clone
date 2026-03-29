@@ -25,7 +25,7 @@ export default function NewChatScreen({ navigation }: Props) {
         const fetched = await chatListUsers();
         setUsers(fetched);
       } catch (error: any) {
-        console.error('Erro ao buscar usuários:', error);
+        console.error('[NewChatScreen] Erro ao buscar usuarios:', error);
         Alert.alert('Erro', error?.message || 'Não foi possível buscar usuários.');
       } finally {
         setLoading(false);

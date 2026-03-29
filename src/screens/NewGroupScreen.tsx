@@ -75,7 +75,7 @@ export default function NewGroupScreen({ navigation }: Props) {
         });
         setGroupAvatar(uploadResult.mediaUrl);
       } catch (error) {
-        console.error('Erro no upload da imagem do grupo:', error);
+        console.error('[NewGroupScreen] Erro no upload da imagem do grupo:', error);
         showAlert('Erro', 'Não foi possível fazer o upload da imagem.');
       } finally {
         setIsUploading(false);
@@ -137,7 +137,7 @@ export default function NewGroupScreen({ navigation }: Props) {
       // Filtra o próprio usuário da lista de seleção
       setUsers(fetched.filter(u => u._id !== session?.userId));
     } catch (error) {
-      console.error('Erro ao carregar usuários:', error);
+      console.error('[NewGroupScreen] Erro ao carregar usuarios:', error);
     } finally {
       setLoading(false);
     }

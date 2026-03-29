@@ -53,7 +53,7 @@ export default function ChangeUsernameScreen({ navigation }: Props) {
         setAvailability('available');
       }
     } catch (e) {
-      console.error(e);
+      console.error('[ChangeUsernameScreen] Erro ao verificar disponibilidade do username:', e);
     } finally {
       setChecking(false);
     }

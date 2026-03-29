@@ -123,7 +123,7 @@ export default function ContactsScreen({ navigation }: Props) {
       setUsers(fetched);
       await saveCache(CACHE_KEYS.CONTACTS, fetched);
     } catch (error: any) {
-      console.error('Erro ao buscar contatos:', error);
+      console.error('[ContactsScreen] Erro ao buscar contatos:', error);
     } finally {
       if (!silent) setLoading(false);
     }
@@ -169,7 +169,7 @@ export default function ContactsScreen({ navigation }: Props) {
         Alert.alert('Aviso', 'A sincronização com o celular está desativada. Para que o contato apareça aqui, ele precisa ser salvo na sua agenda.');
       }
     } catch (error) {
-      console.error('Erro ao salvar contato:', error);
+      console.error('[ContactsScreen] Erro ao salvar contato:', error);
       Alert.alert('Erro', 'Não foi possível salvar o contato na sua agenda.');
     }
   };

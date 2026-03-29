@@ -94,7 +94,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       if (s_unit) setDistanceUnitState(s_unit as 'automatic' | 'metric' | 'imperial');
       if (s_chatTheme) setChatThemeColorState(s_chatTheme);
     } catch (e) {
-      console.error('Erro ao carregar configurações:', e);
+      console.error('[SettingsContext] Erro ao carregar configuracoes:', e);
     }
   };
 

@@ -294,12 +294,9 @@ export const getUserProfileByUsername = async (username: string) => {
  */
 export const normalizePhoneNumber = (phone: string) => {
   let cleaned = phone.replace(/\D/g, '').trim();
-  console.log('[AuthService] Normalizing phone:', { input: phone, cleaned });
   // Se for um número brasileiro sem o 55, adiciona.
   if (cleaned.length === 10 || cleaned.length === 11) {
-    const withDDI = '55' + cleaned;
-    console.log('[AuthService] Appended DDI 55:', withDDI);
-    return withDDI;
+    return '55' + cleaned;
   }
   return cleaned;
 };
@@ -311,13 +308,10 @@ export const getUserByPhone = async (phone: string) => {
   const normalizedPhone = normalizePhoneNumber(phone);
   if (!normalizedPhone) return null;
 
-  console.log('[AuthService] Searching for account with phone:', normalizedPhone);
-  
   const q = query(collection(db, 'users'), where('phone', '==', normalizedPhone));
   const querySnapshot = await getDocs(q);
   
   if (!querySnapshot.empty) {
-    console.log('[AuthService] Account found!');
     const docSnap = querySnapshot.docs[0];
     return mapUserProfileDocument(docSnap);
   }
@@ -326,18 +320,15 @@ export const getUserByPhone = async (phone: string) => {
   // por seguranca caso o usuario tenha cadastrado antes da normalizacao.
   if (normalizedPhone.startsWith('55')) {
     const withoutDDI = normalizedPhone.substring(2);
-    console.log('[AuthService] No match with 55. Trying fallback search without DDI:', withoutDDI);
     const qFallback = query(collection(db, 'users'), where('phone', '==', withoutDDI));
     const fallbackSnapshot = await getDocs(qFallback);
     
     if (!fallbackSnapshot.empty) {
-      console.log('[AuthService] Account found with fallback search!');
       const docSnap = fallbackSnapshot.docs[0];
       return mapUserProfileDocument(docSnap);
     }
   }
 
-  console.log('[AuthService] No account found for this phone.');
   return null;
 };
 
@@ -450,7 +441,6 @@ export const resetPassword = async (email: string) => {
 };
 
 export const setPhoneVerified = async (uid: string, phone: string) => {
-  console.log('[AuthService] Marking phone as verified for:', uid);
   const user = auth.currentUser;
   const normalizedPhone = phone.replace(/\D/g, '');
   // 1. Atualiza no Firestore
@@ -489,11 +479,9 @@ export const setPhoneVerified = async (uid: string, phone: string) => {
   }
 
   await setChatSession({ userId: chatUserId, profileUid: uid, phoneVerified: true });
-  console.log('[AuthService] Phone verification completed and saved.');
 };
 
 export const completePhoneVerificationLogin = async (uid: string, phone: string) => {
-  console.log('[AuthService] Completing phone verification login for:', uid);
   const normalizedPhone = phone.replace(/\D/g, '');
   const user = auth.currentUser;
 
@@ -529,7 +517,6 @@ export const completePhoneVerificationLogin = async (uid: string, phone: string)
 
   await setChatSession({ userId: chatUserId, profileUid: uid, phoneVerified: true });
   await connectChatSocket(chatUserId);
-  console.log('[AuthService] Phone verification login completed.');
 };
 
 /**

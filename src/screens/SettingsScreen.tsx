@@ -58,7 +58,7 @@ export default function SettingsScreen({ navigation }: Props) {
         setProfile(data as UserProfile);
       }
     } catch (error) {
-      console.error('Erro ao carregar perfil em configuracoes:', error);
+      console.error('[SettingsScreen] Erro ao carregar perfil em configuracoes:', error);
     }
   }, [uid]);
 

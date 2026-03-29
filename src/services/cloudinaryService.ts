@@ -63,7 +63,7 @@ export const cloudinaryUpload = async (file: {
 
   if (!response.ok) {
     const err = await response.text();
-    console.error('Cloudinary Raw Error:', err);
+    console.error('[Cloudinary] Erro bruto no upload:', err);
     throw new Error(`Cloudinary upload failed: ${response.status} ${err}`);
   }
 

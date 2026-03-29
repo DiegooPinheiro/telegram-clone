@@ -30,7 +30,6 @@ export const syncContactsWithFirebase = async (): Promise<string[]> => {
     });
 
     if (!data || data.length === 0) {
-      console.log('[ContactSync] Nenhum contato encontrado no aparelho');
       return [];
     }
 

@@ -77,7 +77,7 @@ export default function ContactProfileScreen({ navigation, route }: Props) {
         setChatUser(found || chatUsers[0] || null);
       }
     } catch (error) {
-      console.error('Erro ao carregar perfil do contato:', error);
+      console.error('[ContactProfileScreen] Erro ao carregar perfil do contato:', error);
     } finally {
       setLoading(false);
     }
@@ -141,8 +141,6 @@ export default function ContactProfileScreen({ navigation, route }: Props) {
                   avatar: profilePhoto,
                   username: profile?.username || routeUsername,
                 });
-              } else {
-                console.log('[ContactProfile] Chat ID não encontrado para o usuário.');
               }
             }}
           >

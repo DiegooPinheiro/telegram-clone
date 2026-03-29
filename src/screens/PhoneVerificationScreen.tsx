@@ -85,7 +85,7 @@ export default function PhoneVerificationScreen({ navigation }: Props) {
       setStep('code');
       showAlert('Código Enviado', 'O código de verificação foi enviado para seu celular.');
     } catch (error: any) {
-      console.error('Erro ao enviar SMS:', error);
+      console.error('[PhoneVerificationScreen] Erro ao enviar SMS:', error);
       Alert.alert('Erro', error.message || 'Não foi possível enviar o código SMS.');
     } finally {
       setLoading(false);
@@ -112,41 +112,35 @@ export default function PhoneVerificationScreen({ navigation }: Props) {
 
       // 2. Identificar o usuário (Prioridade: UID -> Fallback: Telefone)
       const { uid } = user;
-      console.log('[PhoneVerify] Checking identity for UID:', uid);
       
       const normalizedPhone = normalizePhoneNumber(phoneNumber);
       const { resolveUserProfileForFirebaseUid } = await import('../services/authService');
       let userData = await getUserByPhone(normalizedPhone);
       
       if (!userData) {
-        console.log('[PhoneVerify] No profile found by phone. Trying current Firebase UID...');
         userData = await resolveUserProfileForFirebaseUid(uid);
       }
 
       if (userData) {
-        console.log('[PhoneVerify] Identity confirmed:', userData.displayName || 'User');
         const resolvedUid = userData.uid || uid;
         if (!resolvedUid) throw new Error('Conta encontrada sem UID valido.');
         
         // USUÁRIO EXISTENTE: Verifica se tem 2FA ativado
         if (userData.twoStepEnabled) {
-          console.log('[PhoneVerify] 2FA is ENABLED. Redirecting to password challenge...');
           navigation.navigate('TwoStepVerifyPassword', {
             mode: 'login',
             phoneNumber: normalizedPhone,
             targetUid: resolvedUid,
           });
         } else {
-          console.log('[PhoneVerify] 2FA is disabled. Finalizing login...');
           await completePhoneVerificationLogin(resolvedUid, normalizedPhone);
           // O AuthContext vai detectar a mudança e navegar para MainTabs
         }
       } else {
-        console.log('[PhoneVerify] Complete NEW ACCOUNT. Redirecting to Register...');
         navigation.navigate('Register', { phone: normalizedPhone });
       }
     } catch (error: any) {
-      console.error('Erro na verificação:', error);
+      console.error('[PhoneVerificationScreen] Erro na verificacao:', error);
       showAlert('Erro', 'Código inválido ou expirado. Tente novamente.');
     } finally {
       setLoading(false);

@@ -39,7 +39,7 @@ export default function GroupProfileScreen({ navigation, route }: Props) {
       const data = await chatGetConversationById(conversationId);
       setConversation(data);
     } catch (error) {
-      console.error('Erro ao carregar perfil do grupo:', error);
+      console.error('[GroupProfileScreen] Erro ao carregar perfil do grupo:', error);
       Alert.alert('Erro', 'Não foi possível carregar os dados do grupo.');
     } finally {
       setLoading(false);

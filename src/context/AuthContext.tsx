@@ -37,13 +37,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkSession = async () => {
     const session = await getChatSession();
-    console.log('[AuthContext] Verificando sessao local. phoneVerified:', !!session?.phoneVerified);
     setPhoneVerified(!!session?.phoneVerified);
     setProfileUid((current) => session?.profileUid || current);
   };
 
   const refreshSession = async () => {
-    console.log('[AuthContext] Refresh manual da sessao solicitado');
     await checkSession();
 
     if (!user) return;
@@ -66,15 +64,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshProfile = async () => {
     if (!user) return;
-
-    console.log('[AuthContext] Atualizando perfil do Firestore...');
     try {
       const session = await getChatSession();
       const profile = await getCurrentUserProfile(profileUid || session?.profileUid);
       if (profile) {
         setUserProfile(profile);
         setProfileUid(profile.uid);
-        console.log('[AuthContext] Perfil atualizado com sucesso');
       }
     } catch (e) {
       console.error('[AuthContext] Erro ao atualizar perfil:', e);
@@ -104,11 +99,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             if (profile.phoneVerified) {
               if (!profile.twoStepEnabled || isLocalSessionVerified) {
-                console.log('[AuthContext] Auto-verifying session.');
                 setPhoneVerified(true);
                 setRequiresTwoStepLogin(false);
               } else {
-                console.log('[AuthContext] 2FA required for this new session.');
                 setPhoneVerified(false);
                 setRequiresTwoStepLogin(true);
               }
@@ -124,7 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           }
         } catch (e) {
-          console.error('[AuthContext] Error fetching profile:', e);
+          console.error('[AuthContext] Erro ao buscar perfil:', e);
         }
       } else {
         setPhoneVerified(false);

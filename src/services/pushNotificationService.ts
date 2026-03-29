@@ -39,7 +39,6 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
     }
     
     if (finalStatus !== 'granted') {
-      console.log('Push notifications permissions denied!');
       return undefined;
     }
 
@@ -49,19 +48,18 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
         Constants?.easConfig?.projectId;
 
       if (!projectId) {
-        console.warn('Project ID not found. Token generation might fail on standalone builds.');
+        console.warn('[Push] Project ID nao encontrado. A geracao do token pode falhar em builds standalone.');
       }
 
       const pushTokenObject = await Notifications.getExpoPushTokenAsync({
         projectId,
       });
       token = pushTokenObject.data;
-      console.log('Expo Push Token generated:', token);
     } catch (e) {
-      console.error('Error generating push token:', e);
+      console.error('[Push] Erro ao gerar token push:', e);
     }
   } else {
-    console.log('Must use physical device for Push Notifications');
+    return undefined;
   }
 
   return token;
@@ -83,7 +81,7 @@ export function setupPushNotificationListeners(navigationRef: any) {
         }
       }
     } catch (error) {
-      console.error('Error handling notification tap:', error);
+      console.error('[Push] Erro ao processar toque na notificacao:', error);
     }
   });
 

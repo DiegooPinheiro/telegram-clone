@@ -293,7 +293,7 @@ export default function ChatScreen({ navigation, route }: Props) {
               setHeaderMenuVisible(false);
               navigation.goBack();
             } catch (error: any) {
-              console.error('Erro ao excluir conversa:', error);
+              console.error('[ChatScreen] Erro ao excluir conversa:', error);
               Alert.alert(
                 'Falha ao excluir',
                 'Nao foi possivel excluir a conversa no momento. Tente novamente em instantes.'
@@ -375,7 +375,7 @@ export default function ChatScreen({ navigation, route }: Props) {
           setLoading(false);
         }
       } catch (error: any) {
-        console.error('Erro ao carregar mensagens:', error);
+        console.error('[ChatScreen] Erro ao carregar mensagens:', error);
         Alert.alert('Erro de Conexao', 'Nao foi possivel carregar o historico de mensagens.');
         if (active) setLoading(false);
       }
@@ -670,7 +670,7 @@ export default function ChatScreen({ navigation, route }: Props) {
 
           handleCancelEditingMessage();
         } catch (error: any) {
-          console.error('Erro ao editar mensagem:', error);
+          console.error('[ChatScreen] Erro ao editar mensagem:', error);
           Alert.alert('Erro', error?.message || 'Não foi possível editar a mensagem.');
         }
         return;
@@ -686,7 +686,7 @@ export default function ChatScreen({ navigation, route }: Props) {
       try {
         resolvedConversationId = await ensureConversationId();
       } catch (error: any) {
-        console.error('Erro ao iniciar conversa:', error);
+        console.error('[ChatScreen] Erro ao iniciar conversa:', error);
         Alert.alert('Erro', error?.message || 'Não foi possível iniciar a conversa.');
         sendingMessageRef.current = false;
         return;
@@ -716,7 +716,7 @@ export default function ChatScreen({ navigation, route }: Props) {
         });
       } catch (error: any) {
         setMessages((prev) => prev.filter((m) => m._id !== optimisticMessage._id));
-        console.error('Erro ao enviar:', error);
+        console.error('[ChatScreen] Erro ao enviar mensagem:', error);
         Alert.alert('Erro', error?.message || 'Não foi possível enviar a mensagem.');
       } finally {
         setTimeout(() => {
@@ -777,7 +777,7 @@ export default function ChatScreen({ navigation, route }: Props) {
         });
       } catch (error: any) {
         setMessages((prev) => prev.filter((m) => m._id !== optimisticId));
-        console.error('Erro ao enviar mÃ­dia:', error);
+        console.error('[ChatScreen] Erro ao enviar midia:', error);
         Alert.alert('Erro', error?.message || 'Não foi possível enviar o arquivo.');
       } finally {
         setUploading(false);
@@ -822,7 +822,7 @@ export default function ChatScreen({ navigation, route }: Props) {
           flags: 1,
         });
       } catch (error: any) {
-        console.error('Erro ao abrir arquivo:', error);
+        console.error('[ChatScreen] Erro ao abrir arquivo:', error);
         const message = String(error?.message || '');
         if (!message.includes('IntentLauncher activity is already started')) {
           Alert.alert(
@@ -876,7 +876,7 @@ export default function ChatScreen({ navigation, route }: Props) {
       setRecordingDurationMs(0);
       setRecordingVoice(true);
     } catch (error: any) {
-      console.error('Erro ao iniciar gravação:', error);
+      console.error('[ChatScreen] Erro ao iniciar gravacao:', error);
       Alert.alert('Erro', error?.message || 'NÃ£o foi possÃ­vel iniciar a gravação.');
     } finally {
       setTimeout(() => {
@@ -928,7 +928,7 @@ export default function ChatScreen({ navigation, route }: Props) {
         await FileSystem.deleteAsync(result.uri, { idempotent: true });
       }
     } catch (error) {
-      console.error('Erro ao cancelar gravação:', error);
+      console.error('[ChatScreen] Erro ao cancelar gravacao:', error);
     } finally {
       setTimeout(() => {
         recordingActionRef.current = false;
@@ -962,7 +962,7 @@ export default function ChatScreen({ navigation, route }: Props) {
         type: extension === 'caf' ? 'audio/x-caf' : extension === '3gp' ? 'audio/3gpp' : 'audio/mp4',
       });
     } catch (error: any) {
-      console.error('Erro ao enviar gravação:', error);
+      console.error('[ChatScreen] Erro ao enviar gravacao:', error);
       Alert.alert('Erro', error?.message || 'NÃ£o foi possÃ­vel enviar o áudio.');
     } finally {
       setTimeout(() => {
@@ -1073,7 +1073,7 @@ export default function ChatScreen({ navigation, route }: Props) {
           rate: activeAudio?.rate || 1.0,
         });
       } catch (error: any) {
-        console.error('Erro ao reproduzir áudio:', error);
+        console.error('[ChatScreen] Erro ao reproduzir audio:', error);
         Alert.alert('Erro', error?.message || 'Nao foi possivel reproduzir o áudio.');
       } finally {
         setTimeout(() => {
@@ -1109,7 +1109,7 @@ export default function ChatScreen({ navigation, route }: Props) {
       await audioSoundRef.current.setRateAsync(nextRate, true);
       setActiveAudio(prev => prev ? { ...prev, rate: nextRate } : null);
     } catch (err) {
-      console.error('Erro ao mudar velocidade do áudio:', err);
+      console.error('[ChatScreen] Erro ao mudar velocidade do audio:', err);
     }
   }, [activeAudio]);
 
@@ -1294,7 +1294,7 @@ export default function ChatScreen({ navigation, route }: Props) {
       setDeleteForBoth(false);
       setSelectedMessageIds([]);
     } catch (error: any) {
-      console.error('Erro ao apagar mensagens:', error);
+      console.error('[ChatScreen] Erro ao apagar mensagens:', error);
       Alert.alert('Erro', error?.message || 'Nao foi possivel apagar as mensagens.');
     } finally {
       deletingMessagesRef.current = false;

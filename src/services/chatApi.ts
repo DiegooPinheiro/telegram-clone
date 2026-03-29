@@ -49,7 +49,6 @@ const requestJson = async <T>(path: string, init: RequestInit, options: RequestO
 
   if (options.auth !== false) {
     const firebaseToken = await getFirebaseIdToken(!!options._isRetry);
-    console.log(`[ChatApi] Request to ${path} (retry: ${!!options._isRetry})`);
     headers.set('Authorization', `Bearer ${firebaseToken}`);
   }
 
@@ -67,7 +66,6 @@ const requestJson = async <T>(path: string, init: RequestInit, options: RequestO
   }
 
   if (!response.ok) {
-    console.log(`[ChatApi] Error response from ${path}: ${response.status}`);
     // Se for não autorizado e ainda não tentamos o retry, tenta forçar um novo token
     if (response.status === 401 && !options._isRetry && auth.currentUser) {
       console.warn('[ChatApi] Token rejeitado (401). Forçando renovação e tentando novamente...');

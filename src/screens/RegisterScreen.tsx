@@ -70,7 +70,7 @@ export default function RegisterScreen({ navigation, route }: Props) {
       const uploaded = await cloudinaryUpload(file);
       setPhotoUrl(uploaded.mediaUrl);
     } catch (error: any) {
-      console.error('Erro ao enviar foto para o Cloudinary:', error);
+      console.error('[RegisterScreen] Erro ao enviar foto para o Cloudinary:', error);
       Alert.alert('Erro', error?.message || 'Não foi possível enviar a foto de perfil.');
     } finally {
       setIsUploadingPhoto(false);
@@ -94,7 +94,6 @@ export default function RegisterScreen({ navigation, route }: Props) {
 
       if (authRes) {
         // Nao navegamos manualmente. O App.tsx vai trocar o navegador quando phoneVerified for true.
-        console.log('[Register] Perfil finalizado com sucesso.');
       }
     } catch (error: any) {
       let message = 'Tente novamente mais tarde.';

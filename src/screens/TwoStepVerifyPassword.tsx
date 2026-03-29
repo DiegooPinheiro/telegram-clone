@@ -72,7 +72,7 @@ export default function TwoStepVerifyPasswordScreen({ navigation, route }: Props
           setTargetProfile(profile);
         }
       } catch (error) {
-        console.error('[TwoStepVerifyPassword] Failed to load target profile:', error);
+        console.error('[TwoStepVerifyPassword] Erro ao carregar perfil para validacao:', error);
         if (active) {
           setTargetProfile(userProfile);
         }

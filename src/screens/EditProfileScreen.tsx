@@ -61,7 +61,7 @@ export default function EditProfileScreen({ navigation }: Props) {
         setBirthday(profile.birthday || '');
       }
     } catch (error) {
-      console.error('Erro ao carregar perfil para edicao:', error);
+      console.error('[EditProfileScreen] Erro ao carregar perfil para edicao:', error);
     } finally {
       setLoadingProfile(false);
     }
@@ -147,7 +147,7 @@ export default function EditProfileScreen({ navigation }: Props) {
       const uploaded = await cloudinaryUpload(file);
       setPhotoUrlInput(uploaded.mediaUrl);
     } catch (error: any) {
-      console.error('Erro ao enviar foto para o Cloudinary:', error);
+      console.error('[EditProfileScreen] Erro ao enviar foto para o Cloudinary:', error);
       Alert.alert('Erro', error?.message || 'Não foi possível atualizar a foto de perfil.');
     } finally {
       setIsUploadingPhoto(false);
