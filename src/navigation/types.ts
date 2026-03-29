@@ -1,8 +1,8 @@
 export type RootStackParamList = {
   // Auth
   Login: undefined;
-  Register: undefined;
-  PhoneVerification: { isChangingNumber?: boolean } | undefined;
+  Register: { phone: string };
+  PhoneVerification: { isChangingNumber?: boolean; mode?: 'login' | 'register'; phone?: string } | undefined;
 
   // Flows
   MainFlow: { screen?: string; params?: any };

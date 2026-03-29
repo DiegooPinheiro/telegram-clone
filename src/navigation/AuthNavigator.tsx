@@ -11,6 +11,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function AuthNavigator() {
   return (
     <Stack.Navigator
+      initialRouteName="PhoneVerification"
       screenOptions={{
         headerShown: false,
       }}

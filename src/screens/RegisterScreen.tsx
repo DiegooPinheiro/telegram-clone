@@ -21,10 +21,11 @@ import CustomAlert from '../components/CustomAlert';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
 
-export default function RegisterScreen({ navigation }: Props) {
+export default function RegisterScreen({ navigation, route }: Props) {
+  const verifiedPhone = route.params?.phone || '';
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState(verifiedPhone);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -85,8 +86,8 @@ export default function RegisterScreen({ navigation }: Props) {
       const rawPhone = phone.replace(/\D/g, '');
       const authRes = await signUp(email.trim(), password, name.trim(), rawPhone) as any;
 
-      if (authRes && !authRes.phoneVerified) {
-        navigation.replace('PhoneVerification');
+      if (authRes) {
+        navigation.replace('MainTabs' as any);
       }
     } catch (error: any) {
       let message = 'Tente novamente mais tarde.';
@@ -140,13 +141,14 @@ export default function RegisterScreen({ navigation }: Props) {
           />
 
           <TextInput
-            style={styles.input}
-            placeholder="Celular (Opcional)"
+            style={[styles.input, verifiedPhone ? styles.inputDisabled : {}]}
+            placeholder="Celular"
             placeholderTextColor={colors.textSecondary}
             value={phone}
             onChangeText={handlePhoneChange}
             keyboardType="phone-pad"
-            maxLength={15} // (99) 99999-9999
+            maxLength={15}
+            editable={!verifiedPhone}
           />
 
           <TextInput
@@ -233,6 +235,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     fontSize: 16,
     color: colors.textPrimary,
+  },
+  inputDisabled: {
+    opacity: 0.6,
+    backgroundColor: colors.background,
   },
   button: {
     height: 52,

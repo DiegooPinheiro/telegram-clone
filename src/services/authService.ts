@@ -87,6 +87,7 @@ export const signUp = async (email: string, password: string, displayName: strin
     status: 'Hey there! I am using Vibe',
     username: '',
     phone,
+    phoneVerified: phone ? true : false,
     bio: '',
     birthday: '',
     createdAt: new Date().toISOString(),
@@ -210,6 +211,20 @@ export const getUserProfileByUsername = async (username: string) => {
   if (querySnapshot.empty) return null;
 
   return querySnapshot.docs[0].data();
+};
+
+/**
+ * Buscar perfil de um usuário pelo número de telefone.
+ */
+export const getUserByPhone = async (phone: string) => {
+  const normalizedPhone = phone.replace(/\D/g, '').trim();
+  if (!normalizedPhone) return null;
+
+  const q = query(collection(db, 'users'), where('phone', '==', normalizedPhone));
+  const querySnapshot = await getDocs(q);
+  if (querySnapshot.empty) return null;
+
+  return querySnapshot.docs[0].data() as UserProfile;
 };
 
 /**

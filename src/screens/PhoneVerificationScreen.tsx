@@ -21,8 +21,8 @@ import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { auth } from '../config/firebaseConfig';
 import { getEnv } from '../config/env';
-import { PhoneAuthProvider } from 'firebase/auth';
-import { setPhoneVerified, signOut } from '../services/authService';
+import { PhoneAuthProvider, signInWithCredential } from 'firebase/auth';
+import { setPhoneVerified, signOut, getUserByPhone } from '../services/authService';
 import useAuth from '../hooks/useAuth';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PhoneVerification'>;
@@ -101,25 +101,33 @@ export default function PhoneVerificationScreen({ navigation }: Props) {
     setLoading(true);
     try {
       const credential = PhoneAuthProvider.credential(verificationId, verificationCode);
-      const user = auth.currentUser;
-
-      if (!user) throw new Error('Usuário não está logado via Firebase.');
-
-      // Opcional: Vincular o telefone à conta de e-mail atual
-      // await linkWithCredential(user, credential);
       
-      // Para este fluxo, apenas confirmamos a validade e atualizamos nosso backend
-      await setPhoneVerified(user.uid, phoneNumber);
-      
-      // Atualizar o estado global de autenticação imediatamente
-      await refreshSession();
+      // 1. Logar no Firebase com a credencial de telefone
+      const userCredential = await signInWithCredential(auth, credential);
+      const user = userCredential.user;
 
-      showAlert('Sucesso', 'Telefone verificado com sucesso!', () => {
-        hideAlert();
-        navigation.replace('MainTabs' as any);
-      });
+      if (!user) throw new Error('Falha ao autenticar via SMS.');
+
+      // 2. Verificar se este telefone já está cadastrado no nosso banco (Firestore)
+      const rawPhone = phoneNumber.replace(/\D/g, '');
+      const existingUser = await getUserByPhone(rawPhone);
+
+      if (existingUser) {
+        // USUÁRIO EXISTENTE: Finaliza a verificação e entra no app
+        await setPhoneVerified(user.uid, rawPhone);
+        await refreshSession();
+
+        showAlert('Sucesso', 'Bem-vindo de volta!', () => {
+          hideAlert();
+          navigation.replace('MainTabs' as any);
+        });
+      } else {
+        // NOVO USUÁRIO: Leva para a tela de finalização de cadastro
+        navigation.replace('Register', { phone: rawPhone });
+      }
     } catch (error: any) {
-      showAlert('Erro', 'Código inválido. Tente novamente.');
+      console.error('Erro na verificação:', error);
+      showAlert('Erro', 'Código inválido ou expirado. Tente novamente.');
     } finally {
       setLoading(false);
     }
