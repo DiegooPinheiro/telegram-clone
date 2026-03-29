@@ -18,16 +18,21 @@ import { spacing } from '../theme/spacing';
 import { validateEmail, validatePassword, validateDisplayName } from '../utils/validators';
 import { signUp } from '../services/authService';
 import CustomAlert from '../components/CustomAlert';
+import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
+import Avatar from '../components/Avatar';
+import useTheme from '../hooks/useTheme';
+import { cloudinaryUpload } from '../services/cloudinaryService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
 
 export default function RegisterScreen({ navigation, route }: Props) {
   const verifiedPhone = route.params?.phone || '';
+  const { colors: themeColors } = useTheme();
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState(verifiedPhone);
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [loading, setLoading] = useState(false);
   const [alertConfig, setAlertConfig] = useState({
     visible: false,
@@ -41,21 +46,37 @@ export default function RegisterScreen({ navigation, route }: Props) {
 
   const hideAlert = () => setAlertConfig({ ...alertConfig, visible: false });
 
-  const handlePhoneChange = (text: string) => {
-    let clean = text.replace(/\D/g, '');
-    if (clean.length > 11) clean = clean.substring(0, 11);
-    
-    let formatted = clean;
-    if (clean.length > 2) {
-      formatted = `(${clean.substring(0, 2)}) `;
-      if (clean.length > 7) {
-        formatted += `${clean.substring(2, 7)}-${clean.substring(7)}`;
-      } else {
-        formatted += clean.substring(2);
+  const handlePickPhoto = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
       }
+
+      const fileAsset = result.assets[0];
+      const file = {
+        uri: fileAsset.uri,
+        name: fileAsset.fileName || `profile_${Date.now()}.jpg`,
+        type: fileAsset.mimeType || 'image/jpeg',
+      };
+
+      setIsUploadingPhoto(true);
+      const uploaded = await cloudinaryUpload(file);
+      setPhotoUrl(uploaded.mediaUrl);
+    } catch (error: any) {
+      console.error('Erro ao enviar foto para o Cloudinary:', error);
+      Alert.alert('Erro', error?.message || 'Não foi possível enviar a foto de perfil.');
+    } finally {
+      setIsUploadingPhoto(false);
     }
-    setPhone(formatted);
   };
+
 
   const handleRegister = async () => {
     const nameError = validateDisplayName(name);
@@ -64,30 +85,16 @@ export default function RegisterScreen({ navigation, route }: Props) {
       return;
     }
 
-    if (!validateEmail(email)) {
-      Alert.alert('Erro', 'Email inválido');
-      return;
-    }
-
-    const passwordError = validatePassword(password);
-    if (passwordError) {
-      Alert.alert('Erro', passwordError);
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      Alert.alert('Erro', 'As senhas não coincidem');
-      return;
-    }
 
     setLoading(true);
     try {
       // Remove a mascara antes de enviar para o backend
       const rawPhone = phone.replace(/\D/g, '');
-      const authRes = await signUp(email.trim(), password, name.trim(), rawPhone) as any;
+      const authRes = await signUp(name.trim(), '', rawPhone, photoUrl) as any;
 
       if (authRes) {
-        navigation.replace('MainTabs' as any);
+        // Nao navegamos manualmente. O App.tsx vai trocar o navegador quando phoneVerified for true.
+        console.log('[Register] Perfil finalizado com sucesso.');
       }
     } catch (error: any) {
       let message = 'Tente novamente mais tarde.';
@@ -109,86 +116,58 @@ export default function RegisterScreen({ navigation, route }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
         <View style={styles.header}>
-          <Text style={styles.title}>Criar Conta</Text>
-          <Text style={styles.subtitle}>Preencha seus dados para começar</Text>
+          <TouchableOpacity 
+            activeOpacity={0.8} 
+            onPress={handlePickPhoto} 
+            disabled={isUploadingPhoto || loading} 
+            style={styles.avatarContainer}
+          >
+            <Avatar uri={photoUrl || null} name={name || 'U'} size={100} />
+            <View style={[styles.uploadBadge, { backgroundColor: themeColors.primary, borderColor: themeColors.background }]}>
+              {isUploadingPhoto ? (
+                <View style={{ width: 14, height: 14, borderRadius: 7, borderWidth: 2, borderColor: '#fff', borderTopColor: 'transparent' }} />
+              ) : (
+                <Ionicons name="camera" size={20} color="#fff" />
+              )}
+            </View>
+          </TouchableOpacity>
+          <Text style={[styles.title, { color: themeColors.primary }]}>Crie seu Perfil</Text>
+          <Text style={[styles.subtitle, { color: themeColors.textSecondary }]}>Escolha seu nome e uma foto (opcional)</Text>
         </View>
 
         <View style={styles.form}>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: themeColors.backgroundSecondary, color: themeColors.textPrimary }]}
             placeholder="Nome completo"
-            placeholderTextColor={colors.textSecondary}
+            placeholderTextColor={themeColors.textSecondary}
             value={name}
             onChangeText={setName}
             autoCapitalize="words"
           />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor={colors.textSecondary}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
 
-          <TextInput
-            style={[styles.input, verifiedPhone ? styles.inputDisabled : {}]}
-            placeholder="Celular"
-            placeholderTextColor={colors.textSecondary}
-            value={phone}
-            onChangeText={handlePhoneChange}
-            keyboardType="phone-pad"
-            maxLength={15}
-            editable={!verifiedPhone}
-          />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Senha"
-            placeholderTextColor={colors.textSecondary}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
-
-          <TextInput
-            style={styles.input}
-            placeholder="Confirmar senha"
-            placeholderTextColor={colors.textSecondary}
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
-          />
 
           <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
+            style={[styles.button, { backgroundColor: themeColors.primary }, loading && styles.buttonDisabled]}
             onPress={handleRegister}
             disabled={loading}
             activeOpacity={0.8}
           >
             {loading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={themeColors.textOnPrimary} />
             ) : (
-              <Text style={styles.buttonText}>Cadastrar</Text>
+              <Text style={[styles.buttonText, { color: themeColors.textOnPrimary }]}>Começar a usar</Text>
             )}
           </TouchableOpacity>
         </View>
 
-        <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: colors.textSecondary }]}>Já tem uma conta? </Text>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.footerLink}>Fazer login</Text>
-          </TouchableOpacity>
-        </View>
 
         <CustomAlert
           visible={alertConfig.visible}
@@ -213,7 +192,22 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 24,
+  },
+  avatarContainer: {
+    position: 'relative',
+    marginBottom: 20,
+  },
+  uploadBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
   },
   title: {
     fontSize: 28,

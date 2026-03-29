@@ -70,24 +70,26 @@ const syncChatUserFromFirebase = async (fallbackEmail: string) => {
 };
 
 /**
- * Registrar novo usuário com email e senha.
- * Cria o perfil no Firestore e sincroniza o usuário na Chat API.
+ * Finaliza o cadastro de um novo usuário (Nome e opcionalmente Email).
+ * O usuário já deve estar autenticado via telefone no Firebase.
  */
-export const signUp = async (email: string, password: string, displayName: string, phone: string = '') => {
-  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-  const user = userCredential.user;
+export const signUp = async (displayName: string, email: string = '', phone: string = '', photoURL: string = '') => {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Usuario nao autenticado no Firebase.');
 
-  await updateProfile(user, { displayName });
+  // Atualiza no Firebase Auth
+  await updateProfile(user, { displayName, photoURL });
 
+  // Cria o documento no Firestore
   await setDoc(doc(db, 'users', user.uid), {
     uid: user.uid,
-    email: user.email,
+    email: email || user.email || null,
     displayName,
-    photoURL: null,
+    photoURL: photoURL || null,
     status: 'Hey there! I am using Vibe',
-    username: '',
-    phone,
-    phoneVerified: phone ? true : false,
+    username: null,
+    phone: phone || user.phoneNumber || '',
+    phoneVerified: true,
     bio: '',
     birthday: '',
     createdAt: new Date().toISOString(),
@@ -96,18 +98,18 @@ export const signUp = async (email: string, password: string, displayName: strin
   });
 
   try {
+    // Sincroniza com a API do Chat
     return await syncChatUserFromFirebase(email);
   } catch (error: any) {
+    // Em caso de erro na API, deslogamos o usuário por segurança
     await chatRegisterPushToken('LOGGED_OUT_TOKEN').catch(() => {});
-  await clearChatSession();
-  disconnectChatSocket();
-  await firebaseSignOut(auth);
+    await clearChatSession();
+    disconnectChatSocket();
+    await firebaseSignOut(auth);
 
     const msg = error?.message ? String(error.message) : 'Falha ao sincronizar na Chat API.';
     throw new Error(`Falha ao conectar no Chat API: ${msg}`);
   }
-
-  return user;
 };
 
 /**

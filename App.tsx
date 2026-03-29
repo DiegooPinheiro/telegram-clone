@@ -20,7 +20,7 @@ import { startPresenceTracking } from './src/services/presenceService';
 import { dark, light } from './src/theme/colors';
 
 function MainApp() {
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated, phoneVerified, loading: authLoading } = useAuth();
   const { theme } = useSettings();
   const [chatReady, setChatReady] = useState(false);
 
@@ -152,7 +152,11 @@ function MainApp() {
     <View style={{ flex: 1, backgroundColor: navTheme.colors.background }}>
       <SafeAreaProvider>
         <NavigationContainer ref={navigationRef} theme={navTheme}>
-          {isAuthenticated ? <AppNavigator /> : <AuthNavigator />}
+          {phoneVerified ? (
+            <AppNavigator />
+          ) : (
+            <AuthNavigator initialRoute={isAuthenticated ? 'Register' : 'PhoneVerification'} />
+          )}
         </NavigationContainer>
         <Toast config={toastConfig} />
       </SafeAreaProvider>

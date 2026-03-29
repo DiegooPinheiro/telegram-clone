@@ -1,6 +1,5 @@
 export type RootStackParamList = {
   // Auth
-  Login: undefined;
   Register: { phone: string };
   PhoneVerification: { isChangingNumber?: boolean; mode?: 'login' | 'register'; phone?: string } | undefined;
 
