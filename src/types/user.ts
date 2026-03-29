@@ -1,5 +1,6 @@
 export interface UserProfile {
   uid: string;
+  firebaseUid?: string;
   email: string;
   displayName: string;
   photoURL: string | null;

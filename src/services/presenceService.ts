@@ -1,13 +1,19 @@
 import { AppState, type AppStateStatus } from 'react-native';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebaseConfig';
+import { getCurrentUserProfile } from './authService';
 
 const setPresence = async (online: boolean) => {
   const user = auth.currentUser;
   if (!user?.uid) return;
 
   try {
-    await setDoc(doc(db, 'users', user.uid), {
+    const profile = await getCurrentUserProfile();
+    const profileUid = profile?.uid || user.uid;
+
+    await setDoc(doc(db, 'users', profileUid), {
+      uid: user.uid,
+      firebaseUid: user.uid,
       online,
       lastSeen: new Date().toISOString(),
     }, { merge: true });

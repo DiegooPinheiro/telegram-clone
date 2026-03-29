@@ -21,7 +21,15 @@ import { dark, light } from './src/theme/colors';
 import { ensureChatSessionForCurrentUser } from './src/services/authService';
 
 function MainApp() {
-  const { isAuthenticated, phoneVerified, requiresTwoStepLogin, loading: authLoading, uid, userProfile } = useAuth();
+  const {
+    isAuthenticated,
+    phoneVerified,
+    requiresTwoStepLogin,
+    loading: authLoading,
+    uid,
+    firebaseUid,
+    userProfile,
+  } = useAuth();
   const { theme } = useSettings();
   const [chatReady, setChatReady] = useState(false);
   const [authRouteLock, setAuthRouteLock] = useState<'phone' | 'twoStep'>('phone');
@@ -100,7 +108,7 @@ function MainApp() {
       try {
         let session = await getChatSession();
 
-        if (uid && session?.userId === uid) {
+        if (firebaseUid && session?.userId === firebaseUid) {
           console.warn('[App] Chat session is using Firebase UID instead of chat user id. Repairing session...');
           await ensureChatSessionForCurrentUser();
           session = await getChatSession();
@@ -138,7 +146,7 @@ function MainApp() {
       unsubscribe?.();
       stopPresence?.();
     };
-  }, [isAuthenticated, uid, phoneVerified]);
+  }, [isAuthenticated, firebaseUid, phoneVerified]);
 
   if (authLoading || (isAuthenticated && !chatReady)) {
     return <LoadingSpinner message="Carregando..." />;
@@ -167,9 +175,10 @@ function MainApp() {
   const toastConfig = {
     messageToast: (props: any) => <MessageToast {...props} />,
   };
+  const navIdentity = uid || firebaseUid || 'guest';
   const rootNavKey = phoneVerified
-    ? `app-${uid || 'guest'}`
-    : `auth-${authRouteLock}-${uid || 'guest'}`;
+    ? `app-${navIdentity}`
+    : `auth-${authRouteLock}-${navIdentity}`;
 
   return (
     <View style={{ flex: 1, backgroundColor: navTheme.colors.background }}>

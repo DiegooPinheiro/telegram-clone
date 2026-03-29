@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TextInput, 
-  TouchableOpacity, 
-  KeyboardAvoidingView, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  KeyboardAvoidingView,
   Platform,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +16,6 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import useTheme from '../hooks/useTheme';
 import { validateEmail } from '../utils/validators';
-
 import { chatSendTwoStepCode } from '../services/chatApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TwoStepEmail'>;
@@ -28,27 +27,27 @@ export default function TwoStepEmailScreen({ navigation, route }: Props) {
   const [loading, setLoading] = useState(false);
 
   const handleNext = async () => {
+    if (loading) return;
+
     if (!validateEmail(email)) {
-      Alert.alert('E-mail inválido', 'Por favor, insira um endereço de e-mail válido.');
+      Alert.alert('E-mail invalido', 'Por favor, insira um endereco de e-mail valido.');
       return;
     }
 
     setLoading(true);
     try {
-      // Chama o backend para enviar o e-mail real via Resend
       const response = await chatSendTwoStepCode(email);
-      
+
       if (response && response.success) {
-        // Navega para a tela de verificação com o código que o servidor retornou
-        navigation.navigate('TwoStepVerify', { 
-          password, 
-          email, 
+        navigation.navigate('TwoStepVerify', {
+          password,
+          email,
           code: response.code,
-          mode: route.params?.mode
+          mode: route.params?.mode,
         });
       }
     } catch (error: any) {
-      Alert.alert('Erro no envio', error.message || 'Não foi possível enviar o e-mail de verificação.');
+      Alert.alert('Erro no envio', error.message || 'Nao foi possivel enviar o e-mail de verificacao.');
     } finally {
       setLoading(false);
     }
@@ -56,55 +55,57 @@ export default function TwoStepEmailScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.flex}
-      >
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
         <View style={styles.content}>
           <View style={styles.imageContainer}>
             <Text style={styles.emoji}>💌</Text>
           </View>
 
-          <Text style={[styles.title, { color: colors.textPrimary }]}>
-            Email de Recuperação
-          </Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>Email de Recuperacao</Text>
 
           <Text style={[styles.description, { color: colors.textSecondary }]}>
-            Você pode definir um email de recuperação para redefinir a sua senha e restaurar acesso à sua conta.
+            Voce pode definir um email de recuperacao para redefinir a sua senha e restaurar acesso a sua conta.
           </Text>
 
-          <View style={[styles.inputBox, { borderColor: colors.primary }]}>
-            <Text style={[styles.inputLabel, { color: colors.primary, backgroundColor: colors.background }]}>
-              Email
-            </Text>
-            <TextInput
-              style={[styles.input, { color: colors.textPrimary }]}
-              placeholder="seuemail@exemplo.com"
-              placeholderTextColor={colors.textSecondary}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoFocus
-              onSubmitEditing={handleNext}
-            />
+          <View style={styles.inputRow}>
+            <View style={[styles.inputBox, { borderColor: colors.primary, backgroundColor: colors.surface }]}>
+              <Text style={[styles.inputLabel, { color: colors.primary, backgroundColor: colors.background }]}>
+                Email
+              </Text>
+              <TextInput
+                style={[styles.input, { color: colors.textPrimary }]}
+                placeholder="seuemail@exemplo.com"
+                placeholderTextColor={colors.textSecondary}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoFocus
+                editable={!loading}
+                returnKeyType="go"
+                blurOnSubmit={false}
+                onSubmitEditing={handleNext}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.inlineButton,
+                { backgroundColor: colors.primary, opacity: email.length > 3 && !loading ? 1 : 0.55 },
+              ]}
+              activeOpacity={0.8}
+              onPress={handleNext}
+              disabled={email.length <= 3 || loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Ionicons name="arrow-forward" size={22} color="#fff" />
+              )}
+            </TouchableOpacity>
           </View>
         </View>
-
-        {email.length > 3 && (
-          <TouchableOpacity 
-            style={[styles.floatingButton, { backgroundColor: colors.primary, opacity: loading ? 0.7 : 1 }]}
-            activeOpacity={0.8}
-            onPress={handleNext}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Ionicons name="arrow-forward" size={28} color="#fff" />
-            )}
-          </TouchableOpacity>
-        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -121,7 +122,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingTop: 40,
-    paddingHorizontal: 40,
+    paddingHorizontal: 32,
   },
   imageContainer: {
     marginBottom: 30,
@@ -141,11 +142,17 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 40,
   },
-  inputBox: {
+  inputRow: {
     width: '100%',
-    height: 56,
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 12,
+  },
+  inputBox: {
+    flex: 1,
+    minHeight: 56,
     borderWidth: 2,
-    borderRadius: 8,
+    borderRadius: 12,
     paddingHorizontal: 16,
     justifyContent: 'center',
     position: 'relative',
@@ -162,19 +169,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     padding: 0,
   },
-  floatingButton: {
-    position: 'absolute',
-    bottom: 30,
-    right: 30,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+  inlineButton: {
+    width: 56,
+    minHeight: 56,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
   },
 });

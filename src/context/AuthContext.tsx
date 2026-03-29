@@ -1,6 +1,11 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { User } from 'firebase/auth';
-import { onAuthChange, getCurrentUser } from '../services/authService';
+import {
+  onAuthChange,
+  getCurrentUser,
+  getCurrentUserProfile,
+  resolveUserProfileForFirebaseUid,
+} from '../services/authService';
 import { getChatSession } from '../services/chatSession';
 import { UserProfile } from '../types/user';
 
@@ -11,6 +16,7 @@ interface AuthContextType {
   requiresTwoStepLogin: boolean;
   isAuthenticated: boolean;
   uid: string | null;
+  firebaseUid: string | null;
   displayName: string | null;
   email: string | null;
   photoURL: string | null;
@@ -27,28 +33,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [requiresTwoStepLogin, setRequiresTwoStepLogin] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [profileUid, setProfileUid] = useState<string | null>(null);
 
   const checkSession = async () => {
     const session = await getChatSession();
-    console.log('[AuthContext] Verificando sessão local. phoneVerified:', !!session?.phoneVerified);
+    console.log('[AuthContext] Verificando sessao local. phoneVerified:', !!session?.phoneVerified);
     setPhoneVerified(!!session?.phoneVerified);
+    setProfileUid((current) => session?.profileUid || current);
   };
 
   const refreshSession = async () => {
-    console.log('[AuthContext] Refresh manual da sessão solicitado');
+    console.log('[AuthContext] Refresh manual da sessao solicitado');
     await checkSession();
+
+    if (!user) return;
+
+    try {
+      const session = await getChatSession();
+      if (session?.phoneVerified) {
+        setRequiresTwoStepLogin(false);
+      }
+
+      const profile = await getCurrentUserProfile(session?.profileUid || profileUid);
+      if (profile) {
+        setUserProfile(profile);
+        setProfileUid(profile.uid);
+      }
+    } catch (e) {
+      console.error('[AuthContext] Erro ao recarregar perfil apos refresh da sessao:', e);
+    }
   };
 
   const refreshProfile = async () => {
     if (!user) return;
+
     console.log('[AuthContext] Atualizando perfil do Firestore...');
     try {
-      const { doc, getDoc, getFirestore } = await import('firebase/firestore');
-      const db = getFirestore();
-      const snap = await getDoc(doc(db, 'users', user.uid));
-      if (snap.exists()) {
-        const data = snap.data() as UserProfile;
-        setUserProfile(data);
+      const session = await getChatSession();
+      const profile = await getCurrentUserProfile(profileUid || session?.profileUid);
+      if (profile) {
+        setUserProfile(profile);
+        setProfileUid(profile.uid);
         console.log('[AuthContext] Perfil atualizado com sucesso');
       }
     } catch (e) {
@@ -59,30 +84,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthChange(async (firebaseUser) => {
       setUser(firebaseUser);
+
       if (firebaseUser) {
-        // Tenta a sessão local primeiro
         const session = await getChatSession();
-        if (session && session.phoneVerified) {
-          setPhoneVerified(true);
+        const isLocalSessionVerified = !!session?.phoneVerified;
+
+        setProfileUid(session?.profileUid || null);
+        setPhoneVerified(isLocalSessionVerified);
+        if (isLocalSessionVerified) {
           setRequiresTwoStepLogin(false);
         }
-        
-        // Fetch full profile from Firestore
+
         try {
-          const { doc, getDoc, getFirestore } = await import('firebase/firestore');
-          const db = getFirestore();
-          const snap = await getDoc(doc(db, 'users', firebaseUser.uid));
-          if (snap.exists()) {
-            const data = snap.data() as UserProfile;
-            setUserProfile(data);
-            
-            // SECURITY: Only auto-verify the phone if 2FA is DISABLED.
-            // If 2FA is ENABLED, the user MUST pass the password screen on each new session (clean cache).
-            if (data.phoneVerified) {
-              const session = await getChatSession();
-              const isLocalSessionVerified = !!(session && session.phoneVerified);
-              
-              if (!data.twoStepEnabled || isLocalSessionVerified) {
+          const profile = await resolveUserProfileForFirebaseUid(firebaseUser.uid, session?.profileUid);
+
+          if (profile) {
+            setUserProfile(profile);
+            setProfileUid(profile.uid);
+
+            if (profile.phoneVerified) {
+              if (!profile.twoStepEnabled || isLocalSessionVerified) {
                 console.log('[AuthContext] Auto-verifying session.');
                 setPhoneVerified(true);
                 setRequiresTwoStepLogin(false);
@@ -91,6 +112,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setPhoneVerified(false);
                 setRequiresTwoStepLogin(true);
               }
+            } else {
+              setPhoneVerified(false);
+              setRequiresTwoStepLogin(false);
+            }
+          } else {
+            setUserProfile(null);
+            if (!isLocalSessionVerified) {
+              setPhoneVerified(false);
+              setRequiresTwoStepLogin(false);
             }
           }
         } catch (e) {
@@ -100,21 +130,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setPhoneVerified(false);
         setRequiresTwoStepLogin(false);
         setUserProfile(null);
+        setProfileUid(null);
       }
+
       setLoading(false);
     });
 
     return unsubscribe;
   }, []);
 
-  // Adicionalmente, vamos verificar a sessão a cada 2 segundos se o usuário estiver logado mas não verificado
-  // para garantir que a mudança seja captada se acontecer em outro lugar.
   useEffect(() => {
-    let interval: any;
+    let interval: ReturnType<typeof setInterval> | undefined;
+
     if (user && !phoneVerified) {
       interval = setInterval(checkSession, 2000);
     }
-    return () => clearInterval(interval);
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [user, phoneVerified]);
 
   const value = {
@@ -123,10 +157,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     phoneVerified,
     requiresTwoStepLogin,
     isAuthenticated: !!user,
-    uid: user?.uid || null,
-    displayName: user?.displayName || null,
-    email: user?.email || null,
-    photoURL: user?.photoURL || null,
+    uid: profileUid || userProfile?.uid || null,
+    firebaseUid: user?.uid || null,
+    displayName: userProfile?.displayName || user?.displayName || null,
+    email: userProfile?.email || user?.email || null,
+    photoURL: userProfile?.photoURL || user?.photoURL || null,
     userProfile,
     refreshSession,
     refreshProfile,

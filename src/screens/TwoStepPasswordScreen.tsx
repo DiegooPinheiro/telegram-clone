@@ -1,20 +1,20 @@
-import React, { useState, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TextInput, 
-  TouchableOpacity, 
-  KeyboardAvoidingView, 
+import React, { useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  KeyboardAvoidingView,
   Platform,
-  Alert
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import useTheme from '../hooks/useTheme';
-import { spacing } from '../theme/spacing';
 import { updateTwoStepAuth } from '../services/authService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TwoStepPassword'>;
@@ -22,66 +22,79 @@ type Props = NativeStackScreenProps<RootStackParamList, 'TwoStepPassword'>;
 export default function TwoStepPasswordScreen({ navigation, route }: Props) {
   const { colors } = useTheme();
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
   const handleNext = async () => {
-    if (password.length < 4) return;
+    if (password.length < 4 || loading) return;
 
     if (route.params?.mode === 'change') {
+      setLoading(true);
       try {
         await updateTwoStepAuth({ password, enabled: true });
-        navigation.replace('TwoStepSuccess', { 
+        navigation.replace('TwoStepSuccess', {
           title: 'Senha Alterada!',
-          description: 'Sua senha de Verificação em Duas Etapas foi atualizada com sucesso.'
+          description: 'Sua senha de Verificacao em Duas Etapas foi atualizada com sucesso.',
         });
       } catch (error: any) {
         Alert.alert('Erro', error.message || 'Falha ao atualizar senha.');
+      } finally {
+        setLoading(false);
       }
-    } else {
-      navigation.navigate('TwoStepEmail', { password });
+      return;
     }
+
+    navigation.navigate('TwoStepEmail', { password });
   };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.flex}
-      >
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
         <View style={styles.content}>
           <View style={styles.imageContainer}>
             <Text style={styles.emoji}>🙈</Text>
           </View>
 
-          <Text style={[styles.title, { color: colors.textPrimary }]}>
-            Criar uma Senha
-          </Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>Criar uma Senha</Text>
 
-          <View style={[styles.inputBox, { borderColor: colors.primary }]}>
-            <Text style={[styles.inputLabel, { color: colors.primary, backgroundColor: colors.background }]}>
-              Insira a senha
-            </Text>
-            <TextInput
-              ref={inputRef}
-              style={[styles.input, { color: colors.textPrimary }]}
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-              autoFocus
-              onSubmitEditing={handleNext}
-            />
+          <View style={styles.inputRow}>
+            <View style={[styles.inputBox, { borderColor: colors.primary, backgroundColor: colors.surface }]}>
+              <Text style={[styles.inputLabel, { color: colors.primary, backgroundColor: colors.background }]}>
+                Insira a senha
+              </Text>
+              <TextInput
+                ref={inputRef}
+                style={[styles.input, { color: colors.textPrimary }]}
+                secureTextEntry
+                value={password}
+                onChangeText={setPassword}
+                autoFocus
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!loading}
+                returnKeyType="go"
+                blurOnSubmit={false}
+                onSubmitEditing={handleNext}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.inlineButton,
+                { backgroundColor: colors.primary, opacity: password.length >= 4 && !loading ? 1 : 0.55 },
+              ]}
+              activeOpacity={0.8}
+              onPress={handleNext}
+              disabled={password.length < 4 || loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Ionicons name="arrow-forward" size={22} color="#fff" />
+              )}
+            </TouchableOpacity>
           </View>
         </View>
-
-        {password.length >= 4 && (
-          <TouchableOpacity 
-            style={[styles.floatingButton, { backgroundColor: colors.primary }]}
-            activeOpacity={0.8}
-            onPress={handleNext}
-          >
-            <Ionicons name="arrow-forward" size={28} color="#fff" />
-          </TouchableOpacity>
-        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -98,7 +111,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingTop: 40,
-    paddingHorizontal: 40,
+    paddingHorizontal: 32,
   },
   imageContainer: {
     marginBottom: 30,
@@ -112,11 +125,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 40,
   },
-  inputBox: {
+  inputRow: {
     width: '100%',
-    height: 56,
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 12,
+  },
+  inputBox: {
+    flex: 1,
+    minHeight: 56,
     borderWidth: 2,
-    borderRadius: 8,
+    borderRadius: 12,
     paddingHorizontal: 16,
     justifyContent: 'center',
     position: 'relative',
@@ -133,19 +152,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     padding: 0,
   },
-  floatingButton: {
-    position: 'absolute',
-    bottom: 30,
-    right: 30,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+  inlineButton: {
+    width: 56,
+    minHeight: 56,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
   },
 });

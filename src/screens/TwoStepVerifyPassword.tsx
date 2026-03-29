@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,40 +29,52 @@ export default function TwoStepVerifyPasswordScreen({ navigation, route }: Props
   const [targetProfile, setTargetProfile] = useState<UserProfile | null>(null);
   const inputRef = useRef<TextInput>(null);
 
+  const currentMode = useMemo<'login' | 'settings' | 'change'>(() => {
+    if (route.params?.mode) {
+      return route.params.mode;
+    }
+
+    return (route as any).name === 'TwoStepVerifyPasswordSettings' ? 'settings' : 'login';
+  }, [route]);
+
   useEffect(() => {
-    if (phoneVerified) {
+    if (phoneVerified && currentMode === 'login') {
       setWaitingForApp(true);
       const routeNames = navigation.getState().routeNames || [];
-      if (route.params?.mode === 'login' && routeNames.includes('MainTabs')) {
+      if (routeNames.includes('MainTabs')) {
         navigation.replace('MainTabs');
       }
     }
-  }, [navigation, phoneVerified, route.params?.mode]);
+  }, [currentMode, navigation, phoneVerified]);
 
   useEffect(() => {
     let active = true;
 
     const loadProfileForValidation = async () => {
-      if (route.params?.mode !== 'login') {
-        setTargetProfile(userProfile);
-        return;
-      }
-
-      if (!route.params?.targetUid) {
-        setTargetProfile(userProfile);
-        return;
-      }
-
       try {
-        const { getUserProfile } = await import('../services/authService');
-        const profile = await getUserProfile(route.params.targetUid);
+        const { getCurrentUserProfile, getUserProfile } = await import('../services/authService');
+
+        let profile: UserProfile | null = null;
+
+        if (currentMode === 'login' && route.params?.targetUid) {
+          profile = (await getUserProfile(route.params.targetUid)) as UserProfile | null;
+        } else if (currentMode === 'login') {
+          profile = userProfile;
+        } else {
+          profile = (await getCurrentUserProfile(userProfile?.uid || undefined)) as UserProfile | null;
+        }
+
+        if (!profile && userProfile) {
+          profile = userProfile;
+        }
+
         if (active) {
-          setTargetProfile((profile as UserProfile | null) || null);
+          setTargetProfile(profile);
         }
       } catch (error) {
         console.error('[TwoStepVerifyPassword] Failed to load target profile:', error);
         if (active) {
-          setTargetProfile(null);
+          setTargetProfile(userProfile);
         }
       }
     };
@@ -71,47 +84,67 @@ export default function TwoStepVerifyPasswordScreen({ navigation, route }: Props
     return () => {
       active = false;
     };
-  }, [route.params?.mode, route.params?.targetUid, userProfile]);
+  }, [currentMode, route.params?.targetUid, userProfile]);
 
   const handleNext = async () => {
-    const profileForValidation =
-      route.params?.mode === 'login' ? targetProfile : userProfile;
+    if (!password || loading || waitingForApp) return;
 
-    if (!profileForValidation && route.params?.mode !== 'settings') {
-      Alert.alert('Aguarde', 'Carregando perfil de seguranca...');
+    const profileForValidation = targetProfile || userProfile;
+
+    if (!profileForValidation?.twoStepPassword) {
+      Alert.alert('Aguarde', 'Ainda estamos carregando os dados de seguranca da sua conta.');
       return;
     }
 
-    if (password === profileForValidation?.twoStepPassword) {
-      const phoneNumberForLogin = route.params?.phoneNumber || profileForValidation?.phone;
-
-      if (route.params?.mode === 'login' && phoneNumberForLogin) {
-        setLoading(true);
-        try {
-          const { completePhoneVerificationLogin } = await import('../services/authService');
-          const uidToVerify = route.params.targetUid || user?.uid;
-
-          if (!uidToVerify) {
-            throw new Error('Conta de destino nao identificada para concluir o login.');
-          }
-
-          await completePhoneVerificationLogin(uidToVerify, phoneNumberForLogin);
-          await refreshSession();
-          setWaitingForApp(true);
-        } catch (error: any) {
-          Alert.alert('Erro no Login', error.message || 'Falha ao autenticar.');
-        } finally {
-          setLoading(false);
-        }
-      } else {
-        navigation.navigate('TwoStepSettings');
-      }
-    } else {
+    if (password !== profileForValidation.twoStepPassword) {
       Alert.alert('Senha Incorreta', 'A senha inserida nao corresponde a sua senha de Verificacao em Duas Etapas.');
       setPassword('');
       inputRef.current?.focus();
+      return;
+    }
+
+    if (currentMode === 'login') {
+      const phoneNumberForLogin = route.params?.phoneNumber || profileForValidation.phone;
+
+      if (!phoneNumberForLogin) {
+        Alert.alert('Erro no Login', 'Nao foi possivel identificar o telefone desta conta para concluir o login.');
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const { completePhoneVerificationLogin } = await import('../services/authService');
+        const uidToVerify = route.params?.targetUid || targetProfile?.uid || userProfile?.uid || user?.uid;
+
+        if (!uidToVerify) {
+          throw new Error('Conta de destino nao identificada para concluir o login.');
+        }
+
+        await completePhoneVerificationLogin(uidToVerify, phoneNumberForLogin);
+        await refreshSession();
+        setWaitingForApp(true);
+      } catch (error: any) {
+        Alert.alert('Erro no Login', error.message || 'Falha ao autenticar.');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const routeNames = navigation.getState().routeNames || [];
+      if (routeNames.includes('TwoStepSettings')) {
+        navigation.replace('TwoStepSettings');
+      } else {
+        navigation.navigate('TwoStepSettings');
+      }
+    } finally {
+      setLoading(false);
     }
   };
+
+  const buttonDisabled = !password || loading || waitingForApp;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
@@ -124,51 +157,62 @@ export default function TwoStepVerifyPasswordScreen({ navigation, route }: Props
             <Text style={styles.emoji}>🔐</Text>
           </View>
 
-          <Text style={[styles.title, { color: colors.textPrimary }]}>
-            Sua senha
-          </Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>Sua senha</Text>
 
           <Text style={[styles.description, { color: colors.textSecondary }]}>
             A Verificacao em Duas Etapas esta ativada. A sua conta esta protegida com uma senha adicional.
           </Text>
 
-          <View style={[styles.inputBox, { borderColor: colors.primary }]}>
-            <Text style={[styles.inputLabel, { color: colors.primary, backgroundColor: colors.background }]}>
-              Insira a senha
-            </Text>
-            <TextInput
-              ref={inputRef}
-              style={[styles.input, { color: colors.textPrimary }]}
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-              autoFocus
-              editable={!loading}
-              onSubmitEditing={handleNext}
-            />
+          <View style={styles.inputRow}>
+            <View style={[styles.inputBox, { borderColor: colors.primary, backgroundColor: colors.surface }]}>
+              <Text style={[styles.inputLabel, { color: colors.primary, backgroundColor: colors.background }]}>
+                Insira a senha
+              </Text>
+              <TextInput
+                ref={inputRef}
+                style={[styles.input, { color: colors.textPrimary }]}
+                secureTextEntry
+                value={password}
+                onChangeText={setPassword}
+                autoFocus
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!loading && !waitingForApp}
+                returnKeyType="go"
+                blurOnSubmit={false}
+                onSubmitEditing={handleNext}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.inlineButton,
+                {
+                  backgroundColor: colors.primary,
+                  opacity: buttonDisabled ? 0.55 : 1,
+                },
+              ]}
+              activeOpacity={0.8}
+              disabled={buttonDisabled}
+              onPress={handleNext}
+            >
+              {loading || waitingForApp ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Ionicons name="arrow-forward" size={22} color="#fff" />
+              )}
+            </TouchableOpacity>
           </View>
 
           <TouchableOpacity
             style={styles.forgotBtn}
-            onPress={() => Alert.alert('Recuperacao', 'O codigo de recuperacao sera enviado para o seu e-mail configurado.')}
+            onPress={() =>
+              Alert.alert('Recuperacao', 'O codigo de recuperacao sera enviado para o seu e-mail configurado.')
+            }
           >
             <Text style={[styles.forgotText, { color: colors.primary }]}>Esqueceu a senha?</Text>
           </TouchableOpacity>
         </View>
-
-        {password.length > 0 && (
-          <TouchableOpacity
-            style={[
-              styles.floatingButton,
-              { backgroundColor: colors.primary, opacity: loading || waitingForApp ? 0.7 : 1 },
-            ]}
-            activeOpacity={0.8}
-            disabled={loading || waitingForApp}
-            onPress={handleNext}
-          >
-            <Ionicons name="arrow-forward" size={28} color="#fff" />
-          </TouchableOpacity>
-        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -185,7 +229,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingTop: 40,
-    paddingHorizontal: 40,
+    paddingHorizontal: 32,
   },
   imageContainer: {
     marginBottom: 30,
@@ -203,13 +247,19 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlign: 'center',
     lineHeight: 20,
-    marginBottom: 40,
+    marginBottom: 32,
+  },
+  inputRow: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 12,
   },
   inputBox: {
-    width: '100%',
-    height: 56,
+    flex: 1,
+    minHeight: 56,
     borderWidth: 2,
-    borderRadius: 8,
+    borderRadius: 12,
     paddingHorizontal: 16,
     justifyContent: 'center',
     position: 'relative',
@@ -226,6 +276,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     padding: 0,
   },
+  inlineButton: {
+    width: 56,
+    minHeight: 56,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   forgotBtn: {
     marginTop: 30,
     alignSelf: 'flex-start',
@@ -233,20 +290,5 @@ const styles = StyleSheet.create({
   forgotText: {
     fontSize: 16,
     fontWeight: '500',
-  },
-  floatingButton: {
-    position: 'absolute',
-    bottom: 30,
-    right: 30,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
   },
 });

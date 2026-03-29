@@ -29,7 +29,57 @@ import { chatSyncFirebaseUser, chatRegisterPushToken, chatDeleteMe } from './cha
 import { clearChatSession, getChatSession, setChatSession } from './chatSession';
 import { connectChatSocket, disconnectChatSocket } from './chatSocket';
 
-const syncChatUserFromFirebase = async (fallbackEmail: string) => {
+const mapUserProfileDocument = (docSnap: { id: string; data: () => unknown }) => {
+  const data = (docSnap.data() || {}) as Partial<UserProfile>;
+
+  return {
+    ...(data as UserProfile),
+    uid: docSnap.id,
+    firebaseUid: String(data.firebaseUid || data.uid || docSnap.id),
+  } as UserProfile;
+};
+
+export const resolveUserProfileForFirebaseUid = async (
+  firebaseUid: string,
+  preferredProfileUid?: string | null
+) => {
+  const normalizedPreferredProfileUid = preferredProfileUid?.trim();
+
+  if (normalizedPreferredProfileUid) {
+    const preferredSnap = await getDoc(doc(db, 'users', normalizedPreferredProfileUid));
+    if (preferredSnap.exists()) {
+      return mapUserProfileDocument(preferredSnap);
+    }
+  }
+
+  const byFirebaseUidQuery = query(collection(db, 'users'), where('firebaseUid', '==', firebaseUid));
+  const byFirebaseUidSnapshot = await getDocs(byFirebaseUidQuery);
+  if (!byFirebaseUidSnapshot.empty) {
+    return mapUserProfileDocument(byFirebaseUidSnapshot.docs[0]);
+  }
+
+  const byLegacyUidQuery = query(collection(db, 'users'), where('uid', '==', firebaseUid));
+  const byLegacyUidSnapshot = await getDocs(byLegacyUidQuery);
+  if (!byLegacyUidSnapshot.empty) {
+    return mapUserProfileDocument(byLegacyUidSnapshot.docs[0]);
+  }
+
+  const directSnap = await getDoc(doc(db, 'users', firebaseUid));
+  if (directSnap.exists()) {
+    return mapUserProfileDocument(directSnap);
+  }
+
+  return null;
+};
+
+export const getCurrentUserProfile = async (preferredProfileUid?: string | null) => {
+  const user = auth.currentUser;
+  if (!user?.uid) return null;
+
+  return resolveUserProfileForFirebaseUid(user.uid, preferredProfileUid);
+};
+
+const syncChatUserFromFirebase = async (fallbackEmail: string, preferredProfileUid?: string | null) => {
   const user = auth.currentUser;
   if (!user) {
     throw new Error('Sessão do Firebase ausente. Faça login novamente.');
@@ -38,13 +88,14 @@ const syncChatUserFromFirebase = async (fallbackEmail: string) => {
   let displayName = (user.displayName || '').trim();
   let phone: string | undefined = undefined;
   let phoneVerified = false;
+  let profileUid = preferredProfileUid?.trim() || user.uid;
 
-  const snap = await getDoc(doc(db, 'users', user.uid));
-  if (snap.exists()) {
-    const data = snap.data() as any;
-    if (!displayName) displayName = String(data?.displayName || '').trim();
-    phone = data?.phone || undefined;
-    phoneVerified = !!data?.phoneVerified;
+  const profile = await getCurrentUserProfile(preferredProfileUid);
+  if (profile) {
+    if (!displayName) displayName = String(profile.displayName || '').trim();
+    phone = profile.phone || undefined;
+    phoneVerified = !!profile.phoneVerified;
+    profileUid = profile.uid;
   }
 
   if (!displayName) displayName = 'Usuário';
@@ -60,9 +111,10 @@ const syncChatUserFromFirebase = async (fallbackEmail: string) => {
   // Store phone verification status in local session or context if needed
   // Note: authRes now contains phoneVerified
 
-  await setChatSession({ 
+  await setChatSession({
     userId: authRes._id,
-    phoneVerified: authRes.phoneVerified 
+    profileUid,
+    phoneVerified: authRes.phoneVerified,
   });
   await connectChatSocket(authRes._id);
   
@@ -75,11 +127,11 @@ export const ensureChatSessionForCurrentUser = async () => {
     throw new Error('Sessao do Firebase ausente. Faca login novamente.');
   }
 
-  const snap = await getDoc(doc(db, 'users', user.uid));
-  const data = snap.exists() ? (snap.data() as Partial<UserProfile>) : null;
-  const fallbackEmail = String(data?.email || user.email || '').trim().toLowerCase();
+  const session = await getChatSession();
+  const profile = await getCurrentUserProfile(session?.profileUid);
+  const fallbackEmail = String(profile?.email || user.email || '').trim().toLowerCase();
 
-  return syncChatUserFromFirebase(fallbackEmail);
+  return syncChatUserFromFirebase(fallbackEmail, profile?.uid || session?.profileUid || user.uid);
 };
 
 /**
@@ -96,6 +148,7 @@ export const signUp = async (displayName: string, email: string = '', phone: str
   // Cria ou atualiza o documento no Firestore de forma NÃO DESTRUTIVA
   await setDoc(doc(db, 'users', user.uid), {
     uid: user.uid,
+    firebaseUid: user.uid,
     email: email || user.email || null,
     displayName,
     photoURL: photoURL || null,
@@ -111,7 +164,7 @@ export const signUp = async (displayName: string, email: string = '', phone: str
 
   try {
     // Sincroniza com a API do Chat
-    return await syncChatUserFromFirebase(email);
+    return await syncChatUserFromFirebase(email, user.uid);
   } catch (error: any) {
     // Em caso de erro na API, deslogamos o usuário por segurança
     await chatRegisterPushToken('LOGGED_OUT_TOKEN').catch(() => {});
@@ -131,14 +184,18 @@ export const signUp = async (displayName: string, email: string = '', phone: str
 export const signIn = async (email: string, password: string) => {
   const userCredential = await signInWithEmailAndPassword(auth, email, password);
   const user = userCredential.user;
+  const profile = await resolveUserProfileForFirebaseUid(user.uid);
+  const profileUid = profile?.uid || user.uid;
 
-  await setDoc(doc(db, 'users', user.uid), {
+  await setDoc(doc(db, 'users', profileUid), {
+    uid: user.uid,
+    firebaseUid: user.uid,
     online: true,
     lastSeen: new Date().toISOString(),
   }, { merge: true });
 
   try {
-    return await syncChatUserFromFirebase(email);
+    return await syncChatUserFromFirebase(email, user.uid);
   } catch (error: any) {
     await clearChatSession();
     disconnectChatSocket();
@@ -159,7 +216,10 @@ export const signOut = async () => {
   const user = auth.currentUser;
 
   if (user) {
-    await updateDoc(doc(db, 'users', user.uid), {
+    const profile = await getCurrentUserProfile();
+    const profileUid = profile?.uid || user.uid;
+
+    await updateDoc(doc(db, 'users', profileUid), {
       online: false,
       lastSeen: new Date().toISOString(),
     });
@@ -211,10 +271,7 @@ export const getUserProfile = async (uid: string) => {
   const docRef = doc(db, 'users', uid);
   const docSnap = await getDoc(docRef);
   if (!docSnap.exists()) return null;
-  return {
-    ...(docSnap.data() as UserProfile),
-    uid: (docSnap.data() as UserProfile).uid || docSnap.id,
-  } as UserProfile;
+  return mapUserProfileDocument(docSnap);
 };
 
 /**
@@ -229,10 +286,7 @@ export const getUserProfileByUsername = async (username: string) => {
   if (querySnapshot.empty) return null;
 
   const docSnap = querySnapshot.docs[0];
-  return {
-    ...(docSnap.data() as UserProfile),
-    uid: (docSnap.data() as UserProfile).uid || docSnap.id,
-  } as UserProfile;
+  return mapUserProfileDocument(docSnap);
 };
 
 /**
@@ -265,10 +319,7 @@ export const getUserByPhone = async (phone: string) => {
   if (!querySnapshot.empty) {
     console.log('[AuthService] Account found!');
     const docSnap = querySnapshot.docs[0];
-    return {
-      ...(docSnap.data() as UserProfile),
-      uid: (docSnap.data() as UserProfile).uid || docSnap.id,
-    } as UserProfile;
+    return mapUserProfileDocument(docSnap);
   }
 
   // FALLBACK: Se o número for brasileiro e a busca com '55' falhou, tenta sem o '55'
@@ -282,10 +333,7 @@ export const getUserByPhone = async (phone: string) => {
     if (!fallbackSnapshot.empty) {
       console.log('[AuthService] Account found with fallback search!');
       const docSnap = fallbackSnapshot.docs[0];
-      return {
-        ...(docSnap.data() as UserProfile),
-        uid: (docSnap.data() as UserProfile).uid || docSnap.id,
-      } as UserProfile;
+      return mapUserProfileDocument(docSnap);
     }
   }
 
@@ -308,9 +356,14 @@ export const updateUserProfile = async (
     birthday?: string;
   }
 ) => {
-    await setDoc(doc(db, 'users', uid), data, { merge: true });
-
   const user = auth.currentUser;
+  const dataToPersist = {
+    ...data,
+    ...(user?.uid ? { uid: user.uid, firebaseUid: user.uid } : {}),
+  };
+
+  await setDoc(doc(db, 'users', uid), dataToPersist, { merge: true });
+
   if (user && (data.displayName || data.photoURL !== undefined)) {
     await updateProfile(user, {
       displayName: data.displayName || user.displayName || undefined,
@@ -369,7 +422,9 @@ export const deleteUserAccount = async (password: string) => {
 
   // 3. Remover do Firestore
   try {
-    await deleteDoc(doc(db, 'users', user.uid));
+    const profile = await getCurrentUserProfile();
+    const profileUid = profile?.uid || user.uid;
+    await deleteDoc(doc(db, 'users', profileUid));
   } catch (error) {
     console.error('[AuthService] Erro ao deletar documento no Firestore:', error);
   }
@@ -396,25 +451,28 @@ export const resetPassword = async (email: string) => {
 
 export const setPhoneVerified = async (uid: string, phone: string) => {
   console.log('[AuthService] Marking phone as verified for:', uid);
+  const user = auth.currentUser;
+  const normalizedPhone = phone.replace(/\D/g, '');
   // 1. Atualiza no Firestore
   const userRef = doc(db, 'users', uid);
-  await updateDoc(userRef, { 
+  await updateDoc(userRef, {
+    uid: user?.uid || uid,
+    firebaseUid: user?.uid || uid,
     phoneVerified: true,
-    phone: phone.replace(/\D/g, '')
+    phone: normalizedPhone,
   });
 
   // 2. Sincroniza com a API do Chat (Backend)
-  const user = auth.currentUser;
   let chatUserId: string | null = null;
   if (user) {
     const freshProfile = await getDoc(userRef);
-    const profileData = (freshProfile.exists() ? freshProfile.data() : null) as UserProfile | null;
+    const profileData = freshProfile.exists() ? mapUserProfileDocument(freshProfile) : null;
 
     const authRes = await chatSyncFirebaseUser({
         email: String(profileData?.email || user.email || '').trim().toLowerCase(),
         displayName: user.displayName || 'Usuário',
         photoURL: profileData?.photoURL || user.photoURL || undefined,
-        phone: phone.replace(/\D/g, ''),
+        phone: normalizedPhone,
         phoneVerified: true,
       } as any);
       chatUserId = authRes?._id ? String(authRes._id) : null;
@@ -430,28 +488,30 @@ export const setPhoneVerified = async (uid: string, phone: string) => {
     throw new Error('NÃ£o foi possÃ­vel concluir a sessÃ£o do chat apÃ³s validar o telefone.');
   }
 
-  await setChatSession({ userId: chatUserId, phoneVerified: true });
+  await setChatSession({ userId: chatUserId, profileUid: uid, phoneVerified: true });
   console.log('[AuthService] Phone verification completed and saved.');
 };
 
 export const completePhoneVerificationLogin = async (uid: string, phone: string) => {
   console.log('[AuthService] Completing phone verification login for:', uid);
   const normalizedPhone = phone.replace(/\D/g, '');
-
-  const userRef = doc(db, 'users', uid);
-  await updateDoc(userRef, {
-    phoneVerified: true,
-    phone: normalizedPhone,
-  });
-
   const user = auth.currentUser;
+
   if (!user) {
     await clearChatSession();
     throw new Error('Sessao do Firebase ausente. Faca login novamente.');
   }
 
+  const userRef = doc(db, 'users', uid);
+  await updateDoc(userRef, {
+    uid: user.uid,
+    firebaseUid: user.uid,
+    phoneVerified: true,
+    phone: normalizedPhone,
+  });
+
   const freshProfile = await getDoc(userRef);
-  const profileData = (freshProfile.exists() ? freshProfile.data() : null) as UserProfile | null;
+  const profileData = freshProfile.exists() ? mapUserProfileDocument(freshProfile) : null;
 
   const authRes = await chatSyncFirebaseUser({
     email: String(profileData?.email || user.email || '').trim().toLowerCase(),
@@ -467,7 +527,7 @@ export const completePhoneVerificationLogin = async (uid: string, phone: string)
     throw new Error('Nao foi possivel sincronizar sua sessao com o chat apos validar o telefone.');
   }
 
-  await setChatSession({ userId: chatUserId, phoneVerified: true });
+  await setChatSession({ userId: chatUserId, profileUid: uid, phoneVerified: true });
   await connectChatSocket(chatUserId);
   console.log('[AuthService] Phone verification login completed.');
 };
@@ -479,8 +539,12 @@ export const updateTwoStepAuth = async (data: { password?: string; email?: strin
   const user = auth.currentUser;
   if (!user) throw new Error('Usuário não autenticado.');
 
-  const docRef = doc(db, 'users', user.uid);
+  const profile = await getCurrentUserProfile();
+  const profileUid = profile?.uid || user.uid;
+  const docRef = doc(db, 'users', profileUid);
   const updateData: any = {
+    uid: user.uid,
+    firebaseUid: user.uid,
     twoStepEnabled: data.enabled,
   };
   
@@ -497,8 +561,12 @@ export const disableTwoStepAuth = async () => {
   const user = auth.currentUser;
   if (!user) throw new Error('Usuário não autenticado.');
 
-  const docRef = doc(db, 'users', user.uid);
+  const profile = await getCurrentUserProfile();
+  const profileUid = profile?.uid || user.uid;
+  const docRef = doc(db, 'users', profileUid);
   await updateDoc(docRef, {
+    uid: user.uid,
+    firebaseUid: user.uid,
     twoStepEnabled: false,
     twoStepPassword: null,
     twoStepEmail: null,

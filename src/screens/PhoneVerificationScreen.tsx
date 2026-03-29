@@ -115,12 +115,12 @@ export default function PhoneVerificationScreen({ navigation }: Props) {
       console.log('[PhoneVerify] Checking identity for UID:', uid);
       
       const normalizedPhone = normalizePhoneNumber(phoneNumber);
-      const { getUserProfile } = await import('../services/authService');
+      const { resolveUserProfileForFirebaseUid } = await import('../services/authService');
       let userData = await getUserByPhone(normalizedPhone);
       
       if (!userData) {
         console.log('[PhoneVerify] No profile found by phone. Trying current Firebase UID...');
-        userData = await getUserProfile(uid);
+        userData = await resolveUserProfileForFirebaseUid(uid);
       }
 
       if (userData) {

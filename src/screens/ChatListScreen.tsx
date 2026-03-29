@@ -22,7 +22,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ChatList'>;
 
 export default function ChatListScreen({ navigation }: Props) {
   const { colors: themeColors } = useTheme();
-  const { uid } = useAuth();
+  const { firebaseUid } = useAuth();
   const { setMenuVisible: setGlobalMenuVisible } = useSettings();
   const insets = useSafeAreaInsets();
   const [conversations, setConversations] = useState<ChatApiConversation[]>([]);
@@ -39,7 +39,7 @@ export default function ChatListScreen({ navigation }: Props) {
       const session = await getChatSession();
       let resolvedSession = session;
 
-      if (uid && resolvedSession?.userId === uid) {
+      if (firebaseUid && resolvedSession?.userId === firebaseUid) {
         console.warn('[ChatList] Found Firebase UID in chat session. Repairing before loading conversations...');
         await ensureChatSessionForCurrentUser();
         resolvedSession = await getChatSession();
@@ -81,7 +81,7 @@ export default function ChatListScreen({ navigation }: Props) {
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [uid]);
+  }, [firebaseUid]);
 
   // Load once on mount / first focus — avoid double load
   useFocusEffect(

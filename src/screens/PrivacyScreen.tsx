@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { spacing } from '../theme/spacing';
 import useTheme from '../hooks/useTheme';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
 import useAuth from '../hooks/useAuth';
 
@@ -12,8 +13,14 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Privacy'>;
 
 export default function PrivacyScreen({ navigation }: Props) {
   const { colors } = useTheme();
-  const { userProfile } = useAuth();
+  const { userProfile, refreshProfile } = useAuth();
   const twoStepEnabled = userProfile?.twoStepEnabled ?? false;
+
+  useFocusEffect(
+    React.useCallback(() => {
+      refreshProfile();
+    }, [])
+  );
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['left', 'right', 'bottom']}>
