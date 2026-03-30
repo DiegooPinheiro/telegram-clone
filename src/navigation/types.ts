@@ -29,6 +29,8 @@ export type RootStackParamList = {
     username?: string;
     name?: string;
     avatar?: string | null;
+    chatUserId?: string;
+    conversationId?: string;
   };
   Settings: undefined;
   Contacts: undefined;

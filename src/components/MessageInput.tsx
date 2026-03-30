@@ -38,6 +38,8 @@ export type MessageInputHandle = {
 
 const CANCEL_THRESHOLD = 90;
 const LOCK_THRESHOLD = 72;
+const MESSAGE_BAR_HEIGHT = 46;
+const MESSAGE_BAR_RADIUS = 23;
 
 const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>((props, ref) => {
   const {
@@ -431,8 +433,8 @@ const styles = StyleSheet.create({
   },
   inputWrap: {
     flex: 1,
-    height: 40,
-    borderRadius: 26,
+    height: MESSAGE_BAR_HEIGHT,
+    borderRadius: MESSAGE_BAR_RADIUS,
     position: 'relative',
     paddingLeft: 6,
     paddingRight: 6,
@@ -457,7 +459,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingLeft: 12,
     paddingRight: 6,
-    borderRadius: 24,
+    borderRadius: MESSAGE_BAR_RADIUS,
     backgroundColor: 'rgba(13, 15, 20, 0.18)',
   },
   recordingIndicator: {
@@ -511,8 +513,8 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    height: 40,
-    paddingVertical: 4,
+    height: MESSAGE_BAR_HEIGHT,
+    paddingVertical: 6,
     textAlignVertical: 'center',
   },
   trailingButton: {
@@ -520,9 +522,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   actionButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: MESSAGE_BAR_HEIGHT,
+    height: MESSAGE_BAR_HEIGHT,
+    borderRadius: MESSAGE_BAR_RADIUS,
     backgroundColor: '#4f7cff',
     alignItems: 'center',
     justifyContent: 'center',

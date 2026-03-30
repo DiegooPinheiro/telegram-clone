@@ -296,6 +296,8 @@ export default function ChatScreen({ navigation, route }: Props) {
                   username,
                   name,
                   avatar,
+                  chatUserId: receiverId,
+                  conversationId: conversationId || undefined,
                 });
               }
             }}
