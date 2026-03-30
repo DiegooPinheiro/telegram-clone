@@ -9,6 +9,7 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,11 +18,12 @@ import { RootStackParamList } from '../navigation/types';
 import useTheme from '../hooks/useTheme';
 import useAuth from '../hooks/useAuth';
 import { UserProfile } from '../types/user';
+import { spacing } from '../theme/spacing';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TwoStepVerifyPassword'>;
 
 export default function TwoStepVerifyPasswordScreen({ navigation, route }: Props) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { userProfile, user, phoneVerified, refreshSession } = useAuth();
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -37,15 +39,21 @@ export default function TwoStepVerifyPasswordScreen({ navigation, route }: Props
     return (route as any).name === 'TwoStepVerifyPasswordSettings' ? 'settings' : 'login';
   }, [route]);
 
+  const isLoginMode = currentMode === 'login';
+  const buttonDisabled = !password || loading || waitingForApp;
+  const noteCardBackground = isDark ? '#163247' : colors.primaryLight;
+  const noteTextColor = isDark ? '#EAF6FF' : colors.primaryDark;
+  const helperTextColor = isDark ? '#B6C0C8' : colors.textSecondary;
+
   useEffect(() => {
-    if (phoneVerified && currentMode === 'login') {
+    if (phoneVerified && isLoginMode) {
       setWaitingForApp(true);
       const routeNames = navigation.getState().routeNames || [];
       if (routeNames.includes('MainTabs')) {
         navigation.replace('MainTabs');
       }
     }
-  }, [currentMode, navigation, phoneVerified]);
+  }, [isLoginMode, navigation, phoneVerified]);
 
   useEffect(() => {
     let active = true;
@@ -56,9 +64,9 @@ export default function TwoStepVerifyPasswordScreen({ navigation, route }: Props
 
         let profile: UserProfile | null = null;
 
-        if (currentMode === 'login' && route.params?.targetUid) {
+        if (isLoginMode && route.params?.targetUid) {
           profile = (await getUserProfile(route.params.targetUid)) as UserProfile | null;
-        } else if (currentMode === 'login') {
+        } else if (isLoginMode) {
           profile = userProfile;
         } else {
           profile = (await getCurrentUserProfile(userProfile?.uid || undefined)) as UserProfile | null;
@@ -84,10 +92,10 @@ export default function TwoStepVerifyPasswordScreen({ navigation, route }: Props
     return () => {
       active = false;
     };
-  }, [currentMode, route.params?.targetUid, userProfile]);
+  }, [isLoginMode, route.params?.targetUid, userProfile]);
 
   const handleNext = async () => {
-    if (!password || loading || waitingForApp) return;
+    if (buttonDisabled) return;
 
     const profileForValidation = targetProfile || userProfile;
 
@@ -97,17 +105,17 @@ export default function TwoStepVerifyPasswordScreen({ navigation, route }: Props
     }
 
     if (password !== profileForValidation.twoStepPassword) {
-      Alert.alert('Senha Incorreta', 'A senha inserida nao corresponde a sua senha de Verificacao em Duas Etapas.');
+      Alert.alert('Senha incorreta', 'A senha inserida nao corresponde a sua senha de Verificacao em Duas Etapas.');
       setPassword('');
       inputRef.current?.focus();
       return;
     }
 
-    if (currentMode === 'login') {
+    if (isLoginMode) {
       const phoneNumberForLogin = route.params?.phoneNumber || profileForValidation.phone;
 
       if (!phoneNumberForLogin) {
-        Alert.alert('Erro no Login', 'Nao foi possivel identificar o telefone desta conta para concluir o login.');
+        Alert.alert('Erro no login', 'Nao foi possivel identificar o telefone desta conta para concluir o login.');
         return;
       }
 
@@ -124,7 +132,7 @@ export default function TwoStepVerifyPasswordScreen({ navigation, route }: Props
         await refreshSession();
         setWaitingForApp(true);
       } catch (error: any) {
-        Alert.alert('Erro no Login', error.message || 'Falha ao autenticar.');
+        Alert.alert('Erro no login', error.message || 'Falha ao autenticar.');
       } finally {
         setLoading(false);
       }
@@ -144,75 +152,96 @@ export default function TwoStepVerifyPasswordScreen({ navigation, route }: Props
     }
   };
 
-  const buttonDisabled = !password || loading || waitingForApp;
-
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.flex}
-      >
-        <View style={styles.content}>
-          <View style={styles.imageContainer}>
-            <Text style={styles.emoji}>🔐</Text>
-          </View>
-
-          <Text style={[styles.title, { color: colors.textPrimary }]}>Sua senha</Text>
-
-          <Text style={[styles.description, { color: colors.textSecondary }]}>
-            A Verificacao em Duas Etapas esta ativada. A sua conta esta protegida com uma senha adicional.
-          </Text>
-
-          <View style={styles.inputRow}>
-            <View style={[styles.inputBox, { borderColor: colors.primary, backgroundColor: colors.surface }]}>
-              <Text style={[styles.inputLabel, { color: colors.primary, backgroundColor: colors.background }]}>
-                Insira a senha
-              </Text>
-              <TextInput
-                ref={inputRef}
-                style={[styles.input, { color: colors.textPrimary }]}
-                secureTextEntry
-                value={password}
-                onChangeText={setPassword}
-                autoFocus
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={!loading && !waitingForApp}
-                returnKeyType="go"
-                blurOnSubmit={false}
-                onSubmitEditing={handleNext}
-              />
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.scrollContent}
+        >
+          <View style={styles.header}>
+            <View style={[styles.headerBadge, { backgroundColor: colors.primaryLight }]}>
+              <Ionicons name="shield-checkmark-outline" size={34} color={colors.primary} />
             </View>
 
-            <TouchableOpacity
-              style={[
-                styles.inlineButton,
-                {
-                  backgroundColor: colors.primary,
-                  opacity: buttonDisabled ? 0.55 : 1,
-                },
-              ]}
-              activeOpacity={0.8}
-              disabled={buttonDisabled}
-              onPress={handleNext}
-            >
-              {loading || waitingForApp ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Ionicons name="arrow-forward" size={22} color="#fff" />
-              )}
-            </TouchableOpacity>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>
+              {isLoginMode ? 'Digite sua senha' : 'Confirmar senha'}
+            </Text>
+
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+              {isLoginMode
+                ? 'Sua conta esta protegida por uma senha extra. Digite-a para concluir este login.'
+                : 'Digite a senha configurada para abrir as opcoes da Verificacao em Duas Etapas.'}
+            </Text>
+          </View>
+
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.separator }]}>
+            <Text style={[styles.fieldLabel, { color: colors.primary }]}>Senha</Text>
+
+            <View style={styles.inputRow}>
+              <View style={[styles.inputBox, { backgroundColor: colors.backgroundSecondary }]}>
+                <TextInput
+                  ref={inputRef}
+                  style={[styles.input, { color: colors.textPrimary }]}
+                  placeholder="Digite sua senha"
+                  placeholderTextColor={colors.textSecondary}
+                  secureTextEntry
+                  value={password}
+                  onChangeText={setPassword}
+                  autoFocus
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!loading && !waitingForApp}
+                  returnKeyType="go"
+                  blurOnSubmit={false}
+                  onSubmitEditing={handleNext}
+                  selectionColor={colors.primary}
+                />
+              </View>
+
+              <TouchableOpacity
+                style={[
+                  styles.inlineButton,
+                  {
+                    backgroundColor: colors.primary,
+                    opacity: buttonDisabled ? 0.55 : 1,
+                  },
+                ]}
+                activeOpacity={0.85}
+                disabled={buttonDisabled}
+                onPress={handleNext}
+              >
+                {loading || waitingForApp ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Ionicons name="arrow-forward" size={22} color="#fff" />
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.helperText, { color: helperTextColor }]}>
+              Essa senha foi criada por voce para proteger a conta em novos logins.
+            </Text>
+          </View>
+
+          <View style={[styles.noteCard, { backgroundColor: noteCardBackground, borderColor: isDark ? '#24506f' : colors.separator }]}>
+            <Ionicons name="information-circle-outline" size={20} color={noteTextColor} />
+            <Text style={[styles.noteText, { color: noteTextColor }]}>
+              Se esquecer a senha, a recuperacao sera enviada para o email configurado nessa conta.
+            </Text>
           </View>
 
           <TouchableOpacity
             style={styles.forgotBtn}
+            activeOpacity={0.8}
             onPress={() =>
               Alert.alert('Recuperacao', 'O codigo de recuperacao sera enviado para o seu e-mail configurado.')
             }
           >
-            <Text style={[styles.forgotText, { color: colors.primary }]}>Esqueceu a senha?</Text>
+            <Text style={[styles.forgotText, { color: colors.primary }]}>Esqueci minha senha</Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -225,70 +254,100 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
-  content: {
-    flex: 1,
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xxl,
+    paddingBottom: spacing.xxl + spacing.lg,
+  },
+  header: {
     alignItems: 'center',
-    paddingTop: 40,
-    paddingHorizontal: 32,
+    marginBottom: spacing.xxl,
   },
-  imageContainer: {
-    marginBottom: 30,
-  },
-  emoji: {
-    fontSize: 100,
+  headerBadge: {
+    width: 84,
+    height: 84,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
   },
   title: {
-    fontSize: 22,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontWeight: '700',
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: spacing.sm,
   },
-  description: {
-    fontSize: 15,
+  subtitle: {
+    fontSize: 16,
+    lineHeight: 23,
     textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 32,
+    paddingHorizontal: spacing.sm,
+  },
+  card: {
+    borderWidth: 1,
+    borderRadius: 22,
+    padding: spacing.lg,
+  },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    marginBottom: spacing.md,
+    letterSpacing: 0.6,
   },
   inputRow: {
-    width: '100%',
     flexDirection: 'row',
     alignItems: 'stretch',
-    gap: 12,
+    gap: spacing.sm,
   },
   inputBox: {
     flex: 1,
-    minHeight: 56,
-    borderWidth: 2,
-    borderRadius: 12,
-    paddingHorizontal: 16,
+    minHeight: 62,
+    borderRadius: 18,
+    paddingHorizontal: spacing.lg,
     justifyContent: 'center',
-    position: 'relative',
-  },
-  inputLabel: {
-    position: 'absolute',
-    top: -10,
-    left: 12,
-    fontSize: 12,
-    paddingHorizontal: 4,
-    zIndex: 1,
   },
   input: {
     fontSize: 18,
     padding: 0,
   },
   inlineButton: {
-    width: 56,
-    minHeight: 56,
-    borderRadius: 12,
+    width: 62,
+    minHeight: 62,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  helperText: {
+    marginTop: spacing.md,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  noteCard: {
+    marginTop: spacing.lg,
+    borderRadius: 18,
+    padding: spacing.lg,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+  },
+  noteText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '500',
+  },
   forgotBtn: {
-    marginTop: 30,
-    alignSelf: 'flex-start',
+    alignSelf: 'center',
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   forgotText: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

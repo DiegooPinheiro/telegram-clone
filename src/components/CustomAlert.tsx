@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import useTheme from '../hooks/useTheme';
 
@@ -18,6 +19,8 @@ interface CustomAlertProps {
   confirmLabel?: string;
   cancelLabel?: string;
   isDestructive?: boolean;
+  loading?: boolean;
+  confirmDisabled?: boolean;
 }
 
 export default function CustomAlert({
@@ -29,12 +32,15 @@ export default function CustomAlert({
   confirmLabel = 'OK',
   cancelLabel = 'Cancelar',
   isDestructive = false,
+  loading = false,
+  confirmDisabled = false,
 }: CustomAlertProps) {
   const { colors } = useTheme();
 
   if (!visible) return null;
 
-  const handleBackdropPress = onCancel || onConfirm;
+  const handleBackdropPress = loading ? undefined : (onCancel || onConfirm);
+  const destructiveColor = '#FF3B30';
 
   return (
     <Modal transparent visible={visible} animationType="fade" onRequestClose={handleBackdropPress}>
@@ -45,14 +51,39 @@ export default function CustomAlert({
           
           <View style={styles.actions}>
             {onCancel && (
-              <TouchableOpacity style={styles.button} onPress={onCancel} activeOpacity={0.7}>
+              <TouchableOpacity
+                style={[
+                  styles.button,
+                  styles.secondaryButton,
+                  { backgroundColor: colors.backgroundSecondary, opacity: loading ? 0.55 : 1 },
+                ]}
+                onPress={onCancel}
+                activeOpacity={0.7}
+                disabled={loading}
+              >
                 <Text style={[styles.buttonText, { color: colors.primary }]}>{cancelLabel}</Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={styles.button} onPress={onConfirm} activeOpacity={0.7}>
-              <Text style={[styles.buttonText, { color: isDestructive ? '#FF3B30' : colors.primary, fontWeight: '700' }]}>
-                {confirmLabel}
-              </Text>
+            <TouchableOpacity
+              style={[
+                styles.button,
+                styles.confirmButton,
+                {
+                  backgroundColor: isDestructive ? destructiveColor : colors.primary,
+                  opacity: loading || confirmDisabled ? 0.7 : 1,
+                },
+              ]}
+              onPress={onConfirm}
+              activeOpacity={0.8}
+              disabled={loading || confirmDisabled}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={[styles.buttonText, styles.confirmButtonText, { color: '#fff' }]}>
+                  {confirmLabel}
+                </Text>
+              )}
             </TouchableOpacity>
           </View>
         </Pressable>
@@ -71,7 +102,7 @@ const styles = StyleSheet.create({
   },
   alertCard: {
     width: '100%',
-    borderRadius: 14,
+    borderRadius: 20,
     padding: 24,
     elevation: 5,
     shadowColor: '#000',
@@ -92,14 +123,31 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 24,
+    gap: 12,
   },
   button: {
-    paddingVertical: 2,
+    minWidth: 120,
+    minHeight: 46,
+    paddingHorizontal: 18,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryButton: {
+    borderWidth: 0,
+  },
+  confirmButton: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 2,
   },
   buttonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    textTransform: 'uppercase',
+  },
+  confirmButtonText: {
+    fontWeight: '700',
   },
 });

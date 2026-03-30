@@ -16,8 +16,10 @@ import {
   Switch,
   Linking,
   Animated,
+  PanResponder,
   LayoutAnimation,
   UIManager,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -90,6 +92,10 @@ type ActiveAudio = {
   rate: number;
 };
 
+const ATTACH_SHEET_CLOSE_THRESHOLD = 92;
+const ATTACH_SHEET_CLOSE_DISTANCE = Math.round(Dimensions.get('window').height * 0.42);
+const ATTACH_SHEET_OPEN_OFFSET = 42;
+
 export default function ChatScreen({ navigation, route }: Props) {
   const EMOJI_SEARCH_LIFT = 176;
   const { colors, isDark } = useTheme();
@@ -145,6 +151,8 @@ export default function ChatScreen({ navigation, route }: Props) {
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingMessagePreview, setEditingMessagePreview] = useState('');
   const editingBarAnim = useRef(new Animated.Value(0)).current;
+  const attachSheetTranslateY = useRef(new Animated.Value(ATTACH_SHEET_CLOSE_DISTANCE)).current;
+  const attachSheetBackdropOpacity = useRef(new Animated.Value(0)).current;
   const scrollY = useRef(new Animated.Value(0)).current;
 
   const { statusText, online } = useOnlineStatusByEmail(username || '', !!username);
@@ -158,6 +166,88 @@ export default function ChatScreen({ navigation, route }: Props) {
     extractUserId(selectedEditableMessage.senderId) === myUserId &&
     !selectedEditableMessage.mediaUrl &&
     !!selectedEditableMessage.text?.trim();
+
+  const openAttachSheet = useCallback(() => {
+    attachSheetTranslateY.setValue(ATTACH_SHEET_OPEN_OFFSET);
+    attachSheetBackdropOpacity.setValue(0);
+
+    Animated.parallel([
+      Animated.spring(attachSheetTranslateY, {
+        toValue: 0,
+        useNativeDriver: true,
+        damping: 20,
+        stiffness: 240,
+        mass: 0.95,
+      }),
+      Animated.timing(attachSheetBackdropOpacity, {
+        toValue: 1,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [attachSheetBackdropOpacity, attachSheetTranslateY]);
+
+  const resetAttachSheetPosition = useCallback(() => {
+    Animated.parallel([
+      Animated.spring(attachSheetTranslateY, {
+        toValue: 0,
+        useNativeDriver: true,
+        damping: 20,
+        stiffness: 240,
+        mass: 0.95,
+      }),
+      Animated.timing(attachSheetBackdropOpacity, {
+        toValue: 1,
+        duration: 160,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [attachSheetBackdropOpacity, attachSheetTranslateY]);
+
+  const closeAttachSheet = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(attachSheetTranslateY, {
+        toValue: ATTACH_SHEET_CLOSE_DISTANCE,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+      Animated.timing(attachSheetBackdropOpacity, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+    ]).start(({ finished }) => {
+      if (finished) {
+        setAttachOpen(false);
+      }
+    });
+  }, [attachSheetBackdropOpacity, attachSheetTranslateY]);
+
+  const attachSheetPanResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => !uploading,
+        onMoveShouldSetPanResponder: (_, gestureState) =>
+          !uploading && gestureState.dy > 4 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx),
+        onPanResponderMove: (_, gestureState) => {
+          const nextValue = Math.max(0, Math.min(gestureState.dy, ATTACH_SHEET_CLOSE_DISTANCE));
+          attachSheetTranslateY.setValue(nextValue);
+          attachSheetBackdropOpacity.setValue(1 - Math.min(nextValue / ATTACH_SHEET_CLOSE_DISTANCE, 1));
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          if (gestureState.dy > ATTACH_SHEET_CLOSE_THRESHOLD || gestureState.vy > 1.15) {
+            closeAttachSheet();
+            return;
+          }
+
+          resetAttachSheetPosition();
+        },
+        onPanResponderTerminate: () => {
+          resetAttachSheetPosition();
+        },
+      }),
+    [attachSheetBackdropOpacity, attachSheetTranslateY, closeAttachSheet, resetAttachSheetPosition, uploading]
+  );
 
   // Removed setLayoutAnimationEnabledExperimental to avoid warning in New Architecture
   useEffect(() => {
@@ -263,6 +353,15 @@ export default function ChatScreen({ navigation, route }: Props) {
       setDeleteForBoth(false);
     }
   }, [selectionMode]);
+
+  useEffect(() => {
+    if (attachOpen) {
+      openAttachSheet();
+    } else {
+      attachSheetTranslateY.setValue(ATTACH_SHEET_CLOSE_DISTANCE);
+      attachSheetBackdropOpacity.setValue(0);
+    }
+  }, [attachOpen, attachSheetBackdropOpacity, attachSheetTranslateY, openAttachSheet]);
 
   useEffect(() => {
     return () => {
@@ -1691,37 +1790,109 @@ export default function ChatScreen({ navigation, route }: Props) {
         </SafeAreaView>
       </Modal>
 
-      <Modal transparent animationType="slide" visible={attachOpen} onRequestClose={() => setAttachOpen(false)}>
-        <Pressable style={styles.sheetOverlay} onPress={() => setAttachOpen(false)} />
-        <View style={[styles.sheet, { backgroundColor: colors.background }]}>
+      <Modal transparent animationType="none" visible={attachOpen} onRequestClose={closeAttachSheet}>
+        <Pressable style={styles.sheetOverlay} onPress={closeAttachSheet}>
+          <Animated.View style={[styles.sheetOverlayBackdrop, { opacity: attachSheetBackdropOpacity }]} />
+        </Pressable>
+        <Animated.View
+          style={[
+            styles.sheet,
+            {
+              backgroundColor: colors.surface,
+              borderColor: isDark ? 'rgba(255,255,255,0.06)' : colors.separator,
+              paddingBottom: Math.max(insets.bottom, spacing.lg),
+              transform: [{ translateY: attachSheetTranslateY }],
+            },
+          ]}
+        >
+          <View style={styles.sheetHandleTouchArea} {...attachSheetPanResponder.panHandlers}>
+            <View style={[styles.sheetHandle, { backgroundColor: isDark ? 'rgba(255,255,255,0.16)' : colors.separator }]} />
+          </View>
           <View style={styles.sheetHeader}>
-            <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>Enviar</Text>
-            {uploading ? <ActivityIndicator /> : null}
+            <View style={styles.sheetHeaderTextWrap}>
+              <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>Compartilhar</Text>
+              <Text style={[styles.sheetSubtitle, { color: colors.textSecondary }]}>
+                Escolha como voce quer enviar sua midia.
+              </Text>
+            </View>
+            {uploading ? (
+              <View style={[styles.sheetStatusPill, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : colors.backgroundSecondary }]}>
+                <ActivityIndicator size="small" color={colors.primary} />
+              </View>
+            ) : null}
           </View>
 
-          <TouchableOpacity style={styles.sheetItem} onPress={pickFromGallery} disabled={uploading}>
-            <Ionicons name="images-outline" size={22} color={colors.textPrimary} />
-            <Text style={[styles.sheetItemText, { color: colors.textPrimary }]}>Galeria</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.sheetItem} onPress={takePhoto} disabled={uploading}>
-            <Ionicons name="camera-outline" size={22} color={colors.textPrimary} />
-            <Text style={[styles.sheetItemText, { color: colors.textPrimary }]}>Câmera</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.sheetItem} onPress={pickDocument} disabled={uploading}>
-            <Ionicons name="document-outline" size={22} color={colors.textPrimary} />
-            <Text style={[styles.sheetItemText, { color: colors.textPrimary }]}>Arquivo</Text>
+          <TouchableOpacity
+            style={[
+              styles.sheetItem,
+              { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.backgroundSecondary },
+              uploading ? styles.sheetItemDisabled : null,
+            ]}
+            onPress={pickFromGallery}
+            disabled={uploading}
+          >
+            <View style={[styles.sheetItemIconWrap, { backgroundColor: isDark ? 'rgba(0,136,204,0.18)' : '#E6F4FE' }]}>
+              <Ionicons name="images-outline" size={22} color={colors.primary} />
+            </View>
+            <View style={styles.sheetItemTextWrap}>
+              <Text style={[styles.sheetItemText, { color: colors.textPrimary }]}>Galeria</Text>
+              <Text style={[styles.sheetItemSubtext, { color: colors.textSecondary }]}>Fotos e videos</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.sheetItem, styles.sheetCancel]}
-            onPress={() => setAttachOpen(false)}
+            style={[
+              styles.sheetItem,
+              { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.backgroundSecondary },
+              uploading ? styles.sheetItemDisabled : null,
+            ]}
+            onPress={takePhoto}
+            disabled={uploading}
+          >
+            <View style={[styles.sheetItemIconWrap, { backgroundColor: isDark ? 'rgba(76,175,80,0.16)' : '#EAF8EC' }]}>
+              <Ionicons name="camera-outline" size={22} color={isDark ? '#7BD88F' : '#2E7D32'} />
+            </View>
+            <View style={styles.sheetItemTextWrap}>
+              <Text style={[styles.sheetItemText, { color: colors.textPrimary }]}>Camera</Text>
+              <Text style={[styles.sheetItemSubtext, { color: colors.textSecondary }]}>Tirar agora</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.sheetItem,
+              { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.backgroundSecondary },
+              uploading ? styles.sheetItemDisabled : null,
+            ]}
+            onPress={pickDocument}
+            disabled={uploading}
+          >
+            <View style={[styles.sheetItemIconWrap, { backgroundColor: isDark ? 'rgba(142,133,238,0.18)' : '#F2EDFF' }]}>
+              <Ionicons name="document-outline" size={22} color={isDark ? '#B8ACFF' : '#6F61D9'} />
+            </View>
+            <View style={styles.sheetItemTextWrap}>
+              <Text style={[styles.sheetItemText, { color: colors.textPrimary }]}>Arquivo</Text>
+              <Text style={[styles.sheetItemSubtext, { color: colors.textSecondary }]}>PDF, docs e mais</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.sheetCancel,
+              {
+                backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.backgroundSecondary,
+                borderColor: isDark ? 'rgba(255,255,255,0.06)' : colors.separator,
+              },
+            ]}
+            onPress={closeAttachSheet}
             disabled={uploading}
           >
             <Text style={[styles.sheetCancelText, { color: colors.textSecondary }]}>Cancelar</Text>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       </Modal>
 
       <Modal transparent visible={headerMenuVisible} animationType="fade" onRequestClose={() => setHeaderMenuVisible(false)}>
@@ -1765,34 +1936,109 @@ export default function ChatScreen({ navigation, route }: Props) {
         </Pressable>
       </Modal>
 
-      <Modal transparent visible={deleteModalVisible} animationType="fade" onRequestClose={() => setDeleteModalVisible(false)}>
-        <View style={styles.deleteOverlay}>
-          <View style={[styles.deleteCard, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.deleteTitle, { color: colors.textPrimary }]}>Apagar mensagem</Text>
-            <Text style={[styles.deleteDescription, { color: colors.textPrimary }]}>
-              Tem certeza de que deseja apagar essa mensagem?
+      <Modal
+        transparent
+        visible={deleteModalVisible}
+        animationType="fade"
+        onRequestClose={() => {
+          if (!deletingMessages) {
+            setDeleteModalVisible(false);
+          }
+        }}
+      >
+        <Pressable
+          style={styles.deleteOverlay}
+          onPress={() => {
+            if (!deletingMessages) {
+              setDeleteModalVisible(false);
+            }
+          }}
+        >
+          <Pressable
+            style={[
+              styles.deleteCard,
+              {
+                backgroundColor: colors.surface,
+                borderColor: isDark ? 'rgba(255,255,255,0.06)' : colors.separator,
+              },
+            ]}
+            onPress={() => {}}
+          >
+            <Text style={[styles.deleteTitle, { color: colors.textPrimary }]}>
+              {selectedMessageIds.length > 1 ? `Apagar ${selectedMessageIds.length} mensagens?` : 'Apagar mensagem?'}
             </Text>
 
-            <View style={styles.deleteOptionRow}>
-              <Switch value={deleteForBoth} onValueChange={setDeleteForBoth} disabled={deletingMessages} />
-              <Text style={[styles.deleteOptionText, { color: colors.textPrimary }]}>
-                Apagar para {name} tambem
-              </Text>
+            <Text style={[styles.deleteDescription, { color: colors.textSecondary }]}>
+              {selectedMessageIds.length > 1
+                ? 'Essa acao removera as mensagens selecionadas deste chat.'
+                : 'Essa acao removera a mensagem selecionada deste chat.'}
+            </Text>
+
+            <View
+              style={[
+                styles.deleteOptionRow,
+                {
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.backgroundSecondary,
+                  borderColor: isDark ? 'rgba(255,255,255,0.06)' : colors.separator,
+                },
+              ]}
+            >
+              <View style={styles.deleteOptionTextWrap}>
+                <Text style={[styles.deleteOptionTitle, { color: colors.textPrimary }]}>
+                  Apagar para {name} tambem
+                </Text>
+                <Text style={[styles.deleteOptionHint, { color: colors.textSecondary }]}>
+                  Remover para ambos os lados quando isso for permitido.
+                </Text>
+              </View>
+              <Switch
+                value={deleteForBoth}
+                onValueChange={setDeleteForBoth}
+                disabled={deletingMessages}
+                thumbColor={Platform.OS === 'android' ? (deleteForBoth ? colors.primary : '#d5d8dd') : undefined}
+                trackColor={{
+                  true: `${colors.primary}80`,
+                  false: isDark ? 'rgba(255,255,255,0.16)' : '#d5d8dd',
+                }}
+              />
             </View>
 
             <View style={styles.deleteActions}>
-              <TouchableOpacity activeOpacity={0.75} onPress={() => setDeleteModalVisible(false)} disabled={deletingMessages}>
-                <Text style={[styles.deleteCancel, { color: '#8aa4ff' }]}>Cancelar</Text>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => setDeleteModalVisible(false)}
+                disabled={deletingMessages}
+                style={[
+                  styles.deleteButton,
+                  styles.deleteButtonSecondary,
+                  {
+                    backgroundColor: colors.backgroundSecondary,
+                    opacity: deletingMessages ? 0.55 : 1,
+                  },
+                ]}
+              >
+                <Text style={[styles.deleteButtonText, { color: colors.primary }]}>Cancelar</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity activeOpacity={0.75} onPress={handleConfirmDeleteMessages} disabled={deletingMessages}>
-                <Text style={[styles.deleteConfirm, deletingMessages ? styles.deleteConfirmDisabled : null]}>
-                  {deletingMessages ? 'Apagando...' : 'Apagar'}
-                </Text>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={handleConfirmDeleteMessages}
+                disabled={deletingMessages}
+                style={[
+                  styles.deleteButton,
+                  styles.deleteButtonDanger,
+                  { opacity: deletingMessages ? 0.72 : 1 },
+                ]}
+              >
+                {deletingMessages ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={[styles.deleteButtonText, styles.deleteButtonDangerText]}>Apagar</Text>
+                )}
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       <WallpaperPicker 
@@ -2029,45 +2275,106 @@ const styles = StyleSheet.create({
   },
   sheetOverlay: {
     flex: 1,
+    justifyContent: 'flex-end',
+  },
+  sheetOverlayBackdrop: {
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0, 0, 0, 0.45)',
   },
   sheet: {
-    paddingTop: 12,
-    paddingBottom: 16,
+    paddingTop: 10,
     paddingHorizontal: 14,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    elevation: 10,
+  },
+  sheetHandle: {
+    alignSelf: 'center',
+    width: 42,
+    height: 5,
+    borderRadius: 999,
+    marginBottom: 16,
+  },
+  sheetHandleTouchArea: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -2,
   },
   sheetHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    paddingHorizontal: 6,
-    paddingBottom: 8,
+    paddingHorizontal: 4,
+    paddingBottom: 14,
+  },
+  sheetHeaderTextWrap: {
+    flex: 1,
+    paddingRight: 12,
   },
   sheetTitle: {
-    fontSize: 16,
+    fontSize: 22,
     fontWeight: '700',
+  },
+  sheetSubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 4,
+  },
+  sheetStatusPill: {
+    minWidth: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
   },
   sheetItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 12,
+    minHeight: 78,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    marginBottom: 10,
+  },
+  sheetItemDisabled: {
+    opacity: 0.55,
+  },
+  sheetItemIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  sheetItemTextWrap: {
+    flex: 1,
   },
   sheetItemText: {
-    marginLeft: 10,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+  },
+  sheetItemSubtext: {
+    fontSize: 13,
+    marginTop: 2,
   },
   sheetCancel: {
     justifyContent: 'center',
-    marginTop: 6,
+    alignItems: 'center',
+    minHeight: 54,
+    borderRadius: 18,
+    borderWidth: 1,
+    marginTop: 4,
   },
   sheetCancelText: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   menuBackdrop: {
     flex: 1,
@@ -2100,52 +2407,81 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.48)',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 28,
   },
   deleteCard: {
     width: '100%',
     maxWidth: 420,
-    borderRadius: 18,
-    paddingHorizontal: 18,
-    paddingTop: 18,
-    paddingBottom: 16,
+    borderRadius: 22,
+    borderWidth: 1,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 22,
   },
   deleteTitle: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '700',
     marginBottom: 12,
   },
   deleteDescription: {
     fontSize: 16,
     lineHeight: 22,
-    marginBottom: 18,
+    marginBottom: 20,
   },
   deleteOptionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 22,
+    borderWidth: 1,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    marginBottom: 24,
   },
-  deleteOptionText: {
-    marginLeft: 10,
-    fontSize: 16,
+  deleteOptionTextWrap: {
+    flex: 1,
+    paddingRight: 14,
+  },
+  deleteOptionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  deleteOptionHint: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 3,
   },
   deleteActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    gap: 26,
+    gap: 12,
   },
-  deleteCancel: {
-    fontSize: 17,
+  deleteButton: {
+    minWidth: 120,
+    minHeight: 48,
+    paddingHorizontal: 18,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteButtonSecondary: {
+    borderWidth: 0,
+  },
+  deleteButtonDanger: {
+    backgroundColor: '#FF3B30',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  deleteButtonText: {
+    fontSize: 15,
     fontWeight: '600',
   },
-  deleteConfirm: {
-    fontSize: 17,
+  deleteButtonDangerText: {
     fontWeight: '700',
-    color: '#ff6666',
-  },
-  deleteConfirmDisabled: {
-    opacity: 0.6,
+    color: '#fff',
   },
   viewerScreen: {
     flex: 1,

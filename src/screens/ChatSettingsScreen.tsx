@@ -33,7 +33,6 @@ export default function ChatSettingsScreen({ navigation }: Props) {
     bubbleRadius, setBubbleRadius,
     chatListView, setChatListView,
     animationsEnabled, setAnimationsEnabled,
-    internalBrowser, setInternalBrowser,
     raiseToListen, setRaiseToListen,
     pauseOnRecording, setPauseOnRecording,
     sendWithEnter, setSendWithEnter,
@@ -144,14 +143,6 @@ export default function ChatSettingsScreen({ navigation }: Props) {
               <Ionicons name="images-outline" size={24} color={colors.primary} />
               <Text style={[styles.actionLabel, { color: colors.textPrimary }]}>Alterar Papel de Parede</Text>
             </TouchableOpacity>
-            <View style={[styles.divider, { backgroundColor: colors.separator }]} />
-            <TouchableOpacity style={styles.actionRow} activeOpacity={0.7}>
-              <Ionicons name="color-palette-outline" size={24} color={colors.primary} />
-              <Text style={[styles.actionLabel, { color: colors.textPrimary }]}>Trocar Cor do Nome</Text>
-              <View style={[styles.colorBadge, { backgroundColor: colors.primary }]}>
-                <Text style={styles.colorBadgeText}>D</Text>
-              </View>
-            </TouchableOpacity>
           </View>
         </View>
 
@@ -183,11 +174,6 @@ export default function ChatSettingsScreen({ navigation }: Props) {
                 Trocar para Modo {isDark ? 'Claro' : 'Escuro'}
               </Text>
             </TouchableOpacity>
-            <View style={[styles.divider, { backgroundColor: colors.separator }]} />
-            <TouchableOpacity style={styles.actionRow}>
-              <Ionicons name="brush-outline" size={22} color={colors.primary} />
-              <Text style={[styles.actionLabel, { color: colors.textPrimary }]}>Explorar Temas</Text>
-            </TouchableOpacity>
           </View>
         </View>
 
@@ -198,13 +184,6 @@ export default function ChatSettingsScreen({ navigation }: Props) {
             label="Modo Noturno Automático" 
             value={false} 
             subtitle="Desativado"
-          />
-          <PreferenceRow 
-            icon="globe-outline" 
-            label="Navegador Interno" 
-            value={internalBrowser} 
-            subtitle="Abrir links externos dentro do app"
-            onToggle={setInternalBrowser}
           />
           <PreferenceRow 
             icon="play-circle-outline" 
@@ -384,18 +363,6 @@ const styles = StyleSheet.create({
   divider: {
     height: 0.5,
     marginLeft: 40,
-  },
-  colorBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  colorBadgeText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
   },
   themesList: {
     paddingVertical: 8,
