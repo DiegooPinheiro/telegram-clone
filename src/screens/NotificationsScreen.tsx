@@ -71,8 +71,8 @@ export default function NotificationsScreen({ navigation }: Props) {
     } catch (e) {}
   };
 
-  const renderToggle = (label: string, value: boolean, key: string, isLast = false, subtitle?: string) => (
-    <View style={[styles.row, !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.separator }]}>
+  const renderToggle = (label: string, value: boolean, key: string, subtitle?: string) => (
+    <View style={styles.row}>
       <View style={styles.labelContainer}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>{label}</Text>
         {subtitle && <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{subtitle}</Text>}
@@ -80,45 +80,40 @@ export default function NotificationsScreen({ navigation }: Props) {
       <Switch 
         value={value} 
         onValueChange={(val) => updateSetting(key, val)}
-        trackColor={{ false: '#767577', true: colors.primary }}
-        ios_backgroundColor="#3e3e3e"
+        trackColor={{ false: '#767577', true: colors.primary + '80' }}
+        thumbColor={value ? colors.primary : '#ccc'}
       />
     </View>
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundSecondary }]} edges={['bottom']}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.group}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Notificações de Mensagens</Text>
-          <View style={[styles.card, { backgroundColor: colors.surface }]}>
-            {renderToggle('Mostrar Notificações', msgNotifications, 'msgNotifications')}
-            {renderToggle('Prévia da Mensagem', msgPreview, 'msgPreview', false, 'Mostra o texto nas notificações')}
-            {renderToggle('Som', msgSound, 'msgSound', true)}
-          </View>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.cardSection}>
+        
+        <View style={[styles.card, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: colors.primary }]}>Notificações de Mensagens</Text>
+          {renderToggle('Mostrar Notificações', msgNotifications, 'msgNotifications')}
+          {renderToggle('Prévia da Mensagem', msgPreview, 'msgPreview', 'Mostra o texto nas notificações')}
+          {renderToggle('Som', msgSound, 'msgSound')}
         </View>
 
-        <View style={styles.group}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Notificações de Grupos</Text>
-          <View style={[styles.card, { backgroundColor: colors.surface }]}>
-            {renderToggle('Mostrar Notificações', groupNotifications, 'groupNotifications')}
-            {renderToggle('Prévia da Mensagem', groupPreview, 'groupPreview')}
-            {renderToggle('Som', groupSound, 'groupSound', true)}
-          </View>
+        <View style={[styles.card, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: colors.primary }]}>Notificações de Grupos</Text>
+          {renderToggle('Mostrar Notificações', groupNotifications, 'groupNotifications')}
+          {renderToggle('Prévia da Mensagem', groupPreview, 'groupPreview')}
+          {renderToggle('Som', groupSound, 'groupSound')}
         </View>
 
-        <View style={styles.group}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Notificações no App</Text>
-          <View style={[styles.card, { backgroundColor: colors.surface }]}>
-            {renderToggle('Sons no App', inAppSound, 'inAppSound')}
-            {renderToggle('Vibração no App', appVibration, 'appVibration')}
-            {renderToggle('Prévia no App', inAppPreview, 'inAppPreview', true)}
-          </View>
+        <View style={[styles.card, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: colors.primary }]}>Notificações no App</Text>
+          {renderToggle('Sons no App', inAppSound, 'inAppSound')}
+          {renderToggle('Vibração no App', appVibration, 'appVibration')}
+          {renderToggle('Prévia no App', inAppPreview, 'inAppPreview')}
         </View>
         
         <View style={styles.resetGroup}>
           <TouchableOpacity 
-            style={[styles.resetButton, { backgroundColor: colors.surface }]}
+            style={[styles.card, { backgroundColor: colors.surface, padding: 0 }]}
             activeOpacity={0.7}
             onPress={async () => {
               const defaultVals = {
@@ -132,7 +127,9 @@ export default function NotificationsScreen({ navigation }: Props) {
               await AsyncStorage.setItem('@vibe_notifications', JSON.stringify(defaultVals));
             }}
           >
-            <Text style={styles.resetText}>Redefinir Todas as Notificações</Text>
+            <View style={styles.resetButton}>
+              <Text style={styles.resetText}>Redefinir Todas as Notificações</Text>
+            </View>
           </TouchableOpacity>
           <Text style={[styles.footerText, { color: colors.textSecondary }]}>Desfazer todas as suas opções e retornar ao padrão original do sistema para ligações e alertas.</Text>
         </View>
@@ -145,49 +142,28 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    height: 48,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  headerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minWidth: 80,
-  },
-  headerButtonText: {
-    fontSize: 17,
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  group: {
-    marginTop: 24,
+  cardSection: {
     paddingHorizontal: 16,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    paddingHorizontal: 4,
-    marginBottom: 8,
+    paddingTop: 16,
+    paddingBottom: 40,
   },
   card: {
-    overflow: 'hidden',
     borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 12,
+    textTransform: 'uppercase',
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 10,
-    paddingRight: 16,
-    marginLeft: 16,
-    minHeight: 46,
+    paddingVertical: 12,
   },
   labelContainer: {
     flex: 1,
@@ -202,26 +178,22 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   resetGroup: {
-    marginTop: 32,
-    marginBottom: 40,
+    marginTop: 16,
   },
   resetButton: {
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingVertical: 16,
     alignItems: 'center',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: 'transparent',
+    justifyContent: 'center',
   },
   resetText: {
     color: '#FF3B30',
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '400',
   },
   footerText: {
     fontSize: 13,
-    paddingHorizontal: 16,
-    marginTop: 8,
+    paddingHorizontal: 8,
+    marginTop: -8,
     textAlign: 'center',
   },
 });

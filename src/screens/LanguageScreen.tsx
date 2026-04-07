@@ -17,11 +17,11 @@ export default function LanguageScreen({ navigation }: Props) {
     setLanguage(lang);
   };
 
-  const renderLanguageOption = (label: string, subLabel: string, code: 'pt' | 'en', isLast = false) => {
+  const renderLanguageOption = (label: string, subLabel: string, code: 'pt' | 'en') => {
     const isSelected = language === code;
     return (
       <TouchableOpacity 
-        style={[styles.row, !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.separator }]}
+        style={styles.row}
         onPress={() => handleSelectLanguage(code)}
         activeOpacity={0.7}
       >
@@ -37,14 +37,13 @@ export default function LanguageScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundSecondary }]} edges={['bottom']}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.group}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Oficial</Text>
-          <View style={[styles.card, { backgroundColor: colors.surface }]}>
-            {renderLanguageOption('Português (Brasil)', 'Portuguese', 'pt')}
-            {renderLanguageOption('English', 'Inglês', 'en', true)}
-          </View>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.cardSection}>
+        
+        <View style={[styles.card, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: colors.primary }]}>Idioma Oficial</Text>
+          {renderLanguageOption('Português (Brasil)', 'Portuguese', 'pt')}
+          {renderLanguageOption('English', 'Inglês', 'en')}
         </View>
         
         <Text style={[styles.footerText, { color: colors.textSecondary }]}>
@@ -59,49 +58,28 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    height: 48,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  headerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minWidth: 80,
-  },
-  headerButtonText: {
-    fontSize: 17,
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  group: {
-    marginTop: 24,
+  cardSection: {
     paddingHorizontal: 16,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    paddingHorizontal: 4,
-    marginBottom: 8,
+    paddingTop: 16,
+    paddingBottom: 40,
   },
   card: {
-    overflow: 'hidden',
     borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 12,
+    textTransform: 'uppercase',
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 12,
-    paddingRight: 16,
-    marginLeft: 16,
-    minHeight: 46,
   },
   textContainer: {
     flex: 1,
@@ -116,8 +94,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 13,
-    paddingHorizontal: 16,
-    marginTop: 12,
+    paddingHorizontal: 8,
     textAlign: 'center',
   },
 });
