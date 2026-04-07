@@ -18,6 +18,7 @@ interface MessageBubbleProps {
   onPress?: () => void;
   onLongPress?: () => void;
   onImagePress?: (payload: { uri: string; timestamp: number; senderName?: string }) => void;
+  onVideoPress?: (payload: { uri: string; timestamp: number; senderName?: string }) => void;
   onFilePress?: (payload: { uri: string; fileName: string; mediaType?: string }) => void;
   onAudioPress?: (payload: { uri: string; fileName: string; mediaType?: string }) => void;
   fileOpening?: boolean;
@@ -27,6 +28,7 @@ interface MessageBubbleProps {
   audioDurationLabel?: string;
   audioRate?: number;
   onAudioRatePress?: () => void;
+  uploadProgress?: number;
 }
 
 export default function MessageBubble({
@@ -43,6 +45,7 @@ export default function MessageBubble({
   onPress,
   onLongPress,
   onImagePress,
+  onVideoPress,
   onFilePress,
   onAudioPress,
   fileOpening = false,
@@ -52,6 +55,7 @@ export default function MessageBubble({
   audioDurationLabel = '0:00',
   audioRate = 1.0,
   onAudioRatePress,
+  uploadProgress,
 }: MessageBubbleProps) {
   const { colors, isDark } = useTheme();
   const { textSize, bubbleRadius } = useSettings();
@@ -100,6 +104,7 @@ export default function MessageBubble({
   });
 
   const isImage = !!mediaUrl && mediaType === 'image';
+  const isVideo = !!mediaUrl && mediaType === 'video';
   const isAudio = !!mediaUrl && isAudioMedia(mediaType, fileNameFromMessage(message, mediaUrl));
   const showText = !!message?.trim();
   const metaColor = isMine
@@ -243,16 +248,42 @@ export default function MessageBubble({
         )}
 
         {mediaUrl ? (
-          isImage ? (
+          (isImage || isVideo) ? (
             <TouchableOpacity
               activeOpacity={0.92}
               onPress={() => {
                 if (!mediaUrl) return;
-                onImagePress?.({ uri: mediaUrl, timestamp, senderName });
+                if (isVideo) {
+                  onVideoPress?.({ uri: mediaUrl, timestamp, senderName });
+                } else {
+                  onImagePress?.({ uri: mediaUrl, timestamp, senderName });
+                }
               }}
               style={[styles.imageWrap, imageFrame, { marginBottom: showText ? 0 : 0 }]}
             >
-              <Image source={{ uri: mediaUrl }} style={[styles.image, imageFrame]} resizeMode="cover" />
+              <Image 
+                source={{ uri: isVideo ? getVideoThumbnail(mediaUrl) : mediaUrl }} 
+                style={[styles.image, imageFrame]} 
+                resizeMode="cover" 
+              />
+              
+              {status === 'sending' && uploadProgress !== undefined ? (
+                <View style={styles.sendingMediaOverlay}>
+                  <View style={styles.circularProgressWrap}>
+                    <ActivityIndicator size="large" color="#ffffff" />
+                    <Text style={styles.sendingPercentText}>
+                      {Math.round(uploadProgress * 100)}%
+                    </Text>
+                  </View>
+                </View>
+              ) : isVideo ? (
+                <View style={styles.videoOverlay}>
+                  <View style={styles.playButtonCircle}>
+                    <MaterialCommunityIcons name="play" size={32} color="#ffffff" style={{ marginLeft: 3 }} />
+                  </View>
+                  <Text style={styles.videoBadge}>Vídeo</Text>
+                </View>
+              ) : null}
             </TouchableOpacity>
           ) : isAudio ? (
             <TouchableOpacity
@@ -372,7 +403,7 @@ export default function MessageBubble({
           )
         ) : null}
 
-        {showText && (!mediaUrl || isImage) ? (
+        {showText && (!mediaUrl || (isImage || isVideo)) ? (
           <Text
             style={[
               styles.messageText,
@@ -447,6 +478,14 @@ const isAudioMedia = (mediaType?: string, fileName?: string) => {
 
 const trimAudioTitle = (value: string) => {
   return value.replace(/\.[a-z0-9]{2,5}$/i, '');
+};
+
+const getVideoThumbnail = (url: string) => {
+  // Cloudinary permite trocar a extensão do arquivo na URL para obter um thumbnail frame automático
+  if (url.includes('cloudinary.com')) {
+    return url.replace(/\.(mp4|mov|avi|wmv|flv|mkv)$/i, '.jpg');
+  }
+  return url; // Fallback
 };
 
 const styles = StyleSheet.create({
@@ -566,6 +605,58 @@ const styles = StyleSheet.create({
   imageWrap: {
     alignSelf: 'stretch',
     backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  videoOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playButtonCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  videoBadge: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '600',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  sendingMediaOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)', // fundo esfumaçado durante o envio
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  circularProgressWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  sendingPercentText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: 'bold',
+    marginTop: 4,
+    position: 'absolute',
+    bottom: -20, // Texto logo abaixo do circulo
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   image: {
     width: '100%',

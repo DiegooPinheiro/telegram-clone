@@ -29,7 +29,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
-import { Audio, type AVPlaybackStatusSuccess } from 'expo-av';
+import { Audio, type AVPlaybackStatusSuccess, Video, ResizeMode } from 'expo-av';
 import { RootStackParamList } from '../navigation/types';
 import { spacing } from '../theme/spacing';
 import MessageBubble from '../components/MessageBubble';
@@ -96,6 +96,97 @@ const ATTACH_SHEET_CLOSE_THRESHOLD = 92;
 const ATTACH_SHEET_CLOSE_DISTANCE = Math.round(Dimensions.get('window').height * 0.42);
 const ATTACH_SHEET_OPEN_OFFSET = 42;
 
+const CustomVideoPlayer = ({ viewerVideo, onClose, insets, name }: any) => {
+  const [status, setStatus] = useState<AVPlaybackStatusSuccess | null>(null);
+  const [showControls, setShowControls] = useState(true);
+  const videoRef = useRef<Video>(null);
+
+  // Auto-Ocultar controles imersivos
+  useEffect(() => {
+    let timeout: any;
+    if (showControls && status?.isPlaying) {
+      timeout = setTimeout(() => setShowControls(false), 3000);
+    }
+    return () => clearTimeout(timeout);
+  }, [showControls, status?.isPlaying]);
+
+  if (!viewerVideo) return null;
+
+  return (
+    <View style={{ flex: 1, backgroundColor: '#000' }}>
+      <Video
+        ref={videoRef}
+        source={{ uri: viewerVideo.uri }}
+        style={StyleSheet.absoluteFillObject}
+        resizeMode={ResizeMode.CONTAIN}
+        useNativeControls={false}
+        shouldPlay
+        isLooping
+        onPlaybackStatusUpdate={(s) => {
+          if (s.isLoaded) setStatus(s as AVPlaybackStatusSuccess);
+        }}
+      />
+      
+      {/* Hitbox para invocar e dar hide nos controles de tela */}
+      <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setShowControls(c => !c)} />
+
+      {showControls && (
+        <SafeAreaView style={StyleSheet.absoluteFillObject} edges={['top', 'bottom']} pointerEvents="box-none">
+          {/* Header Clone */}
+          <View style={[styles.viewerHeader, { backgroundColor: 'rgba(0,0,0,0.55)' }]} pointerEvents="box-none">
+            <TouchableOpacity activeOpacity={0.75} onPress={onClose}>
+              <Ionicons name="arrow-back" size={27} color="#ffffff" />
+            </TouchableOpacity>
+
+            <View style={styles.viewerHeaderText} pointerEvents="none">
+              <Text style={styles.viewerTitle} numberOfLines={1}>{viewerVideo?.senderName || name}</Text>
+              <Text style={styles.viewerSubtitle}>hoje às {new Date(viewerVideo.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</Text>
+            </View>
+
+            <View style={styles.viewerActions} pointerEvents="box-none">
+              <TouchableOpacity activeOpacity={0.75} onPress={() => Alert.alert('Pincel', 'Em breve.')}>
+                <Ionicons name="brush-outline" size={22} color="#ffffff" />
+              </TouchableOpacity>
+              <TouchableOpacity activeOpacity={0.75} onPress={() => Alert.alert('Compartilhar', 'Em breve.')}>
+                <Ionicons name="arrow-redo-outline" size={24} color="#ffffff" />
+              </TouchableOpacity>
+              <TouchableOpacity activeOpacity={0.75} onPress={() => Alert.alert('Mais opções', 'Em breve.')}>
+                <Ionicons name="ellipsis-vertical" size={20} color="#ffffff" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Play Center Ghost Button */}
+          <View style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]} pointerEvents="box-none">
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              onPress={() => status?.isPlaying ? videoRef.current?.pauseAsync() : videoRef.current?.playAsync()}
+              style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Ionicons name={status?.isPlaying ? "pause" : "play"} size={48} color="#fff" style={{ marginLeft: status?.isPlaying ? 0 : 6 }} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Seekbar Laser */}
+          {status && (
+            <View style={{ position: 'absolute', bottom: 30, left: 20, right: 20, flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={{ color: '#fff', fontSize: 13, minWidth: 45, fontWeight: '600' }}>
+                {Math.max(0, Math.floor(status.positionMillis / 1000 / 60))}:{String(Math.max(0, Math.floor((status.positionMillis / 1000) % 60))).padStart(2, '0')}
+              </Text>
+              <View style={{ flex: 1, height: 4, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 2, marginHorizontal: 10, overflow: 'hidden' }}>
+                <View style={{ width: `${(status.positionMillis / (status.durationMillis || 1)) * 100}%`, height: '100%', backgroundColor: '#fff', borderRadius: 2 }} />
+              </View>
+              <Text style={{ color: '#fff', fontSize: 13, minWidth: 45, fontWeight: '600' }}>
+                {Math.max(0, Math.floor((status.durationMillis || 0) / 1000 / 60))}:{String(Math.max(0, Math.floor(((status.durationMillis || 0) / 1000) % 60))).padStart(2, '0')}
+              </Text>
+            </View>
+          )}
+        </SafeAreaView>
+      )}
+    </View>
+  );
+};
+
 export default function ChatScreen({ navigation, route }: Props) {
   const EMOJI_SEARCH_LIFT = 176;
   const { colors, isDark } = useTheme();
@@ -136,6 +227,7 @@ export default function ChatScreen({ navigation, route }: Props) {
   const [loading, setLoading] = useState(true);
   const [attachOpen, setAttachOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [otherTyping, setOtherTyping] = useState(false);
   const typingTimeoutRef = useRef<any>(null);
   const [headerMenuVisible, setHeaderMenuVisible] = useState(false);
@@ -143,6 +235,7 @@ export default function ChatScreen({ navigation, route }: Props) {
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [deleteForBoth, setDeleteForBoth] = useState(false);
   const [viewerImage, setViewerImage] = useState<ViewerImage | null>(null);
+  const [viewerVideo, setViewerVideo] = useState<ViewerImage | null>(null);
   const [openingFileUri, setOpeningFileUri] = useState<string | null>(null);
   const [activeAudio, setActiveAudio] = useState<ActiveAudio | null>(null);
   const [deletingMessages, setDeletingMessages] = useState(false);
@@ -844,28 +937,49 @@ export default function ChatScreen({ navigation, route }: Props) {
       setUploading(true);
       const optimisticId = `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const clientMessageId = `client-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const isVideo = file.type?.startsWith('video');
+      const inferredType = file.type?.includes('image') ? 'image' : (isVideo ? 'video' : 'file');
+
+      // Visualização Fantasma/Optimista (Preview imediato)
+      setMessages((prev) => [
+        ...prev,
+        {
+          _id: optimisticId,
+          clientMessageId,
+          conversationId: 'temp_conv', // O ensure será rodado em background
+          senderId: myUserId,
+          text: inferredType === 'image' || isVideo ? undefined : file.name,
+          mediaUrl: file.uri, // Exibe o arquivo local do celular para Feedback visual imediato
+          mediaType: inferredType,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          localStatus: 'sending' as LocalMessageStatus,
+          localOnly: true,
+        } as LocalChatMessage,
+      ]);
+
+      setUploading(true);
+      setUploadProgress(0);
+
       try {
         const resolvedConversationId = await ensureConversationId();
-        const uploaded = await cloudinaryUpload(file);
+        const uploaded = await cloudinaryUpload(file, (progress) => {
+          setUploadProgress(progress);
+        });
         const displayName = uploaded.fileName || file.name;
-        const text = uploaded.mediaType === 'image' ? undefined : displayName;
+        const text = uploaded.mediaType === 'image' || uploaded.mediaType === 'video' ? undefined : displayName;
 
-        setMessages((prev) => [
-          ...prev,
-          {
-            _id: optimisticId,
-            clientMessageId,
+        // Atualiza a visualização local trocando do arquivo local para o hospedado com status finalizado
+        setMessages((prev) => 
+          prev.map((msg) => msg._id === optimisticId ? {
+            ...msg,
             conversationId: resolvedConversationId,
-            senderId: myUserId,
-            text,
             mediaUrl: uploaded.mediaUrl,
             mediaType: uploaded.mediaType,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+            text,
             localStatus: 'sent',
-            localOnly: true,
-          },
-        ]);
+          } : msg)
+        );
 
         sendMessageSocket({
           conversationId: resolvedConversationId,
@@ -877,11 +991,13 @@ export default function ChatScreen({ navigation, route }: Props) {
           mediaType: uploaded.mediaType,
         });
       } catch (error: any) {
+        // Se a Cloudinary ou a API falhar, arranca o balão "optimista" da tela e avisa o erro
         setMessages((prev) => prev.filter((m) => m._id !== optimisticId));
         console.error('[ChatScreen] Erro ao enviar midia:', error);
-        Alert.alert('Erro', error?.message || 'Não foi possível enviar o arquivo.');
+        Alert.alert('Erro no Upload', error?.message || 'Sua conexão falhou ao tentar enviar a mídia.');
       } finally {
         setUploading(false);
+        setUploadProgress(0);
         setTimeout(() => {
           sendingMediaRef.current = false;
         }, 260);
@@ -1300,8 +1416,8 @@ export default function ChatScreen({ navigation, route }: Props) {
         : undefined;
       const text = msg.text ? String(msg.text) : '';
       const timestamp = Math.floor(new Date(msg.createdAt).getTime() / 1000);
-      const status: LocalMessageStatus | undefined = isMine
-        ? (msg.read ? 'read' : msg.localStatus || 'delivered')
+      const status = isMine
+        ? (msg.read ? 'read' : msg.localStatus || 'delivered') as LocalMessageStatus
         : undefined;
 
       const selected = selectedMessageIds.includes(msg._id);
@@ -1339,6 +1455,14 @@ export default function ChatScreen({ navigation, route }: Props) {
           }
           audioRate={!!msg.mediaUrl && activeAudio?.uri === msg.mediaUrl ? activeAudio.rate : 1.0}
           onAudioRatePress={handleToggleAudioRate}
+          uploadProgress={status === 'sending' ? uploadProgress : undefined}
+          onVideoPress={({ uri, timestamp: videoTimestamp, senderName: videoSenderName }) => {
+            if (selectionMode) {
+              setSelectedMessageIds((prev) => prev.includes(msg._id) ? prev.filter((id) => id !== msg._id) : [...prev, msg._id]);
+              return;
+            }
+            setViewerVideo({ uri, timestamp: videoTimestamp, senderName: videoSenderName });
+          }}
           onImagePress={({ uri, timestamp: imageTimestamp, senderName: imageSenderName }) => {
             if (selectionMode) {
               setSelectedMessageIds((prev) =>
@@ -1468,6 +1592,12 @@ export default function ChatScreen({ navigation, route }: Props) {
               <TouchableOpacity activeOpacity={0.8} onPress={handleCloseAudioPlayer}>
                 <Ionicons name="close" size={20} color="rgba(255,255,255,0.72)" />
               </TouchableOpacity>
+            </View>
+          ) : null}
+
+          {uploading && uploadProgress > 0 && uploadProgress < 1 ? (
+            <View style={{ height: 3, width: '100%', backgroundColor: colors.backgroundSecondary, overflow: 'hidden' }}>
+              <View style={{ height: '100%', width: `${Math.round(uploadProgress * 100)}%`, backgroundColor: colors.chatPrimary }} />
             </View>
           ) : null}
 
@@ -1610,6 +1740,12 @@ export default function ChatScreen({ navigation, route }: Props) {
               <TouchableOpacity activeOpacity={0.8} onPress={handleCloseAudioPlayer}>
                 <Ionicons name="close" size={20} color="rgba(255,255,255,0.72)" />
               </TouchableOpacity>
+            </View>
+          ) : null}
+
+          {uploading && uploadProgress > 0 && uploadProgress < 1 ? (
+            <View style={{ height: 3, width: '100%', backgroundColor: colors.backgroundSecondary, overflow: 'hidden' }}>
+              <View style={{ height: '100%', width: `${Math.round(uploadProgress * 100)}%`, backgroundColor: colors.chatPrimary }} />
             </View>
           ) : null}
 
@@ -1790,6 +1926,21 @@ export default function ChatScreen({ navigation, route }: Props) {
             ) : null}
           </View>
         </SafeAreaView>
+      </Modal>
+
+      <Modal
+        transparent={false}
+        animationType="fade"
+        visible={!!viewerVideo}
+        onRequestClose={() => setViewerVideo(null)}
+        supportedOrientations={['portrait', 'landscape']}
+      >
+        <CustomVideoPlayer 
+          viewerVideo={viewerVideo} 
+          onClose={() => setViewerVideo(null)} 
+          insets={insets} 
+          name={name} 
+        />
       </Modal>
 
       <Modal transparent animationType="none" visible={attachOpen} onRequestClose={closeAttachSheet}>

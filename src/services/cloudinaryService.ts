@@ -39,45 +39,56 @@ const resolveMediaType = (
   return 'file';
 };
 
-export const cloudinaryUpload = async (file: {
-  uri: string;
-  name: string;
-  type: string;
-}): Promise<CloudinaryUploadResult> => {
-  const base64 = await FileSystem.readAsStringAsync(file.uri, {
-    encoding: FileSystem.EncodingType.Base64,
+export const cloudinaryUpload = async (
+  file: {
+    uri: string;
+    name: string;
+    type: string;
+  },
+  onProgress?: (progress: number) => void
+): Promise<CloudinaryUploadResult> => {
+  return new Promise((resolve, reject) => {
+    const uploadTask = FileSystem.createUploadTask(
+      UPLOAD_URL,
+      file.uri,
+      {
+        httpMethod: 'POST',
+        uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+        fieldName: 'file',
+        mimeType: file.type || 'application/octet-stream',
+        parameters: {
+          upload_preset: UPLOAD_PRESET || '',
+        },
+      },
+      (data) => {
+        if (onProgress && data.totalBytesExpectedToSend > 0) {
+          const progress = data.totalBytesSent / data.totalBytesExpectedToSend;
+          onProgress(progress);
+        }
+      }
+    );
+
+    uploadTask
+      .uploadAsync()
+      .then((response) => {
+        if (!response || response.status < 200 || response.status > 299) {
+          console.error('[Cloudinary] Erro bruto no upload:', response?.body);
+          reject(new Error(`Cloudinary upload failed: ${response?.status} ${response?.body}`));
+          return;
+        }
+
+        const parsed = JSON.parse(response.body);
+        const mediaType = resolveMediaType(parsed.resource_type, file.type, file.name);
+
+        resolve({
+          mediaUrl: parsed.secure_url,
+          mediaType,
+          fileName: parsed.original_filename || file.name,
+        });
+      })
+      .catch((err) => {
+        console.error('[Cloudinary] Excecao na task de upload:', err);
+        reject(err);
+      });
   });
-  
-  const dataUri = `data:${file.type};base64,${base64}`;
-
-  // Cloudinary REST API requires FormData, not JSON. But sending the file as a
-  // Base64 string inside FormData avoids Android's binary file streaming bugs.
-  const form = new FormData();
-  form.append('upload_preset', UPLOAD_PRESET);
-  form.append('file', dataUri);
-
-  const response = await fetch(UPLOAD_URL, {
-    method: 'POST',
-    body: form,
-  });
-
-  if (!response.ok) {
-    const err = await response.text();
-    console.error('[Cloudinary] Erro bruto no upload:', err);
-    throw new Error(`Cloudinary upload failed: ${response.status} ${err}`);
-  }
-
-  const data = await response.json();
-
-  const mediaType = resolveMediaType(
-    data.resource_type,
-    file.type,
-    file.name
-  );
-
-  return {
-    mediaUrl: data.secure_url,
-    mediaType,
-    fileName: data.original_filename || file.name,
-  };
 };
