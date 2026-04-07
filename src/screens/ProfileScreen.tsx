@@ -146,36 +146,10 @@ export default function ProfileScreen({ navigation }: Props) {
           </View>
         </View>
 
-        <View style={styles.tabsContainer}>
-          <View style={[styles.tabsBackground, { backgroundColor: colors.surface }]}>
-            <TouchableOpacity style={[styles.tab, { backgroundColor: isDark ? "#33435C" : "#E5E5EA" }]}>
-              <Text style={[styles.tabTextActive, { color: colors.primary }]}>Posts</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.tab}>
-              <Text style={[styles.tabTextInactive, { color: colors.textSecondary }]}>Posts Arquivados</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
 
-        <View style={styles.emptyState}>
-          <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>Nenhum post ainda...</Text>
-          <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-            Publique fotos e vídeos para mostrar na sua página de perfil
-          </Text>
-        </View>
       </ScrollView>
 
-      <View style={[styles.fabContainer, { bottom: insets.bottom + 82 }]}>
-        <TouchableOpacity style={[styles.fab, { backgroundColor: colors.primary }]} activeOpacity={0.8}>
-          <Ionicons
-            name="camera"
-            size={20}
-            color="#FFF"
-            style={styles.fabIcon}
-          />
-          <Text style={styles.fabText}>Adicione um post</Text>
-        </TouchableOpacity>
-      </View>
+
 
       <Modal transparent visible={localMenuVisible} animationType="fade" onRequestClose={() => setLocalMenuVisible(false)}>
         <Pressable style={styles.menuBackdrop} onPress={() => setLocalMenuVisible(false)}>
@@ -189,23 +163,7 @@ export default function ProfileScreen({ navigation }: Props) {
               },
             ]}
           >
-            <TouchableOpacity
-              style={[styles.menuItem, styles.menuItemBorder, { borderBottomColor: colors.separator }]}
-              activeOpacity={0.75}
-              onPress={() => setLocalMenuVisible(false)}
-            >
-              <Ionicons name="color-palette-outline" size={22} color={colors.textPrimary} />
-              <Text style={[styles.menuText, { color: colors.textPrimary }]}>Trocar cor do perfil</Text>
-            </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.menuItem, styles.menuItemBorder, { borderBottomColor: colors.separator }]}
-              activeOpacity={0.75}
-              onPress={() => setLocalMenuVisible(false)}
-            >
-              <Ionicons name="at-outline" size={22} color={colors.textPrimary} />
-              <Text style={[styles.menuText, { color: colors.textPrimary }]}>Trocar nome de usuário</Text>
-            </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.menuItem}
@@ -294,73 +252,7 @@ const styles = StyleSheet.create({
   infoLabel: {
     fontSize: 14,
   },
-  tabsContainer: {
-    alignItems: "center",
-    marginBottom: 32,
-  },
-  tabsBackground: {
-    flexDirection: "row",
-    borderRadius: 20,
-    padding: 4,
-  },
-  tab: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-  },
-  tabTextActive: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  tabTextInactive: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  emptyState: {
-    alignItems: "center",
-    paddingHorizontal: 32,
-    marginTop: 40,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  fabContainer: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    alignItems: "center",
-    paddingBottom: 24,
-  },
-  fab: {
-    flexDirection: "row",
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 24,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  fabIcon: {
-    marginRight: 8,
-  },
-  fabText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "500",
-  },
+
   menuBackdrop: {
     flex: 1,
   },

@@ -4,12 +4,14 @@ import { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useTheme from '../hooks/useTheme';
+import { useTranslation } from '../locales';
 
 const { width } = Dimensions.get('window');
 
 export default function FloatingBottomTab({ state, descriptors, navigation }: MaterialTopTabBarProps) {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const unreadCount = 0; // sua API ainda não implementa contagem de não lidas
 
   return (
@@ -36,7 +38,6 @@ export default function FloatingBottomTab({ state, descriptors, navigation }: Ma
             });
 
             if (!isFocused && !event.defaultPrevented) {
-              // @ts-ignore - jumpTo existe em Tab Navigators mas o tipo pode variar
               if (typeof (navigation as any).jumpTo === 'function') {
                 (navigation as any).jumpTo(route.name);
               } else {
@@ -46,20 +47,20 @@ export default function FloatingBottomTab({ state, descriptors, navigation }: Ma
           };
 
           let iconName: any = 'chatbubbles';
-          let label = 'Chats';
+          let label = t('tabs.chats');
 
           if (route.name === 'ChatList') {
             iconName = isFocused ? 'chatbubbles' : 'chatbubbles-outline';
-            label = 'Chats';
+            label = t('tabs.chats');
           } else if (route.name === 'Contacts') {
             iconName = isFocused ? 'people' : 'people-outline';
-            label = 'Contatos';
+            label = t('tabs.contacts');
           } else if (route.name === 'Settings') {
             iconName = isFocused ? 'settings' : 'settings-outline';
-            label = 'Configs';
+            label = t('tabs.settings');
           } else if (route.name === 'Profile') {
             iconName = isFocused ? 'person' : 'person-outline';
-            label = 'Perfil';
+            label = t('tabs.profile');
           }
 
           return (

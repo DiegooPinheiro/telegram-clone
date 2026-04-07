@@ -24,11 +24,14 @@ import { Pressable, Modal } from 'react-native';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
 
+import { useTranslation } from '../locales';
+
 export default function SettingsScreen({ navigation }: Props) {
   const { displayName, photoURL, uid } = useAuth();
-  const { language } = useSettings();
+  const { language, setLanguage } = useSettings();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [localMenuVisible, setLocalMenuVisible] = useState(false);
   const [isPassModalVisible, setIsPassModalVisible] = useState(false);
@@ -75,7 +78,7 @@ export default function SettingsScreen({ navigation }: Props) {
   const handleLogout = () => {
     setAlertConfig({
       visible: true,
-      title: 'Sair da Conta',
+      title: t('settings.logout'),
       message: 'Deseja realmente sair da sua conta?',
       confirmLabel: 'SAIR',
       isDestructive: true,
@@ -98,8 +101,8 @@ export default function SettingsScreen({ navigation }: Props) {
   const handleDeleteAccount = () => {
     setAlertConfig({
       visible: true,
-      title: 'Deletar Conta',
-      message: 'AVISO: Isso apagará permanentemente todos os seus dados no app e no servidor. Esta ação não pode ser desfeita.',
+      title: t('settings.deleteAccount'),
+      message: 'AVISO: Isso apagará permanentemente todos os seus dados no app. Esta ação não pode ser desfeita.',
       confirmLabel: 'DELETAR',
       isDestructive: true,
       onConfirm: () => {
@@ -113,7 +116,6 @@ export default function SettingsScreen({ navigation }: Props) {
     setIsDeleting(true);
     try {
       await deleteUserAccount(password);
-      // O AppNavigator irá redirecionar automaticamente pois o estado de auth mudará
     } catch (error: any) {
       Alert.alert('Erro', error.message || 'Falha ao deletar conta');
     } finally {
@@ -129,9 +131,6 @@ export default function SettingsScreen({ navigation }: Props) {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       <View style={styles.topBar}>
         <View style={{ flex: 1 }} />
-        <TouchableOpacity style={styles.topBarButton}>
-          <Ionicons name="search-outline" size={22} color={colors.textPrimary} />
-        </TouchableOpacity>
         <TouchableOpacity style={styles.topBarButton} onPress={() => setLocalMenuVisible(true)}>
           <Ionicons name="ellipsis-vertical" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
@@ -145,7 +144,7 @@ export default function SettingsScreen({ navigation }: Props) {
               <Ionicons name="camera" size={18} color="#FFF" />
             </View>
           </TouchableOpacity>
-          <Text style={[styles.headerName, { color: colors.textPrimary }]}>{profile?.displayName || displayName || 'Sem nome'}</Text>
+          <Text style={[styles.headerName, { color: colors.textPrimary }]}>{profile?.displayName || displayName || t('settings.noName')}</Text>
           <Text style={[styles.headerPhone, { color: colors.textSecondary }]}>{`${headerPhone} • ${headerUsername}`}</Text>
         </View>
 
@@ -153,58 +152,58 @@ export default function SettingsScreen({ navigation }: Props) {
           <SettingRow
             iconName="person"
             iconBgColor="#2A85FF"
-            label="Conta"
-            subtitle="Numero, Nome de Usuario, Bio"
+            label={t('settings.account')}
+            subtitle={t('settings.accountSub')}
             onPress={() => navigation.navigate('EditProfile')}
           />
           <SettingRow
             iconName="chatbubble"
             iconBgColor="#F7931A"
-            label="Configuracoes de Chat"
-            subtitle="Papel de Parede, Modo Noturno, Animacoes"
+            label={t('settings.chatSettings')}
+            subtitle={t('settings.chatSettingsSub')}
             onPress={() => navigation.navigate('ChatSettings')}
           />
           <SettingRow
             iconName="key"
             iconBgColor="#34C759"
-            label="Privacidade e Seguranca"
-            subtitle="Visto por Ultimo, Dispositivos, Chaves de Acesso"
+            label={t('settings.privacy')}
+            subtitle={t('settings.privacySub')}
             onPress={() => navigation.navigate('Privacy')}
           />
           <SettingRow
             iconName="notifications"
             iconBgColor="#FF3B30"
-            label="Notificacoes"
-            subtitle="Sons, Chamadas, Contadores"
+            label={t('settings.notifications')}
+            subtitle={t('settings.notificationsSub')}
             onPress={() => navigation.navigate('Notifications')}
           />
           <SettingRow
             iconName="pie-chart"
             iconBgColor="#5856D6"
-            label="Dados e Armazenamento"
-            subtitle="Opcoes de download de midia"
+            label={t('settings.data')}
+            subtitle={t('settings.dataSub')}
             onPress={() => navigation.navigate('DataStorage')}
           />
           <SettingRow
             iconName="laptop-outline"
             iconBgColor="#64D2FF"
-            label="Dispositivos"
-            subtitle="Gerenciar dispositivos conectados"
+            label={t('settings.devices')}
+            subtitle={t('settings.devicesSub')}
             onPress={() => {}}
           />
           <SettingRow
             iconName="globe-outline"
             iconBgColor="#AF52DE"
-            label="Idioma"
-            subtitle={language === 'pt' ? 'Portugues (Brasil)' : 'English'}
-            onPress={() => {}}
+            label={t('settings.language')}
+            subtitle={language === 'pt' ? 'Português (Brasil)' : 'English'}
+            onPress={() => navigation.navigate('Language')}
             isLast
           />
         </View>
 
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
-          <SettingRow iconName="trash-outline" iconBgColor="#FF3B30" label="Deletar sua conta" onPress={handleDeleteAccount} />
-          <SettingRow iconName="exit-outline" iconBgColor="#FF3B30" label="Sair da Conta" onPress={handleLogout} isLast />
+          <SettingRow iconName="trash-outline" iconBgColor="#FF3B30" label={t('settings.deleteAccount')} onPress={handleDeleteAccount} />
+          <SettingRow iconName="exit-outline" iconBgColor="#FF3B30" label={t('settings.logout')} onPress={handleLogout} isLast />
         </View>
       </ScrollView>
 

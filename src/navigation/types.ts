@@ -41,6 +41,7 @@ export type RootStackParamList = {
   Privacy: undefined;
   DataStorage: undefined;
   Help: undefined;
+  Language: undefined;
   ChangePhone: undefined;
   ChangeUsername: undefined;
   ChangeBirthday: undefined;

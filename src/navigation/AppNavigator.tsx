@@ -23,6 +23,7 @@ import GroupProfileScreen from '../screens/GroupProfileScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import PrivacyScreen from '../screens/PrivacyScreen';
+import LanguageScreen from '../screens/LanguageScreen';
 import DataStorageScreen from '../screens/DataStorageScreen';
 import HelpScreen from '../screens/HelpScreen';
 import ChangePhoneScreen from '../screens/ChangePhoneScreen';
@@ -111,10 +112,11 @@ export default function AppNavigator() {
         <Stack.Screen name="NewGroup" component={NewGroupScreen} options={{ title: 'Novo Grupo' }} />
         <Stack.Screen name="GroupProfile" component={GroupProfileScreen} options={{ headerShown: false }} />
         <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Editar Perfil' }} />
-        <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Notificacoes' }} />
+        <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Notificações' }} />
         <Stack.Screen name="Privacy" component={PrivacyScreen} options={{ title: 'Privacidade e Segurança' }} />
         <Stack.Screen name="DataStorage" component={DataStorageScreen} options={{ title: 'Dados e Armazenamento' }} />
         <Stack.Screen name="Help" component={HelpScreen} options={{ title: 'Ajuda' }} />
+        <Stack.Screen name="Language" component={LanguageScreen as any} options={{ title: 'Idioma' }} />
         <Stack.Screen name="ChangePhone" component={ChangePhoneScreen} options={{ title: 'Alterar Numero' }} />
         <Stack.Screen name="ChangeUsername" component={ChangeUsernameScreen} options={{ title: 'Nome de Usuario' }} />
         <Stack.Screen name="ChatSettings" component={ChatSettingsScreen} options={{ headerShown: false }} />

@@ -274,6 +274,7 @@ export default function ContactsScreen({ navigation }: Props) {
                 <TouchableOpacity 
                   style={[styles.actionRow, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.separator }]} 
                   activeOpacity={0.7}
+                  onPress={() => Alert.alert('Convidar Amigos', 'O envio de links de convite pelo WhatsApp/SMS estará disponível em breve!')}
                 >
                   <View style={[styles.sideLetterWrap, { alignItems: 'flex-start' }]}>
                     <View style={[styles.actionIconBg, { backgroundColor: '#2196F3' }]}>
@@ -303,6 +304,7 @@ export default function ContactsScreen({ navigation }: Props) {
                 <TouchableOpacity 
                   style={[styles.actionRow, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.separator }]} 
                   activeOpacity={0.7}
+                  onPress={() => Alert.alert('Chamadas Recentes', 'O sistema de Voz e Vídeo por WebRTC será lançado em breve!')}
                 >
                   <View style={[styles.sideLetterWrap, { alignItems: 'flex-start' }]}>
                     <View style={[styles.actionIconBg, { backgroundColor: '#FF9800' }]}>
