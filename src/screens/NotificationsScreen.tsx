@@ -166,20 +166,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   group: {
-    marginTop: 32,
+    marginTop: 24,
+    paddingHorizontal: 16,
   },
   sectionTitle: {
     fontSize: 13,
-    fontWeight: '400',
+    fontWeight: '700',
     textTransform: 'uppercase',
-    paddingHorizontal: 16,
+    paddingHorizontal: 4,
     marginBottom: 8,
   },
   card: {
     overflow: 'hidden',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: 'transparent',
+    borderRadius: 12,
   },
   row: {
     flexDirection: 'row',
