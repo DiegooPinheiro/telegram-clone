@@ -119,7 +119,8 @@ src/
 ---
 
 ## 6. Variáveis de Ambiente
-Nossa integração segura das chaves. Antes de buildar, configure o `.env` com todas as 10 chaves necessárias na raiz (baseie-se no `.env.example`):
+Antes de buildar, configure o `.env` na raiz do projeto usando o `.env.example` como base.
+As chaves abaixo refletem o que o app usa hoje:
 
 ```env
 # 1. Firebase (Consulte o Console do Firebase Web Setup)
@@ -136,6 +137,8 @@ EXPO_PUBLIC_CHAT_API_URL=https://sua-api.onrender.com/
 # 3. Cloudinary CDN Keys (Painel da Cloudinary)
 EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME=nome_cloud
 EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET=unsigned_preset
+
+# Opcional: se não informar, o app monta a URL automaticamente
 EXPO_PUBLIC_CLOUDINARY_API_URL=https://api.cloudinary.com/v1_1/nome_cloud/auto/upload
 ```
 
